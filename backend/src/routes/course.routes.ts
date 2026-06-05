@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth } from '../middleware/auth.middleware.js'
+import { optionalAuth, requireAuth } from '../middleware/auth.middleware.js'
 import { requireRole } from '../middleware/role.middleware.js'
 import * as CourseController from '../controllers/course.controller.js'
 
@@ -17,7 +17,7 @@ router.get('/mine/list', ...isInstructor, CourseController.getMyCourses)
 router.get('/mine/:id', ...isInstructor, CourseController.getMyCourseDetail)
 
 // ─── Parameterised course routes (after all specific paths) ──────────────────
-router.get('/:id', CourseController.getCourse)
+router.get('/:id', optionalAuth, CourseController.getCourse)
 router.put('/:id', ...isInstructor, CourseController.updateCourse)
 router.delete('/:id', ...isInstructor, CourseController.deleteCourse)
 router.post('/:id/submit', ...isInstructor, CourseController.submitForReview)

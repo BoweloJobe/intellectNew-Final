@@ -15,6 +15,15 @@ import express, { type Request, type Response, type NextFunction } from 'express
 
 // ── Auth stub ────────────────────────────────────────────────────────────────
 vi.mock('../../middleware/auth.middleware.js', () => ({
+  optionalAuth: (req: Request, _res: Response, next: NextFunction) => {
+    if (req.headers.authorization === 'Bearer valid-student-token') {
+      ;(req as unknown as { user: { id: string; role: string } }).user = {
+        id: 'student-1',
+        role: 'STUDENT',
+      }
+    }
+    next()
+  },
   requireAuth: (req: Request, _res: Response, next: NextFunction) => {
     ;(req as unknown as { user: { id: string; role: string } }).user = {
       id: 'user-1',
@@ -33,7 +42,7 @@ vi.mock('../../middleware/role.middleware.js', () => ({
 
 // ── Prisma mock (hoisted so vi.mock factories can reference it) ───────────────
 const mockPrisma = vi.hoisted(() => ({
-  course: { findUnique: vi.fn(), update: vi.fn() },
+  course: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
   courseModule: {
     findUnique: vi.fn(),
     findFirst: vi.fn(),
@@ -104,6 +113,107 @@ function fakeLesson(overrides = {}) {
     ...overrides,
   }
 }
+
+function fakeApprovedCourseWithContent() {
+  return {
+    id: 'course-1',
+    title: 'Approved Course',
+    description: 'Public course',
+    price: 0,
+    category: 'Programming',
+    difficulty: 'BEGINNER',
+    thumbnail: null,
+    status: 'APPROVED',
+    publishedAt: new Date('2026-01-01T00:00:00.000Z'),
+    instructor: { id: 'instructor-1', name: 'Instructor' },
+    rejectionReason: null,
+    modules: [
+      {
+        id: 'module-1',
+        title: 'Module 1',
+        order: 1,
+        lessons: [
+          {
+            id: 'free-lesson',
+            title: 'Free Lesson',
+            description: 'Preview',
+            type: 'VIDEO',
+            duration: 10,
+            order: 1,
+            isFree: true,
+            videoUrl: 'https://video.example/free',
+            notes: 'free notes',
+            videoUploadStatus: 'READY',
+          },
+          {
+            id: 'premium-lesson',
+            title: 'Premium Lesson',
+            description: 'Paid content',
+            type: 'VIDEO',
+            duration: 20,
+            order: 2,
+            isFree: false,
+            videoUrl: 'https://video.example/premium',
+            notes: 'premium notes',
+            videoUploadStatus: 'READY',
+          },
+        ],
+      },
+    ],
+  }
+}
+
+describe('GET /courses/:id public detail', () => {
+  let app: express.Express
+
+  beforeEach(() => {
+    app = makeApp()
+    vi.clearAllMocks()
+    mockPrisma.course.findFirst.mockResolvedValue(fakeCourse({ status: 'APPROVED' }))
+    mockPrisma.course.findUnique.mockResolvedValue(fakeApprovedCourseWithContent())
+  })
+
+  it('keeps anonymous course detail public and locks premium lesson content', async () => {
+    const res = await request(app).get('/courses/course-1')
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.enrollment.findUnique).not.toHaveBeenCalled()
+    const lessons = res.body.data.course.modules[0].lessons
+    expect(lessons[0].videoUrl).toBe('https://video.example/free')
+    expect(lessons[0].notes).toBe('free notes')
+    expect(lessons[1].videoUrl).toBeNull()
+    expect(lessons[1].notes).toBeNull()
+  })
+
+  it('passes optional authenticated user through so enrolled students receive full content', async () => {
+    mockPrisma.enrollment.findUnique.mockResolvedValue({ id: 'enrollment-1' })
+
+    const res = await request(app)
+      .get('/courses/course-1')
+      .set('Authorization', 'Bearer valid-student-token')
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.enrollment.findUnique).toHaveBeenCalledWith({
+      where: { userId_courseId: { userId: 'student-1', courseId: 'course-1' } },
+    })
+    const lessons = res.body.data.course.modules[0].lessons
+    expect(lessons[1].videoUrl).toBe('https://video.example/premium')
+    expect(lessons[1].notes).toBe('premium notes')
+  })
+
+  it('keeps authenticated but non-enrolled users on the public-only content path', async () => {
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+
+    const res = await request(app)
+      .get('/courses/course-1')
+      .set('Authorization', 'Bearer valid-student-token')
+
+    expect(res.status).toBe(200)
+    const lessons = res.body.data.course.modules[0].lessons
+    expect(lessons[1].videoUrl).toBeNull()
+    expect(lessons[1].notes).toBeNull()
+  })
+})
 
 // ═══════════════════════════════════════════════════════════════════════════
 // deleteModule

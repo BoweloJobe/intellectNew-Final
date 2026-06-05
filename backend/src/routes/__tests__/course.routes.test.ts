@@ -14,6 +14,16 @@ import express, { type Request, type Response, type NextFunction } from 'express
 
 // ── Middleware stubs ────────────────────────────────────────────────────────
 vi.mock('../../middleware/auth.middleware.js', () => ({
+  optionalAuth: (req: Request, _res: Response, next: NextFunction) => {
+    if (req.headers.authorization === 'Bearer valid-token') {
+      ;(req as unknown as { user: { id: string; email: string; role: string } }).user = {
+        id: 'student-1',
+        email: 'student@example.com',
+        role: 'STUDENT',
+      }
+    }
+    next()
+  },
   requireAuth: (_req: Request, _res: Response, next: NextFunction) => next(),
 }))
 
@@ -32,7 +42,11 @@ vi.mock('../../controllers/course.controller.js', () => ({
     res.json({ handler: 'listCourses' }),
   ),
   getCourse: vi.fn((_req: Request, res: Response) =>
-    res.json({ handler: 'getCourse', id: (_req as any).params.id }),
+    res.json({
+      handler: 'getCourse',
+      id: (_req as any).params.id,
+      userId: (_req as unknown as { user?: { id: string } }).user?.id ?? null,
+    }),
   ),
   createCourse: vi.fn((_req: Request, res: Response) =>
     res.status(201).json({ handler: 'createCourse' }),
@@ -119,6 +133,17 @@ describe('course routes – handler dispatch order', () => {
     expect(res.status).toBe(200)
     expect(res.body.handler).toBe('getCourse')
     expect(res.body.id).toBe('some-course-id')
+    expect(res.body.userId).toBeNull()
+  })
+
+  it('GET /courses/some-course-id reads optional auth when a bearer token is valid', async () => {
+    const res = await request(app)
+      .get('/courses/some-course-id')
+      .set('Authorization', 'Bearer valid-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.handler).toBe('getCourse')
+    expect(res.body.userId).toBe('student-1')
   })
 
   // ── Confirm param 'mine' is not treated as a course id ───────────────────

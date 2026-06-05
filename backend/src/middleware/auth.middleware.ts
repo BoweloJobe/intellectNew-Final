@@ -16,3 +16,18 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
     next(new AppError(401, 'Invalid or expired token'))
   }
 }
+
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
+  const header = req.headers.authorization
+  if (!header?.startsWith('Bearer ')) {
+    return next()
+  }
+
+  const token = header.slice(7)
+  try {
+    req.user = verifyToken(token)
+  } catch {
+    // Public routes should keep browsing available when an optional token is stale.
+  }
+  next()
+}
