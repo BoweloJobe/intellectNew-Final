@@ -117,9 +117,11 @@ If all commands succeed, the build is reproducible from a clean environment.
 The following limitations are **not** addressed in this optimization (they require backend/infrastructure changes):
 
 - **Backend API availability** - Tests default to mock mode; API mode requires a running backend
-- **Database schema migrations** - Not included in frontend package
+- **Database production migrations** - The backend currently uses SQLite (`DATABASE_URL="file:./dev.db"`) and has no committed Prisma migrations yet. PostgreSQL is the intended production target, but that migration is planned, not implemented.
 - **Authentication credentials** - `.env.local` required for real authentication flows
 - **CDN or external resource availability** - Dependent on infrastructure
+
+Local `.db` files are ignored and must not be committed. The current local database flow may use Prisma Client generation and the existing SQLite setup, but `prisma db push` is not production-safe. Production should eventually use PostgreSQL, committed migrations, and `prisma migrate deploy`.
 
 ## Maintenance
 

@@ -5,7 +5,9 @@ Node.js + Express + TypeScript + Prisma backend for IntellectX.
 ## Prerequisites
 
 - Node.js 20+
-- PostgreSQL database
+- SQLite for current local development (`DATABASE_URL="file:./dev.db"`)
+
+PostgreSQL is the intended production database target, but that migration has not been implemented yet.
 
 ## Setup
 
@@ -33,8 +35,14 @@ npm run dev
 | `npm start` | Run compiled production build |
 | `npm run typecheck` | Type-check without emitting |
 | `npm run db:generate` | Generate Prisma Client |
-| `npm run db:migrate` | Run database migrations |
+| `npm run db:migrate` | Run Prisma development migrations once migrations exist |
 | `npm run db:studio` | Open Prisma Studio |
+
+## Database status
+
+Prisma currently uses SQLite via `backend/prisma/schema.prisma`. The local default is `DATABASE_URL="file:./dev.db"`, and local `.db` files are ignored by git and must not be committed.
+
+There are no Prisma migrations yet. Local prototype setup can use Prisma Client generation and the existing local DB flow, but `prisma db push` is not production-safe. Production should move to PostgreSQL with committed migrations and `prisma migrate deploy`.
 
 ## Health endpoint
 

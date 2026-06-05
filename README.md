@@ -26,15 +26,21 @@ cp .env.example .env.local
 
 # 3. Copy backend env and install backend dependencies
 cp backend/.env.example backend/.env
-# Edit backend/.env – at minimum set DATABASE_URL and a real JWT_SECRET (>=32 chars)
+# Edit backend/.env – at minimum set a real JWT_SECRET (>=32 chars)
+# Local backend development currently uses SQLite: DATABASE_URL="file:./dev.db"
 
 # 4. Install backend dependencies + initialise the database
 npm run setup
 ```
 
 `npm run setup` does: `npm install` (root) → `npm install` (backend) → `prisma generate` → `prisma db push`.
+This is a local prototype/development flow for the current SQLite schema. `prisma db push` is not production-safe.
 
 > Re-run `npm run setup` any time you pull schema changes from git.
+
+Current database reality: Prisma is configured for SQLite in `backend/prisma/schema.prisma`, using `DATABASE_URL="file:./dev.db"` from `backend/.env.example`. Local `.db` files are ignored and must not be committed.
+
+Production database target: PostgreSQL. Migration work and production migration commands are planned but not implemented yet. Production should eventually use Prisma migrations and `prisma migrate deploy`, not `prisma db push`.
 
 ---
 
@@ -117,7 +123,7 @@ Minimum required in `backend/.env`:
 
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
-| `DATABASE_URL` | ✅ | — | PostgreSQL connection string |
+| `DATABASE_URL` | ✅ | `file:./dev.db` locally | Current local SQLite URL. PostgreSQL is the planned production target, not active yet. |
 | `JWT_SECRET` | ✅ | — | Must be ≥ 32 characters |
 | `PORT` | | `4000` | Backend HTTP port |
 | `FRONTEND_URL` | | `http://localhost:5173` | Used for CORS |
