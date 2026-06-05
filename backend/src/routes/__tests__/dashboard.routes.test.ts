@@ -325,12 +325,12 @@ describe('GET /dashboard/admin', () => {
     expect(topCourses).toHaveLength(0)
   })
 
-  it('aggregates users, revenue, top courses, and recent activity when data exists', async () => {
+  it('aggregates completed payment revenue, top courses, and recent activity when data exists', async () => {
     mockPrisma.user.count.mockResolvedValue(42)
     mockPrisma.course.count.mockResolvedValue(5)
     mockPrisma.enrollment.count.mockResolvedValue(120)
     mockPrisma.payment.aggregate.mockResolvedValue({ _sum: { amount: 999.5 } })
-    mockPrisma.payment.findMany.mockResolvedValue([])
+    mockPrisma.payment.findMany.mockResolvedValue([{ amount: 25, capturedAt: new Date() }])
     mockPrisma.user.findMany.mockResolvedValue([])
     mockPrisma.notification.findMany.mockResolvedValue([
       {
@@ -352,7 +352,7 @@ describe('GET /dashboard/admin', () => {
     const res = await request(app).get('/dashboard/admin')
     expect(res.status).toBe(200)
 
-    const { stats, recentActivities, topCourses } = res.body.data
+    const { stats, revenueData, recentActivities, topCourses } = res.body.data
     const statByLabel = Object.fromEntries(
       (stats as Array<{ label: string; value: string }>).map((s) => [s.label, s.value]),
     )
@@ -361,6 +361,15 @@ describe('GET /dashboard/admin', () => {
     expect(statByLabel['Total Revenue']).toBe('$999.50')
     expect(statByLabel['Published Courses']).toBe('5')
     expect(statByLabel['Enrollments']).toBe('120')
+    expect(revenueData.some((point: { revenue: number }) => point.revenue === 25)).toBe(true)
+    expect(mockPrisma.payment.aggregate).toHaveBeenCalledWith({
+      where: { status: 'COMPLETED' },
+      _sum: { amount: true },
+    })
+    expect(mockPrisma.payment.findMany).toHaveBeenCalledWith({
+      where: { status: 'COMPLETED', capturedAt: { not: null } },
+      select: { amount: true, capturedAt: true },
+    })
 
     expect(recentActivities).toHaveLength(1)
     expect(recentActivities[0].type).toBe('Enrollment Confirmed')
@@ -372,5 +381,12 @@ describe('GET /dashboard/admin', () => {
     expect(topCourses[0].title).toBe('Top Course')
     expect(topCourses[0].students).toBe(50)
     expect(topCourses[0].revenue).toBe('$148.50')
+    expect(mockPrisma.course.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          payments: { where: { status: 'COMPLETED' }, select: { amount: true } },
+        }),
+      }),
+    )
   })
 })

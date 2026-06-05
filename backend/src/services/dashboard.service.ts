@@ -11,6 +11,8 @@ import type {
   InstructorSubmissionItem,
 } from '../types/dashboard.types.js'
 
+const COMPLETED_PAYMENT_STATUS = 'COMPLETED'
+
 // ─── Instructor ───────────────────────────────────────────────────────────────
 
 export interface InstructorDashboardPayload {
@@ -180,14 +182,14 @@ export async function getAdminDashboard(): Promise<AdminDashboardPayload> {
     prisma.user.count(),
     prisma.course.count({ where: { status: 'APPROVED' } }),
     prisma.enrollment.count(),
-    prisma.payment.aggregate({ where: { status: 'CAPTURED' }, _sum: { amount: true } }),
+    prisma.payment.aggregate({ where: { status: COMPLETED_PAYMENT_STATUS }, _sum: { amount: true } }),
   ])
 
   const totalRevenue = revenueAgg._sum.amount ?? 0
 
-  // Captured payments for monthly revenue chart
+  // Completed payments for monthly revenue chart
   const payments = await prisma.payment.findMany({
-    where: { status: 'CAPTURED', capturedAt: { not: null } },
+    where: { status: COMPLETED_PAYMENT_STATUS, capturedAt: { not: null } },
     select: { amount: true, capturedAt: true },
   })
 
@@ -263,7 +265,7 @@ export async function getAdminDashboard(): Promise<AdminDashboardPayload> {
       id: true,
       title: true,
       _count: { select: { enrollments: true } },
-      payments: { where: { status: 'CAPTURED' }, select: { amount: true } },
+      payments: { where: { status: COMPLETED_PAYMENT_STATUS }, select: { amount: true } },
     },
     orderBy: { enrollments: { _count: 'desc' } },
     take: 5,
