@@ -1,0 +1,19 @@
+import { Router } from 'express'
+import { requireAuth } from '../middleware/auth.middleware.js'
+import * as NotificationController from '../controllers/notification.controller.js'
+
+const router = Router()
+
+// GET /api/notifications/my
+router.get('/my', requireAuth, NotificationController.getMyNotifications)
+
+// GET /api/notifications/unread-count
+router.get('/unread-count', requireAuth, NotificationController.getUnreadCount)
+
+// POST /api/notifications/read-all
+router.post('/read-all', requireAuth, NotificationController.markAllRead)
+
+// PATCH /api/notifications/:id/read
+router.patch('/:id/read', requireAuth, NotificationController.markRead)
+
+export default router

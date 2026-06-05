@@ -1,0 +1,71 @@
+# Node.js dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+dist-ssr/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+# .env.test is a committed test-mode override; see its inline comments.
+!.env.test
+
+# Test and coverage output
+coverage/
+*.lcov
+
+# Logs and test output
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+test-output.txt
+
+# Vite and tooling cache
+.vite/
+.eslintcache
+vite.config.ts.timestamp-*
+
+# Local scratch / pasted content — never tracked
+src/imports/
+
+# Local audit / artifact outputs
+.artifact-tracked.txt
+.dep-subpath.tsv
+.dep-usage.tsv
+.vite-chunk-check.txt
+
+# TypeScript build metadata
+*.tsbuildinfo
+
+# Editor and IDE files
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+Thumbs.db
+*.swp
+*.swo
+
+# OS junk
+Desktop.ini
+$RECYCLE.BIN/
+
+# Misc cache
+.cache/
+.parcel-cache/
+
+# Local database files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+backend/prisma/*.db
+backend/prisma/**/*.db

@@ -1,0 +1,86 @@
+/* Motion System - Unified Animation Tokens */
+
+:root {
+  /* ==================== MOTION DURATION TOKENS ==================== */
+  
+  /* Fast: Quick micro-interactions (hover, focus, small state changes) */
+  --duration-fast: 150ms;
+  
+  /* Normal: Standard transitions (UI elements, cards, buttons) */
+  --duration-normal: 200ms;
+  
+  /* Slow: Deliberate transitions (modals, sheets, page navigation) */
+  --duration-slow: 300ms;
+  
+  /* ==================== EASING TOKENS ==================== */
+  
+  /* ease-out: Entering elements (feels responsive and immediate) */
+  --easing-out: cubic-bezier(0.16, 1, 0.3, 1);
+  
+  /* ease-in: Exiting elements (feels intentional and composed) */
+  --easing-in: cubic-bezier(0.7, 0, 0.84, 0);
+  
+  /* ease-smooth: General purpose (smooth, natural feel) */
+  --easing-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* ease-linear: For width/height/position (consistent, mechanical) */
+  --easing-linear: linear;
+  
+  /* ==================== COMBINED TRANSITION SHORTCUTS ==================== */
+  
+  /* Fast entering transition */
+  --transition-enter-fast: var(--duration-fast) var(--easing-out);
+  
+  /* Normal entering transition */
+  --transition-enter-normal: var(--duration-normal) var(--easing-out);
+  
+  /* Slow entering transition */
+  --transition-enter-slow: var(--duration-slow) var(--easing-out);
+  
+  /* Fast exiting transition */
+  --transition-exit-fast: var(--duration-fast) var(--easing-in);
+  
+  /* Normal exiting transition */
+  --transition-exit-normal: var(--duration-normal) var(--easing-in);
+  
+  /* Slow exiting transition */
+  --transition-exit-slow: var(--duration-slow) var(--easing-in);
+  
+  /* ==================== COMPONENT-SPECIFIC TOKENS ==================== */
+  
+  /* Buttons: Fast entry/exit, ease-out for responsive feel */
+  --motion-button: var(--duration-normal) var(--easing-out);
+  
+  /* Cards: Normal entry/exit, ease-out for elevation effect */
+  --motion-card: var(--duration-normal) var(--easing-out);
+  
+  /* Tabs: Normal entry/exit, ease-out for underline slide */
+  --motion-tabs: var(--duration-normal) var(--easing-out);
+  
+  /* Modals/Dialogs: Slow entry, ease-out for entrance */
+  --motion-modal-enter: var(--duration-slow) var(--easing-out);
+  
+  /* Modals/Dialogs: Slow exit, ease-in for departure */
+  --motion-modal-exit: var(--duration-slow) var(--easing-in);
+  
+  /* Sidebar: Linear for consistent width animation */
+  --motion-sidebar: var(--duration-normal) var(--easing-linear);
+  
+  /* Page transitions: Normal speed with ease-out for natural navigation feel */
+  --motion-page: var(--duration-normal) var(--easing-out);
+  
+  /* Dropdowns/Popovers: Fast entry */
+  --motion-dropdown: var(--duration-fast) var(--easing-out);
+  
+  /* Tooltips: Very fast, responsive */
+  --motion-tooltip: var(--duration-fast) var(--easing-out);
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-slow: 0ms;
+  }
+}

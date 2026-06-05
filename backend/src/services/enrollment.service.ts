@@ -1,0 +1,151 @@
+import { prisma } from '../lib/prisma.js'
+import { AppError } from '../errors/AppError.js'
+import { fireNotification } from './notification.service.js'
+
+export async function enroll(userId: string, courseId: string) {
+  const course = await prisma.course.findFirst({
+    where: { id: courseId, status: 'APPROVED' },
+    select: { id: true, title: true, price: true },
+  })
+  if (!course) throw new AppError(404, 'Course not found')
+
+  // Free courses only — paid courses must go through /payments/courses/:id/create-order
+  if (course.price && course.price > 0) {
+    throw new AppError(
+      402,
+      'This course requires payment. Use POST /api/payments/courses/:courseId/create-order to begin checkout.',
+    )
+  }
+
+  const existing = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+  })
+  if (existing) throw new AppError(409, 'Already enrolled in this course')
+
+  const enrollment = await prisma.enrollment.create({
+    data: { userId, courseId },
+    select: { id: true, courseId: true, enrolledAt: true },
+  })
+
+  fireNotification(
+    userId,
+    'ENROLLMENT_CONFIRMED',
+    'Enrolled successfully',
+    `You are now enrolled in "${course.title}".`,
+    { courseId },
+  )
+
+  return enrollment
+}
+
+export async function getMyEnrollments(userId: string) {
+  return prisma.enrollment.findMany({
+    where: { userId },
+    orderBy: { enrolledAt: 'desc' },
+    select: {
+      id: true,
+      enrolledAt: true,
+      completedAt: true,
+      course: {
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          difficulty: true,
+          thumbnailUrl: true,
+          estimatedHours: true,
+          instructor: {
+            select: { id: true, firstName: true, lastName: true },
+          },
+          _count: { select: { modules: true } },
+        },
+      },
+    },
+  })
+}
+
+export async function getCourseProgress(userId: string, courseId: string) {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+  })
+  if (!enrollment) throw new AppError(403, 'Not enrolled in this course')
+
+  const [totalLessons, completedLessons] = await Promise.all([
+    prisma.lesson.count({ where: { courseId } }),
+    prisma.lessonProgress.count({ where: { userId, courseId } }),
+  ])
+
+  const progressDetails = await prisma.lessonProgress.findMany({
+    where: { userId, courseId },
+    select: { lessonId: true, completedAt: true },
+  })
+
+  const percentage = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100)
+
+  return {
+    courseId,
+    totalLessons,
+    completedLessons,
+    percentage,
+    completedAt: enrollment.completedAt,
+    lessonProgress: progressDetails,
+  }
+}
+
+export async function markLessonComplete(userId: string, lessonId: string, courseId: string) {
+  // Verify enrollment
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+  })
+  if (!enrollment) throw new AppError(403, 'Not enrolled in this course')
+
+  // Verify lesson belongs to course
+  const lesson = await prisma.lesson.findFirst({ where: { id: lessonId, courseId } })
+  if (!lesson) throw new AppError(404, 'Lesson not found in this course')
+
+  await prisma.lessonProgress.upsert({
+    where: { userId_lessonId: { userId, lessonId } },
+    create: { userId, lessonId, courseId },
+    update: {},
+  })
+
+  // Auto-complete enrollment if all lessons done
+  const [totalLessons, completedLessons] = await Promise.all([
+    prisma.lesson.count({ where: { courseId } }),
+    prisma.lessonProgress.count({ where: { userId, courseId } }),
+  ])
+
+  let courseCompletedAt = enrollment.completedAt
+  if (totalLessons > 0 && completedLessons >= totalLessons && !enrollment.completedAt) {
+    const updated = await prisma.enrollment.update({
+      where: { userId_courseId: { userId, courseId } },
+      data: { completedAt: new Date() },
+      select: { completedAt: true },
+    })
+    courseCompletedAt = updated.completedAt
+  }
+
+  // Return the same shape as getCourseProgress so callers can reconcile immediately
+  const progressDetails = await prisma.lessonProgress.findMany({
+    where: { userId, courseId },
+    select: { lessonId: true, completedAt: true },
+  })
+
+  const percentage = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100)
+
+  return {
+    courseId,
+    totalLessons,
+    completedLessons,
+    percentage,
+    completedAt: courseCompletedAt,
+    lessonProgress: progressDetails,
+  }
+}
+
+export async function isEnrolled(userId: string, courseId: string): Promise<boolean> {
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId } },
+  })
+  return enrollment !== null
+}

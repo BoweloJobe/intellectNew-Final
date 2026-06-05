@@ -1,0 +1,10 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+@import './motion.css';
+
+@keyframes shimmer {
+	100% {
+		transform: translateX(100%);
+	}
+}

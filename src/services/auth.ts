@@ -1,0 +1,31 @@
+export type {
+  AuthRole,
+  AuthSession,
+  AuthSessionTokens,
+  AuthUser,
+  OAuthProvider,
+  PasswordResetChannel,
+  ResetPasswordInput,
+  ResetPasswordResult,
+  SignInWithProviderInput,
+  SignInWithProviderResult,
+  SendPasswordResetCodeInput,
+  SendPasswordResetCodeResult,
+  SignInInput,
+  SignInResult,
+  SignUpInput,
+  SignUpResult,
+  VerifyPasswordResetCodeInput,
+  VerifyPasswordResetCodeResult,
+} from "../app/services/contracts/auth.contract";
+
+export {
+  getCurrentUser,
+  resetPassword,
+  sendPasswordResetCode,
+  signIn,
+  signInWithProvider,
+  signOut,
+  signUp,
+  verifyPasswordResetCode,
+} from "../app/services/auth.service";
