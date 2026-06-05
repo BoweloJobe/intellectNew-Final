@@ -17,6 +17,10 @@ import type {
 const BCRYPT_ROUNDS = 12
 const RESET_TOKEN_EXPIRES_HOURS = 1
 
+function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex')
+}
+
 function toUserProfile(user: User): UserProfile {
   return {
     id: user.id,
@@ -86,10 +90,11 @@ export async function requestPasswordReset(
   })
 
   const token = crypto.randomBytes(32).toString('hex')
+  const tokenHash = hashResetToken(token)
   const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRES_HOURS * 60 * 60 * 1000)
 
   await prisma.passwordResetToken.create({
-    data: { userId: user.id, token, expiresAt },
+    data: { userId: user.id, token: tokenHash, expiresAt },
   })
 
   const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${token}`
@@ -108,8 +113,9 @@ export async function requestPasswordReset(
 }
 
 export async function resetPassword(input: ResetPasswordInput): Promise<void> {
+  const tokenHash = hashResetToken(input.token)
   const record = await prisma.passwordResetToken.findUnique({
-    where: { token: input.token },
+    where: { token: tokenHash },
   })
 
   if (!record || record.usedAt !== null || record.expiresAt < new Date()) {
