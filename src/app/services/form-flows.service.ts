@@ -3,6 +3,7 @@ import {
   normalizeEmailInput,
   normalizeRequiredTextInput,
 } from "../utils/form-validation";
+import { getNotesService } from "./factory/service-registry";
 
 export type DiscussionFormInput = {
   title: string;
@@ -85,29 +86,7 @@ export async function saveDiscussionDraftForm(input: DiscussionFormInput): Promi
 }
 
 export async function saveNoteForm(input: NoteFormInput, existingId?: number): Promise<NoteSubmissionResult> {
-  await withMockDelay(null, 650);
-
-  const normalizedTitle = normalizeRequiredTextInput(input.title);
-  const normalizedContent = normalizeRequiredTextInput(input.content);
-  const normalizedCourse = normalizeRequiredTextInput(input.course);
-
-  if (normalizedContent.length < 20) {
-    throw new Error("Add a bit more detail so this note is useful to revisit later.");
-  }
-
-  return {
-    id: existingId ?? Date.now(),
-    title: normalizedTitle,
-    content: normalizedContent,
-    course: normalizedCourse,
-    tags: input.tags,
-    starred: input.starred,
-    date: new Date().toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }),
-  };
+  return getNotesService().saveNote(input, existingId);
 }
 
 export async function saveProfileSettings(input: ProfileSettingsInput): Promise<ProfileSettingsInput> {

@@ -10,6 +10,7 @@ import notificationRouter from './notification.routes.js'
 import subscriptionRouter from './subscription.routes.js'
 import dashboardRouter from './dashboard.routes.js'
 import communityRouter from './community.routes.js'
+import notesRouter from './notes.routes.js'
 
 const router = Router()
 
@@ -24,5 +25,6 @@ router.use('/notifications', notificationRouter)
 router.use('/subscriptions', subscriptionRouter)
 router.use('/dashboard', dashboardRouter)
 router.use('/community', communityRouter)
+router.use('/notes', notesRouter)
 
 export default router

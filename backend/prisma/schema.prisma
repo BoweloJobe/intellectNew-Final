@@ -29,12 +29,30 @@ model User {
   payments            Payment[]
   notifications       Notification[]
   subscriptions       Subscription[]
+  notes               Note[]
   posts               Post[]
   postLikes           PostLike[]
   postBookmarks       PostBookmark[]
   standaloneQuizzes   Quiz[]               @relation("StandaloneQuizInstructor")
 
   @@map("users")
+}
+
+model Note {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  title     String
+  content   String
+  course    String
+  tags      String   @default("[]")
+  starred   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+  @@map("notes")
 }
 
 model PasswordResetToken {
