@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockPrisma = vi.hoisted(() => ({
   payment: {
+    create: vi.fn(),
+    findFirst: vi.fn(),
     findUnique: vi.fn(),
     update: vi.fn(),
   },
@@ -10,23 +12,26 @@ const mockPrisma = vi.hoisted(() => ({
     create: vi.fn(),
   },
   course: {
+    findFirst: vi.fn(),
     findUnique: vi.fn(),
   },
   $transaction: vi.fn(),
 }))
 
 const mockCaptureOrder = vi.hoisted(() => vi.fn())
+const mockCreateOrder = vi.hoisted(() => vi.fn())
 const mockFireNotification = vi.hoisted(() => vi.fn())
 
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }))
 vi.mock('../../lib/paypal.js', () => ({
+  createOrder: mockCreateOrder,
   captureOrder: mockCaptureOrder,
 }))
 vi.mock('../notification.service.js', () => ({
   fireNotification: mockFireNotification,
 }))
 
-import { captureAndEnroll } from '../payment.service.js'
+import { captureAndEnroll, createOrder } from '../payment.service.js'
 
 function pendingPayment(overrides = {}) {
   return {
@@ -68,6 +73,42 @@ describe('payment capture service', () => {
     vi.clearAllMocks()
     mockPrisma.$transaction.mockImplementation(async (ops: Promise<unknown>[]) => Promise.all(ops))
     mockPrisma.course.findUnique.mockResolvedValue({ title: 'Paid Course' })
+  })
+
+  it('creates a PayPal order with return URLs and exposes the approval URL', async () => {
+    mockPrisma.course.findFirst.mockResolvedValue({
+      id: 'course-1',
+      title: 'Paid Course',
+      price: 49.99,
+    })
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+    mockPrisma.payment.findFirst.mockResolvedValue(null)
+    mockCreateOrder.mockResolvedValue({
+      id: 'order-1',
+      status: 'CREATED',
+      links: [
+        { rel: 'approve', href: 'https://paypal.example.test/approve?token=order-1', method: 'GET' },
+      ],
+    })
+    mockPrisma.payment.create.mockResolvedValue({})
+
+    const result = await createOrder('user-1', 'course-1', {
+      returnUrl: 'https://app.example.test/courses/course-1?payment=course',
+      cancelUrl: 'https://app.example.test/courses/course-1',
+    })
+
+    expect(mockCreateOrder).toHaveBeenCalledWith({
+      courseId: 'course-1',
+      amount: '49.99',
+      description: 'Enrollment: Paid Course',
+      returnUrl: 'https://app.example.test/courses/course-1?payment=course',
+      cancelUrl: 'https://app.example.test/courses/course-1',
+    })
+    expect(result).toEqual({
+      orderId: 'order-1',
+      amount: '49.99',
+      approvalUrl: 'https://paypal.example.test/approve?token=order-1',
+    })
   })
 
   it('completes payment and enrolls when PayPal amount and currency match the pending payment', async () => {

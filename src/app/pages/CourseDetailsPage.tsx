@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { DataErrorState } from "../components/DataState";
 import { GlassCard } from "../components/GlassCard";
 import { SolidCard } from "../components/SolidCard";
@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { PlayCircle, CheckCircle2, Lock, Clock, BookOpen, Download, Star, ChevronRight } from "lucide-react";
 import type { Course, CourseDetails } from "../models/courses";
 import { getCourseDetails, getCoursesPageData } from "../services/courses.service";
+import { captureCoursePayment, createCoursePaymentOrder } from "../services/payment.service";
+import { captureCoursePaymentReturn, startCourseEnrollment } from "../services/course-enrollment-flow.service";
 import { useCoursesState } from "../state/courses/CoursesStateContext";
 import { useDashboardState } from "../state/dashboard/DashboardStateContext";
 import {
@@ -44,6 +46,7 @@ export function CourseDetailsPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const courseId = id ?? "";
   const { applyCourseJoin } = useDashboardState();
   const { addRecentActivity, pushNotification } = useNotificationsState();
@@ -52,6 +55,7 @@ export function CourseDetailsPage() {
     getCourseStatus,
     getCourseProgressSummary,
     joinCourse,
+    reloadEnrollments,
     markCourseAccessed,
   } = useCoursesState();
 
@@ -74,6 +78,106 @@ export function CourseDetailsPage() {
   useEffect(() => {
     loadCourseDetails();
   }, [courseId, runLoadCourseDetails]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    void captureCoursePaymentReturn({
+      expectedCourseId: courseId,
+      paymentType: searchParams.get("payment"),
+      paymentCourseId: searchParams.get("courseId"),
+      orderToken: searchParams.get("token") ?? searchParams.get("orderId"),
+      capturePayment: captureCoursePayment,
+    })
+      .then(async (outcome) => {
+        if (isCancelled || !outcome) {
+          return;
+        }
+
+        if (outcome.kind === "missing-return-data") {
+          setUpgradePrompt(outcome.message);
+          return;
+        }
+
+        await reloadEnrollments();
+        pushNotification(
+          createProductNotification({
+            title: "Enrollment confirmed",
+            detail: "Your payment was successful and the course is now unlocked.",
+            category: "course",
+            source: "course-update",
+            actionLabel: "Open course",
+            metadata: { courseId },
+          }),
+        );
+      })
+      .catch(() => {
+        if (isCancelled) {
+          return;
+        }
+
+        setUpgradePrompt("Payment capture failed. Enrollment was not completed.");
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [courseId, pushNotification, reloadEnrollments, searchParams]);
+
+  const handleEnrollCourse = () => {
+    if (!courseDetails) {
+      return;
+    }
+
+    void startCourseEnrollment({
+      courseId,
+      price: courseDetails.price,
+      returnTo: location.pathname,
+      origin: window.location.origin,
+      joinCourse,
+      createPaymentOrder: createCoursePaymentOrder,
+      redirectToApprovalUrl: (url) => {
+        window.location.assign(url);
+      },
+    })
+      .then((result) => {
+        if (result.kind !== "free") {
+          return;
+        }
+
+        addRecentActivity("course", `Joined ${courseDetails.title}`);
+        pushNotification(
+          createProductNotification({
+            title: "Course enrolled",
+            detail: greetingName !== "there"
+              ? `${greetingName}, you joined ${courseDetails.title}. Start your first lesson when ready.`
+              : `You joined ${courseDetails.title}. Start your first lesson when ready.`,
+            category: "course",
+            source: "course-update",
+            actionLabel: "Open course",
+            metadata: { courseId },
+          }),
+        );
+        applyCourseJoin(result.joinedNewCourse);
+
+        if (!result.syncOk) {
+          pushNotification(
+            createProductNotification({
+              title: "Enrollment sync issue",
+              detail: `Could not confirm enrollment for ${courseDetails.title}. You can keep learning while sync retries in the background.`,
+              category: "course",
+              source: "course-update",
+            }),
+          );
+        }
+
+        markCourseAccessed(courseId);
+        addRecentActivity("course", `Accessed ${courseDetails.title}`);
+      })
+      .catch((error) => {
+        setUpgradePrompt(error instanceof Error ? error.message : "Payment could not be started.");
+      });
+  };
 
   const status = getCourseStatus(courseId);
 
@@ -347,37 +451,7 @@ export function CourseDetailsPage() {
               {status === "not-enrolled" ? (
                 <Button
                   className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
-                  onClick={() => {
-                    addRecentActivity("course", `Joined ${courseDetails.title}`);
-                    pushNotification(
-                      createProductNotification({
-                        title: "Course enrolled",
-                        detail: greetingName !== "there"
-                          ? `${greetingName}, you joined ${courseDetails.title}. Start your first lesson when ready.`
-                          : `You joined ${courseDetails.title}. Start your first lesson when ready.`,
-                        category: "course",
-                        source: "course-update",
-                        actionLabel: "Open course",
-                        metadata: { courseId },
-                      }),
-                    );
-                    void joinCourse(courseId).then((result) => {
-                      applyCourseJoin(result.joinedNewCourse);
-
-                      if (!result.syncOk) {
-                        pushNotification(
-                          createProductNotification({
-                            title: "Enrollment sync issue",
-                            detail: `Could not confirm enrollment for ${courseDetails.title}. You can keep learning while sync retries in the background.`,
-                            category: "course",
-                            source: "course-update",
-                          }),
-                        );
-                      }
-                    });
-                    markCourseAccessed(courseId);
-                    addRecentActivity("course", `Accessed ${courseDetails.title}`);
-                  }}
+                  onClick={handleEnrollCourse}
                 >
                   Enroll Now
                 </Button>

@@ -15,6 +15,7 @@ export interface Course {
   description?: string;
   estimatedHours?: number;
   coverImageUrl?: string;
+  price?: number | null;
 }
 
 export type CoursePublicationStatus = "draft" | "pending-approval" | "approved" | "rejected";
@@ -153,6 +154,7 @@ export interface CourseDetails {
   resources: CourseResource[];
   prerequisiteCourseIds: string[];
   recommendedNextCourseId?: string;
+  price?: number | null;
 }
 
 export interface CourseLessonProgress {

@@ -52,7 +52,11 @@ function assertProviderCaptureMatchesPayment(params: {
 
 // ─── Create PayPal order (step 1) ─────────────────────────────────────────────
 
-export async function createOrder(userId: string, courseId: string) {
+export async function createOrder(
+  userId: string,
+  courseId: string,
+  input: { returnUrl?: string; cancelUrl?: string } = {},
+) {
   const course = await prisma.course.findFirst({
     where: { id: courseId, status: 'APPROVED' },
     select: { id: true, title: true, price: true },
@@ -73,7 +77,11 @@ export async function createOrder(userId: string, courseId: string) {
     where: { userId, courseId, status: 'PENDING' },
   })
   if (pending) {
-    return { orderId: pending.providerId, amount: pending.amount.toString() }
+    return {
+      orderId: pending.providerId,
+      amount: pending.amount.toString(),
+      approvalUrl: null,
+    }
   }
 
   const amount = course.price.toFixed(2)
@@ -81,7 +89,10 @@ export async function createOrder(userId: string, courseId: string) {
     courseId: course.id,
     amount,
     description: `Enrollment: ${course.title}`,
+    returnUrl: input.returnUrl,
+    cancelUrl: input.cancelUrl,
   })
+  const approvalUrl = paypalOrder.links.find((link) => link.rel === 'approve')?.href ?? null
 
   await prisma.payment.create({
     data: {
@@ -94,7 +105,7 @@ export async function createOrder(userId: string, courseId: string) {
     },
   })
 
-  return { orderId: paypalOrder.id, amount }
+  return { orderId: paypalOrder.id, amount, approvalUrl }
 }
 
 // ─── Capture PayPal order (step 2) + auto-enroll ─────────────────────────────

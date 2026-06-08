@@ -1,14 +1,15 @@
 import type { Request, Response, NextFunction } from 'express'
 import * as PaymentService from '../services/payment.service.js'
 import { validate } from '../lib/validate.js'
-import { captureOrderSchema } from '../validation/payment.validation.js'
+import { captureOrderSchema, createOrderSchema } from '../validation/payment.validation.js'
 
 // POST /api/payments/courses/:courseId/create-order
 export async function createOrder(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = req.user!.id
     const { courseId } = req.params
-    const result = await PaymentService.createOrder(userId, courseId)
+    const input = validate(createOrderSchema, req.body)
+    const result = await PaymentService.createOrder(userId, courseId, input)
     res.status(201).json({ data: result })
   } catch (err) {
     next(err)

@@ -12,6 +12,8 @@ import { Search, BookOpen, Clock, Star } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import type { CoursesPageData } from "../models/courses";
 import { getCoursesPageData } from "../services/courses.service";
+import { createCoursePaymentOrder } from "../services/payment.service";
+import { isPaidCourse, startCourseEnrollment } from "../services/course-enrollment-flow.service";
 import { useCoursesState } from "../state/courses/CoursesStateContext";
 import { useDashboardState } from "../state/dashboard/DashboardStateContext";
 import {
@@ -347,10 +349,35 @@ export function CoursesPage() {
                       <Link to={`/courses/${course.id}`}>
                         <Button
                           className="w-full bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
-                          onClick={() => {
+                          onClick={(event) => {
                             const status = getCourseStatus(course.id);
 
                             if (status === "not-enrolled") {
+                              if (isPaidCourse(course.price)) {
+                                event.preventDefault();
+                                void startCourseEnrollment({
+                                  courseId: course.id,
+                                  price: course.price,
+                                  returnTo: `/courses/${course.id}`,
+                                  origin: window.location.origin,
+                                  joinCourse,
+                                  createPaymentOrder: createCoursePaymentOrder,
+                                  redirectToApprovalUrl: (url) => {
+                                    window.location.assign(url);
+                                  },
+                                }).catch((error) => {
+                                  pushNotification(
+                                    createProductNotification({
+                                      title: "Payment could not start",
+                                      detail: error instanceof Error ? error.message : "Payment could not be started.",
+                                      category: "course",
+                                      source: "course-update",
+                                    }),
+                                  );
+                                });
+                                return;
+                              }
+
                               addRecentActivity("course", `Joined ${course.title}`);
                               pushNotification(
                                 createProductNotification({
@@ -366,26 +393,25 @@ export function CoursesPage() {
                                 applyCourseJoin(result.joinedNewCourse);
 
                                 if (!result.syncOk) {
-                                  pushNotification(
-                                    createProductNotification({
-                                      title: "Enrollment sync issue",
-                                      detail: `Could not confirm enrollment for ${course.title}. You can keep learning locally.`,
-                                      category: "course",
-                                      source: "course-update",
-                                    }),
-                                  );
+                                    pushNotification(
+                                      createProductNotification({
+                                        title: "Enrollment sync issue",
+                                        detail: `Could not confirm enrollment for ${course.title}. You can keep learning locally.`,
+                                        category: "course",
+                                        source: "course-update",
+                                      }),
+                                    );
                                 }
                               });
+                              markCourseAccessed(course.id);
+                              addRecentActivity("course", `Accessed ${course.title}`);
+                              setSuccessMessage(`Started ${course.title}.`);
                             } else {
                               addRecentActivity("course", `Reviewed ${course.title}`);
+                              markCourseAccessed(course.id);
+                              addRecentActivity("course", `Accessed ${course.title}`);
+                              setSuccessMessage(`Resumed ${course.title}.`);
                             }
-                            markCourseAccessed(course.id);
-                            addRecentActivity("course", `Accessed ${course.title}`);
-                            setSuccessMessage(
-                              status !== "not-enrolled"
-                                ? `Resumed ${course.title}.`
-                                : `Started ${course.title}.`,
-                            );
 
                             window.setTimeout(() => {
                               setSuccessMessage(null);

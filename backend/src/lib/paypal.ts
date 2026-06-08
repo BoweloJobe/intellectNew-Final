@@ -63,6 +63,8 @@ export async function createOrder(params: {
   amount: string
   currency?: string
   description: string
+  returnUrl?: string
+  cancelUrl?: string
 }): Promise<PayPalOrderResponse> {
   const token = await getAccessToken()
   const currency = params.currency ?? 'USD'
@@ -82,6 +84,18 @@ export async function createOrder(params: {
           amount: { currency_code: currency, value: params.amount },
         },
       ],
+      ...(params.returnUrl || params.cancelUrl
+        ? {
+            payment_source: {
+              paypal: {
+                experience_context: {
+                  ...(params.returnUrl ? { return_url: params.returnUrl } : {}),
+                  ...(params.cancelUrl ? { cancel_url: params.cancelUrl } : {}),
+                },
+              },
+            },
+          }
+        : {}),
     }),
   })
 

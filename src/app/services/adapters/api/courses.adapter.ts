@@ -52,7 +52,7 @@ interface BackendCourse {
   difficulty: string;
   thumbnailUrl: string | null;
   estimatedHours: number | null;
-  price: string | null;
+  price: string | number | null;
   status: string;
   publishedAt: string | null;
   createdAt: string;
@@ -150,6 +150,7 @@ function mapModule(mod: BackendModule): CourseModule {
 }
 
 function mapToCourse(course: BackendCourse): Course {
+  const price = course.price === null ? null : Number(course.price);
   return {
     id: course.id,
     title: course.title,
@@ -165,6 +166,7 @@ function mapToCourse(course: BackendCourse): Course {
     description: course.description ?? undefined,
     estimatedHours: course.estimatedHours ?? undefined,
     coverImageUrl: course.thumbnailUrl ?? undefined,
+    price: Number.isFinite(price) ? price : null,
   };
 }
 
@@ -194,6 +196,7 @@ function mapToCourseDetails(course: BackendCourse): CourseDetails {
   const modules = (course.modules ?? []).map(mapModule);
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0);
   const instructorName = `${course.instructor.firstName} ${course.instructor.lastName}`.trim();
+  const price = course.price === null ? null : Number(course.price);
   return {
     courseId: course.id,
     title: course.title,
@@ -215,6 +218,7 @@ function mapToCourseDetails(course: BackendCourse): CourseDetails {
     resources: [],
     prerequisiteCourseIds: [],
     recommendedNextCourseId: undefined,
+    price: Number.isFinite(price) ? price : null,
   };
 }
 
