@@ -27,14 +27,13 @@ export interface InstructorCourseDraftInput {
   category: string;
   description: string;
   difficulty: CourseDifficulty;
-  estimatedHours: number;
+  estimatedHours?: number;
   coverImageUrl?: string;
-  learningOutcomes: string[];
   topics?: string[];
-  modules: InstructorDraftModuleInput[];
+  modules?: InstructorDraftModuleInput[];
   totalLessons: number;
-  duration?: string;
   initialStatus: "draft" | "pending-approval";
+  price?: number | null;
 }
 
 export interface InstructorManagedCourse extends Course {

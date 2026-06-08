@@ -349,7 +349,8 @@ export class ApiCoursesAdapter implements CoursesService {
       category: input.category,
       description: input.description,
       difficulty: input.difficulty.toUpperCase(),
-      estimatedHours: input.estimatedHours,
+      price: input.price ?? 0,
+      ...(Number.isFinite(input.estimatedHours) ? { estimatedHours: input.estimatedHours } : {}),
       ...(isValidUrl(input.coverImageUrl ?? "") ? { thumbnailUrl: input.coverImageUrl } : {}),
     };
     try {
@@ -361,8 +362,9 @@ export class ApiCoursesAdapter implements CoursesService {
       const courseId = courseResponse.data.course.id;
 
       // 2. Create modules and their lessons sequentially
-      for (let modIdx = 0; modIdx < input.modules.length; modIdx++) {
-        const mod = input.modules[modIdx];
+      const modules = input.modules ?? [];
+      for (let modIdx = 0; modIdx < modules.length; modIdx++) {
+        const mod = modules[modIdx];
         if (!mod.title.trim()) continue;
 
         const modResponse = await httpClient.post<{ status: string; data: { module: { id: string } } }>(
@@ -451,7 +453,8 @@ export class ApiCoursesAdapter implements CoursesService {
       category: input.category,
       description: input.description,
       difficulty: input.difficulty.toUpperCase(),
-      estimatedHours: input.estimatedHours,
+      price: input.price ?? 0,
+      ...(Number.isFinite(input.estimatedHours) ? { estimatedHours: input.estimatedHours } : {}),
       ...(isValidUrl(input.coverImageUrl ?? "") ? { thumbnailUrl: input.coverImageUrl } : {}),
     };
     try {
@@ -468,8 +471,9 @@ export class ApiCoursesAdapter implements CoursesService {
       const keepModuleIds = new Set<string>();
 
       // 3. Sync modules and their lessons
-      for (let modIdx = 0; modIdx < input.modules.length; modIdx++) {
-        const mod = input.modules[modIdx];
+      const modules = input.modules ?? [];
+      for (let modIdx = 0; modIdx < modules.length; modIdx++) {
+        const mod = modules[modIdx];
         if (!mod.title.trim()) continue;
 
         let moduleId: string;

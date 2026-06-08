@@ -12,6 +12,28 @@ import type {
 } from "../../models/courses";
 import type { QuizQuestion } from "../../models/quizzes";
 
+export type CoursePriceResult =
+  | { ok: true; price: number }
+  | { ok: false; message: string };
+
+export function resolveCoursePrice(isFree: boolean, rawPrice: string): CoursePriceResult {
+  if (isFree) {
+    return { ok: true, price: 0 };
+  }
+
+  const trimmedPrice = rawPrice.trim();
+  if (!trimmedPrice) {
+    return { ok: false, message: "Paid courses need a price greater than 0" };
+  }
+
+  const parsedPrice = Number(trimmedPrice);
+  if (!Number.isFinite(parsedPrice) || parsedPrice <= 0) {
+    return { ok: false, message: "Paid courses need a price greater than 0" };
+  }
+
+  return { ok: true, price: parsedPrice };
+}
+
 function quizQuestionToInput(q: QuizQuestion): InstructorDraftQuizQuestionInput {
   const findOption = (id: string) => q.options.find((o) => o.id === id)?.text ?? "";
   return {
@@ -67,12 +89,14 @@ export function CourseAuthoringForm({
   const [category, setCategory] = useState(editingCourse?.category ?? "Biology");
   const [description, setDescription] = useState(editingCourse?.description ?? "");
   const [difficulty, setDifficulty] = useState<CourseDifficulty>(editingCourse?.difficulty ?? "beginner");
-  const [estimatedHours, setEstimatedHours] = useState(String(editingCourse?.estimatedHours ?? "10"));
-  const [durationLabel, setDurationLabel] = useState(editingCourse?.duration ?? "");
-  const [coverImageUrl, setCoverImageUrl] = useState(editingCourse?.coverImageUrl ?? "");
-  const [learningOutcomes, setLearningOutcomes] = useState(
-    editingCourse?.learningOutcomes.join("\n") ?? ""
+  const [estimatedHours, setEstimatedHours] = useState(
+    editingCourse?.estimatedHours ? String(editingCourse.estimatedHours) : ""
   );
+  const [isFree, setIsFree] = useState((editingCourse?.price ?? 0) === 0);
+  const [price, setPrice] = useState(
+    editingCourse?.price && editingCourse.price > 0 ? String(editingCourse.price) : ""
+  );
+  const [coverImageUrl, setCoverImageUrl] = useState(editingCourse?.coverImageUrl ?? "");
   
   // Convert CourseModule to InstructorDraftModuleInput if editing, otherwise use empty module
   const initialModules = editingCourse?.modules
@@ -96,22 +120,20 @@ export function CourseAuthoringForm({
     : [createEmptyModule()];
   
   const [modules, setModules] = useState<InstructorDraftModuleInput[]>(initialModules);
-  const [initialStatus, setInitialStatus] = useState<"draft" | "pending-approval">("draft");
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set([0]));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const parsedEstimatedHours = Number(estimatedHours);
-    const normalizedOutcomes = learningOutcomes
-      .split(/\r?\n|,/)
-      .map((v) => v.trim())
-      .filter((v) => v.length > 0);
+    const priceResult = resolveCoursePrice(isFree, price);
     const normalizedModules = modules
       .map((module) => ({
+        id: module.id,
         title: module.title.trim(),
         lessons: module.lessons
           .map((lesson) => ({
+            id: lesson.id,
             title: lesson.title.trim(),
             videoUrl: lesson.videoUrl.trim(),
             description: lesson.description.trim(),
@@ -142,22 +164,27 @@ export function CourseAuthoringForm({
       )
     );
 
+    if (!title.trim() || !description.trim() || !priceResult.ok) {
+      const validationMessages = ["Complete all required fields:", "- Course title and description"];
+      if (!priceResult.ok) {
+        validationMessages.push(`- ${priceResult.message}`);
+      }
+      alert(validationMessages.join("\n"));
+      return;
+    }
+
     if (
-      !title.trim() ||
-      !description.trim() ||
-      !Number.isFinite(parsedEstimatedHours) ||
-      parsedEstimatedHours <= 0 ||
-      normalizedOutcomes.length < 2 ||
-      normalizedModules.length === 0 ||
-      hasInvalidLesson
+      isEditing &&
+      (
+        (estimatedHours.trim().length > 0 && (!Number.isFinite(parsedEstimatedHours) || parsedEstimatedHours <= 0)) ||
+        (normalizedModules.length > 0 && hasInvalidLesson)
+      )
     ) {
       alert(
-        "Complete all required fields:\n" +
-        "- Course title and description\n" +
-        "- Estimated hours > 0\n" +
-        "- At least 2 learning outcomes\n" +
-        "- At least 1 module with complete lessons\n" +
-        "- Each lesson: title, video, description, duration, notes, estimated completion time"
+        "Complete the fields you've started:\n" +
+        "- Estimated hours must be greater than 0 when provided\n" +
+        "- Each added module needs at least one complete lesson\n" +
+        "- Each added lesson: title, video, description, duration, notes, estimated completion time"
       );
       return;
     }
@@ -168,14 +195,13 @@ export function CourseAuthoringForm({
       category,
       description: description.trim(),
       difficulty,
-      estimatedHours: parsedEstimatedHours,
+      estimatedHours: estimatedHours.trim().length > 0 ? parsedEstimatedHours : undefined,
       coverImageUrl: coverImageUrl.trim() || undefined,
-      learningOutcomes: normalizedOutcomes,
       topics: modules.map((m) => m.title.trim()).filter(Boolean),
-      modules: normalizedModules,
+      modules: isEditing ? normalizedModules : [],
       totalLessons,
-      duration: durationLabel.trim() || undefined,
-      initialStatus: isEditing ? "draft" : initialStatus,
+      initialStatus: "draft",
+      price: priceResult.price,
     });
   };
 
@@ -259,38 +285,44 @@ export function CourseAuthoringForm({
           </select>
         </label>
 
-        <label className="space-y-1">
-          <span className="text-xs font-medium text-gray-600 uppercase">Estimated Hours *</span>
-          <input
-            value={estimatedHours}
-            onChange={(e) => setEstimatedHours(e.target.value)}
-            type="number"
-            min={1}
-            placeholder="10"
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-            required
-          />
-        </label>
+        <div className="space-y-1">
+          <span className="text-xs font-medium text-gray-600 uppercase">Pricing *</span>
+          <div className="flex rounded-lg border border-gray-200 bg-white p-1">
+            <button
+              type="button"
+              onClick={() => setIsFree(true)}
+              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                isFree ? "bg-gray-100 text-gray-950" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Free
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsFree(false)}
+              className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                !isFree ? "bg-gray-100 text-gray-950" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Paid
+            </button>
+          </div>
+        </div>
 
-        <label className="space-y-1">
-          <span className="text-xs font-medium text-gray-600 uppercase">Duration Label</span>
-          <input
-            value={durationLabel}
-            onChange={(e) => setDurationLabel(e.target.value)}
-            placeholder="e.g. 8 weeks"
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-          />
-        </label>
-
-        <label className="space-y-1">
-          <span className="text-xs font-medium text-gray-600 uppercase">Cover Image URL</span>
-          <input
-            value={coverImageUrl}
-            onChange={(e) => setCoverImageUrl(e.target.value)}
-            placeholder="https://..."
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-          />
-        </label>
+        {!isFree && (
+          <label className="space-y-1">
+            <span className="text-xs font-medium text-gray-600 uppercase">Price</span>
+            <input
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              type="number"
+              min={0}
+              step="0.01"
+              placeholder="49"
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+            />
+          </label>
+        )}
       </div>
 
       {/* Description */}
@@ -306,56 +338,64 @@ export function CourseAuthoringForm({
         />
       </label>
 
-      {/* Learning Outcomes */}
-      <label className="space-y-1">
-        <span className="text-xs font-medium text-gray-600 uppercase">Learning Outcomes * (minimum 2)</span>
-        <textarea
-          value={learningOutcomes}
-          onChange={(e) => setLearningOutcomes(e.target.value)}
-          rows={3}
-          placeholder="One per line or comma-separated"
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-          required
-        />
-        <div className="text-xs text-gray-500 mt-1">
-          {learningOutcomes
-            .split(/\r?\n|,/)
-            .map((v) => v.trim())
-            .filter((v) => v.length > 0).length}{" "}
-          outcome{learningOutcomes.split(/\r?\n|,/).map((v) => v.trim()).filter((v) => v.length > 0).length !== 1 ? "s" : ""}
-        </div>
-      </label>
+      {isEditing && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-600 uppercase">Estimated Hours</span>
+              <input
+                value={estimatedHours}
+                onChange={(e) => setEstimatedHours(e.target.value)}
+                type="number"
+                min={1}
+                placeholder="10"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+              />
+            </label>
 
-      {/* Modules */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">Modules and Lessons *</h3>
-          <Button type="button" variant="outline" size="sm" onClick={handleAddModule}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Module
-          </Button>
-        </div>
+            <label className="space-y-1">
+              <span className="text-xs font-medium text-gray-600 uppercase">Cover Image URL</span>
+              <input
+                value={coverImageUrl}
+                onChange={(e) => setCoverImageUrl(e.target.value)}
+                placeholder="https://..."
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
 
-        <div className="space-y-2">
-          {modules.map((module, moduleIndex) => (
-            <ModuleEditor
-              key={`module-${moduleIndex}`}
-              module={module}
-              moduleIndex={moduleIndex}
-              isOnlyModule={modules.length === 1}
-              isExpanded={expandedModules.has(moduleIndex)}
-              courseName={title}
-              instructorName={instructorName}
-              onToggleExpand={(expanded) => toggleModuleExpanded(moduleIndex, expanded)}
-              onUpdate={(updated) => handleUpdateModule(moduleIndex, updated)}
-              onDelete={() => handleDeleteModule(moduleIndex)}
-            />
-          ))}
-        </div>
-      </div>
+          {/* Modules */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Modules and Lessons</h3>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddModule}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Module
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {modules.map((module, moduleIndex) => (
+                <ModuleEditor
+                  key={`module-${moduleIndex}`}
+                  module={module}
+                  moduleIndex={moduleIndex}
+                  isOnlyModule={modules.length === 1}
+                  isExpanded={expandedModules.has(moduleIndex)}
+                  courseName={title}
+                  instructorName={instructorName}
+                  onToggleExpand={(expanded) => toggleModuleExpanded(moduleIndex, expanded)}
+                  onUpdate={(updated) => handleUpdateModule(moduleIndex, updated)}
+                  onDelete={() => handleDeleteModule(moduleIndex)}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Live Structure Summary */}
-      {modules.some((m) => m.title.trim().length > 0) && (() => {
+      {isEditing && modules.some((m) => m.title.trim().length > 0) && (() => {
         const summaryModules = modules.filter((m) => m.title.trim().length > 0);
         const summaryLessons = modules.flatMap((m) => m.lessons.filter((l) => l.title.trim().length > 0));
         const summaryQuizzes = summaryLessons.filter((l) => l.quizAvailable && (l.quizQuestions?.length ?? 0) > 0);
@@ -408,26 +448,6 @@ export function CourseAuthoringForm({
           </div>
         );
       })()}
-
-      {/* Initial Status (only for creation) */}
-      {!isEditing && (
-        <label className="space-y-1">
-          <span className="text-xs font-medium text-gray-600 uppercase">Initial Status</span>
-          <select
-            value={initialStatus}
-            onChange={(e) => setInitialStatus(e.target.value as "draft" | "pending-approval")}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-          >
-            <option value="draft">Draft (review privately)</option>
-            <option value="pending-approval">Pending Approval (submit immediately)</option>
-          </select>
-          <div className="text-xs text-gray-500 mt-1">
-            {initialStatus === "draft"
-              ? "Save as draft to review and edit before submitting."
-              : "Submit immediately for admin review."}
-          </div>
-        </label>
-      )}
 
       {/* Submit Button */}
       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
