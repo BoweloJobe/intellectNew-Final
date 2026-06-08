@@ -69,6 +69,7 @@ describe("apiConfig", () => {
 
     it("all domains inherit global api mode when no domain env is set", async () => {
       vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "api");
+      vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
 
       const { domainAdapterConfig } = await loadConfigModule();
 
@@ -79,6 +80,7 @@ describe("apiConfig", () => {
     it("overrides a single domain without affecting others", async () => {
       vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "mock");
       vi.stubEnv("VITE_AUTH_ADAPTER_MODE", "api");
+      vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
 
       const { domainAdapterConfig } = await loadConfigModule();
 

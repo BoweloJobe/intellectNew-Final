@@ -25,8 +25,9 @@ interface PayPalCaptureResponse {
   id: string
   status: string
   purchase_units: Array<{
+    reference_id?: string
     payments: {
-      captures: Array<{ id: string; amount: { currency_code: string; value: string } }>
+      captures: Array<{ id: string; status?: string; amount: { currency_code: string; value: string } }>
     }
   }>
 }

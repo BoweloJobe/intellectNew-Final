@@ -18,8 +18,22 @@ describe("service-registry", () => {
 
   it("switches to api mode from env", async () => {
     vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "api");
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
     const module = await loadRegistryModule();
     expect(module.serviceAdapterMode).toBe("api");
+  });
+
+  it("throws when api mode is enabled without VITE_API_BASE_URL", async () => {
+    vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "api");
+    vi.stubEnv("VITE_API_BASE_URL", undefined);
+    await expect(loadRegistryModule()).rejects.toThrow("VITE_API_BASE_URL");
+  });
+
+  it("throws when a domain override uses api without VITE_API_BASE_URL", async () => {
+    vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "mock");
+    vi.stubEnv("VITE_AUTH_ADAPTER_MODE", "api");
+    vi.stubEnv("VITE_API_BASE_URL", undefined);
+    await expect(loadRegistryModule()).rejects.toThrow("VITE_API_BASE_URL");
   });
 
   describe("per-domain adapter config", () => {
@@ -43,6 +57,7 @@ describe("service-registry", () => {
     it("overrides a single domain without affecting others", async () => {
       vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "mock");
       vi.stubEnv("VITE_AUTH_ADAPTER_MODE", "api");
+      vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
       const module = await loadRegistryModule();
       expect(module.domainAdapterConfig.auth).toBe("api");
       expect(module.domainAdapterConfig.courses).toBe("mock");

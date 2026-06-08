@@ -16,6 +16,24 @@ function formatUsd(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+export function isValidApprovalUrl(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export function CheckoutPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -265,6 +283,11 @@ export function CheckoutPage() {
                 {
                   successMessage: "Redirecting to PayPal approval...",
                   onSuccess: async (result) => {
+                    if (!isValidApprovalUrl(result.approvalUrl)) {
+                      throw new Error(
+                        "Unable to continue checkout because the approval URL is missing or invalid.",
+                      );
+                    }
                     window.location.assign(result.approvalUrl);
                   },
                 },

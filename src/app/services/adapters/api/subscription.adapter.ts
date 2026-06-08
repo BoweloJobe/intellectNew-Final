@@ -112,6 +112,26 @@ function mapBackendStateToOverview(state: BackendSubscriptionState): Subscriptio
   };
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isValidApprovalUrl(value: unknown): value is string {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 // ─── Adapter ──────────────────────────────────────────────────────────────────
 
 export class ApiSubscriptionAdapter implements SubscriptionService {
@@ -157,11 +177,18 @@ export class ApiSubscriptionAdapter implements SubscriptionService {
 
       const checkout = response.data;
       const amountDueUsd = parseFloat(checkout.pricing.amount) || 0;
+      const approvalUrl = checkout.checkoutUrl?.trim() ?? "";
+
+      if (!isValidApprovalUrl(approvalUrl)) {
+        throw new Error(
+          "Subscription approval URL is missing or invalid. Please try again later.",
+        );
+      }
 
       return {
         checkoutSessionId: checkout.subscriptionId,
         provider: checkout.provider ?? "paypal",
-        approvalUrl: checkout.checkoutUrl ?? "",
+        approvalUrl,
         amountDueUsd,
         processingFeeUsd: 0,
         totalDueUsd: amountDueUsd,

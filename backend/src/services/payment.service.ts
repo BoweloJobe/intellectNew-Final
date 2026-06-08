@@ -3,6 +3,53 @@ import * as PayPalClient from '../lib/paypal.js'
 import { AppError } from '../errors/AppError.js'
 import { fireNotification } from './notification.service.js'
 
+const COMPLETED_PAYMENT_STATUS = 'COMPLETED'
+
+function toMinorUnits(amount: number | string): number {
+  const value = typeof amount === 'number' ? amount.toFixed(2) : amount
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(value)
+  if (!match) throw new AppError(400, 'Invalid payment amount')
+
+  const major = Number.parseInt(match[1], 10)
+  const minor = Number.parseInt((match[2] ?? '').padEnd(2, '0'), 10)
+  return major * 100 + minor
+}
+
+function assertProviderCaptureMatchesPayment(params: {
+  capture: Awaited<ReturnType<typeof PayPalClient.captureOrder>>
+  orderId: string
+  courseId: string
+  expectedAmount: number
+  expectedCurrency: string
+}): void {
+  const { capture, orderId, courseId, expectedAmount, expectedCurrency } = params
+  if (capture.status !== COMPLETED_PAYMENT_STATUS) {
+    throw new AppError(402, `PayPal capture status: ${capture.status}`)
+  }
+  if (capture.id !== orderId) {
+    throw new AppError(400, 'PayPal capture does not match payment order')
+  }
+
+  const purchaseUnit = capture.purchase_units?.[0]
+  if (purchaseUnit?.reference_id && purchaseUnit.reference_id !== courseId) {
+    throw new AppError(400, 'PayPal capture does not match course')
+  }
+
+  const providerCapture = purchaseUnit?.payments?.captures?.[0]
+  if (!providerCapture) {
+    throw new AppError(400, 'PayPal capture is missing capture details')
+  }
+  if (providerCapture.status && providerCapture.status !== COMPLETED_PAYMENT_STATUS) {
+    throw new AppError(402, `PayPal capture status: ${providerCapture.status}`)
+  }
+  if (toMinorUnits(providerCapture.amount.value) !== toMinorUnits(expectedAmount)) {
+    throw new AppError(400, 'PayPal capture amount does not match payment')
+  }
+  if (providerCapture.amount.currency_code !== expectedCurrency) {
+    throw new AppError(400, 'PayPal capture currency does not match payment')
+  }
+}
+
 // ─── Create PayPal order (step 1) ─────────────────────────────────────────────
 
 export async function createOrder(userId: string, courseId: string) {
@@ -55,13 +102,21 @@ export async function createOrder(userId: string, courseId: string) {
 export async function captureAndEnroll(userId: string, courseId: string, orderId: string) {
   const payment = await prisma.payment.findUnique({
     where: { providerId: orderId },
-    select: { id: true, userId: true, courseId: true, status: true },
+    select: {
+      id: true,
+      userId: true,
+      courseId: true,
+      amount: true,
+      currency: true,
+      providerId: true,
+      status: true,
+    },
   })
 
   if (!payment) throw new AppError(404, 'Payment order not found')
   if (payment.userId !== userId) throw new AppError(403, 'Access denied')
   if (payment.courseId !== courseId) throw new AppError(400, 'Order does not match course')
-  if (payment.status === 'COMPLETED') {
+  if (payment.status === COMPLETED_PAYMENT_STATUS) {
     // Idempotent — return existing enrollment
     const enrollment = await prisma.enrollment.findUnique({
       where: { paymentId: payment.id },
@@ -75,19 +130,29 @@ export async function captureAndEnroll(userId: string, courseId: string, orderId
 
   // Capture with PayPal
   const capture = await PayPalClient.captureOrder(orderId)
-  if (capture.status !== 'COMPLETED') {
+  try {
+    assertProviderCaptureMatchesPayment({
+      capture,
+      orderId: payment.providerId,
+      courseId: payment.courseId,
+      expectedAmount: payment.amount,
+      expectedCurrency: payment.currency,
+    })
+  } catch (err) {
     await prisma.payment.update({
       where: { id: payment.id },
       data: { status: 'FAILED' },
     })
-    throw new AppError(402, `PayPal capture status: ${capture.status}`)
+    throw err
   }
 
   // Mark payment completed and create enrollment atomically
+  // PayPal returns a nested capture id, but the current schema only has providerId
+  // for the order id; persist capture ids when a dedicated field is added.
   const [updatedPayment, enrollment] = await prisma.$transaction([
     prisma.payment.update({
       where: { id: payment.id },
-      data: { status: 'COMPLETED', capturedAt: new Date() },
+      data: { status: COMPLETED_PAYMENT_STATUS, capturedAt: new Date() },
     }),
     prisma.enrollment.create({
       data: { userId, courseId, paymentId: payment.id },

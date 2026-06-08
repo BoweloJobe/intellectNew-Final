@@ -1,3 +1,5 @@
+import { logWarn } from "../../utils/logger";
+
 export type AdapterMode = "mock" | "api";
 
 export type ServiceDomain =
@@ -94,3 +96,28 @@ export const domainAdapterConfig: DomainAdapterConfig = {
   community: normalizeDomainAdapterMode(import.meta.env.VITE_COMMUNITY_ADAPTER_MODE, adapterMode),
   tutor: normalizeDomainAdapterMode(import.meta.env.VITE_TUTOR_ADAPTER_MODE, adapterMode),
 };
+
+function getApiDomainNames(config: DomainAdapterConfig): Array<keyof DomainAdapterConfig> {
+  return (Object.keys(config) as Array<keyof DomainAdapterConfig>).filter(
+    (domain) => config[domain] === "api",
+  );
+}
+
+const apiDomains = getApiDomainNames(domainAdapterConfig);
+const apiAdapterRequired = apiConfig.adapterMode === "api" || apiDomains.length > 0;
+
+if (apiAdapterRequired && apiConfig.baseUrl === "") {
+  const neededFor = apiConfig.adapterMode === "api" ? "global VITE_SERVICE_ADAPTER_MODE=api" : "a domain override to api";
+  throw new Error(
+    `VITE_API_BASE_URL is required when using api service adapters (unexpected due to ${neededFor}). ` +
+      "Set VITE_API_BASE_URL to the backend root URL, for example http://localhost:4000/api.",
+  );
+}
+
+if (import.meta.env.PROD && apiConfig.adapterMode === "mock" && apiDomains.length === 0) {
+  logWarn("Production build defaulting to mock service adapters", {
+    adapterMode: import.meta.env.VITE_SERVICE_ADAPTER_MODE ?? "<unset>",
+    apiBaseUrl: apiConfig.baseUrl || "<unset>",
+    guidance: "Set VITE_SERVICE_ADAPTER_MODE=api and VITE_API_BASE_URL=... to enable real backend services.",
+  });
+}
