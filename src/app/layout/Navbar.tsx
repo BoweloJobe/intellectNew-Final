@@ -70,12 +70,14 @@ export function Navbar() {
         { name: "Dashboard", path: "/instructor" },
         { name: "My Courses", path: "/instructor/courses" },
         { name: "Community", path: "/community" },
+        { name: "Pricing", path: "/pricing" },
       ]
     : role === "admin"
       ? [
           { name: "Admin", path: "/admin" },
           { name: "Courses", path: "/courses" },
           { name: "Community", path: "/community" },
+          { name: "Pricing", path: "/pricing" },
         ]
       : [
           { name: "Dashboard", path: "/dashboard" },
@@ -194,12 +196,16 @@ export function Navbar() {
   };
 
   const isNavLinkActive = (path: string, name: string) => {
+    if (name === "Dashboard") {
+      return location.pathname === path;
+    }
+
     if (name === "Learn") {
-      return /^\/courses\/[^/]+\/lessons\/[^/]+$/.test(location.pathname);
+      return location.pathname === "/learn" || location.pathname.startsWith("/learn/");
     }
 
     if (name === "Courses") {
-      return location.pathname === "/courses" || /^\/courses\/[^/]+$/.test(location.pathname);
+      return location.pathname === "/courses" || location.pathname.startsWith("/courses/");
     }
 
     // Exact match for /instructor so it doesn't stay highlighted when on /instructor/courses
@@ -386,17 +392,15 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 mx-4 mt-4 mb-8">
       <div 
-        className="max-w-7xl mx-auto px-6 py-3 rounded-2xl backdrop-blur-xl border"
-        style={{
-          background: 'rgba(255, 255, 255, 0.6)',
-          borderColor: 'rgba(255, 255, 255, 0.7)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
-        }}
+        className="mx-auto max-w-7xl rounded-[28px] border border-white/70 bg-white/70 px-2.5 py-2 shadow-[0_12px_34px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-xl"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           {/* Brand */}
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-[#4a9ff5]/10 flex items-center justify-center">
+          <Link
+            to="/"
+            className="flex h-9 shrink-0 items-center gap-2.5 rounded-2xl px-2.5 transition-colors duration-200 ease-out hover:bg-white/[0.55] focus-visible:outline-1 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:ring-[#4a9ff5]/30"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#4a9ff5]/10">
               <span
                 className="text-[#4a9ff5] font-semibold text-[10px] tracking-[0.12em]"
                 style={{ fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" }}
@@ -405,7 +409,7 @@ export function Navbar() {
               </span>
             </div>
             <span
-              className="text-[1.06rem] font-semibold text-[#4a9ff5] tracking-[-0.01em]"
+              className="text-[1.06rem] font-semibold text-slate-950 tracking-[-0.01em]"
               style={{ fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" }}
             >
               intellectX
@@ -414,18 +418,21 @@ export function Navbar() {
 
           {/* Navigation Links - Only show when logged in */}
           {!isPublicPage && (
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden lg:inline-flex h-10 w-fit shrink-0 items-center justify-center rounded-2xl border border-white/70 bg-[#f1f5f9]/80 p-1 text-slate-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition-colors duration-200 ease-out">
               {navLinks.map((link) => {
                 const isActive = isNavLinkActive(link.path, link.name);
                 return (
                   <Link
-                    key={link.path}
+                    key={`${link.name}-${link.path}`}
                     to={link.path}
-                    className={`px-4 py-2 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a9ff5]/40 ${
-                      isActive 
-                        ? 'bg-[#4a9ff5] text-white' 
-                        : 'text-gray-700 hover:bg-white/[0.55]'
-                    }`}
+                    aria-current={isActive ? "page" : undefined}
+                    className={[
+                      "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-transparent px-4 py-1 text-base font-medium transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline-1 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:ring-[#4a9ff5]/30",
+                      "after:absolute after:bottom-[2px] after:left-3 after:right-3 after:h-[2px] after:origin-center after:scale-x-0 after:rounded-full after:bg-[#4a9ff5] after:transition-transform after:duration-200 after:ease-out",
+                      isActive
+                        ? "bg-white/90 text-slate-950 shadow-sm after:scale-x-100"
+                        : "text-slate-600 hover:bg-white/[0.55] hover:text-slate-950",
+                    ].join(" ")}
                   >
                     {link.name}
                   </Link>
@@ -435,13 +442,13 @@ export function Navbar() {
           )}
 
           {/* Right Section */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             {!isPublicPage ? (
               <>
                 <div className="relative" ref={globalSearchRef}>
                   <button
                     type="button"
-                    className="p-2 rounded-lg hover:bg-white/[0.55] transition-colors md:hidden"
+                    className="rounded-2xl p-2 transition-colors duration-200 ease-out hover:bg-white/[0.55] focus-visible:outline-1 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:ring-[#4a9ff5]/30 xl:hidden"
                     aria-label="Open global search"
                     onClick={() => {
                       setIsGlobalSearchOpen((previous) => !previous);
@@ -453,8 +460,8 @@ export function Navbar() {
                     <Search className="w-5 h-5 text-gray-700" />
                   </button>
 
-                  <div className="hidden md:block">
-                    <div className="relative w-56">
+                  <div className="hidden xl:block">
+                    <div className="relative w-52">
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                       <Input
                         value={globalSearchQuery}
@@ -478,7 +485,7 @@ export function Navbar() {
                           }
                         }}
                         placeholder="Search..."
-                        className="h-9 rounded-lg border-white/70 bg-white/[0.55] pl-9 text-sm"
+                        className="h-9 rounded-2xl border-white/70 bg-[#f8fafc]/80 pl-9 text-sm text-slate-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] transition-colors duration-200 ease-out placeholder:text-slate-500 focus-visible:ring-[#4a9ff5]/30"
                       />
                     </div>
                   </div>
@@ -512,7 +519,7 @@ export function Navbar() {
                   <button
                     ref={notificationToggleRef}
                     type="button"
-                    className="p-2 rounded-lg hover:bg-white/[0.55] transition-colors relative"
+                    className="relative rounded-2xl p-2 transition-colors duration-200 ease-out hover:bg-white/[0.55] focus-visible:outline-1 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:ring-[#4a9ff5]/30"
                     onClick={() => {
                       setIsNotificationsOpen((previous) => !previous);
                     }}
@@ -739,7 +746,7 @@ export function Navbar() {
                 <div className="relative" ref={profileRef}>
                   <button
                     type="button"
-                    className="p-1 rounded-lg hover:bg-white/[0.55] transition-colors"
+                    className="rounded-2xl p-1 transition-colors duration-200 ease-out hover:bg-white/[0.55] focus-visible:outline-1 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:ring-[#4a9ff5]/30"
                     aria-label="Open profile menu"
                     aria-expanded={isProfileOpen}
                     aria-haspopup="menu"
