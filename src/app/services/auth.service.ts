@@ -12,6 +12,8 @@ import type {
   SignInResult,
   SignUpInput,
   SignUpResult,
+  UpdateProfileInput,
+  UpdateProfileResult,
   VerifyPasswordResetCodeInput,
   VerifyPasswordResetCodeResult,
 } from "./contracts/auth.contract";
@@ -48,6 +50,10 @@ export async function resetPassword(input: ResetPasswordInput): Promise<ResetPas
 
 export async function signOut(): Promise<void> {
   await getAuthService().signOut();
+}
+
+export async function updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult> {
+  return getAuthService().updateProfile(input);
 }
 
 export async function getCurrentUser(input?: { session?: AuthSession | null }): Promise<AuthUser | null> {

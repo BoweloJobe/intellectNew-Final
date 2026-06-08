@@ -24,7 +24,7 @@ vi.mock('../../lib/mailer.js', () => ({
   passwordResetHtml: (resetUrl: string) => `<a href="${resetUrl}">Reset</a>`,
 }))
 
-import { requestPasswordReset, resetPassword } from '../auth.service.js'
+import { getMe, requestPasswordReset, resetPassword, updateProfile } from '../auth.service.js'
 
 function sha256Hex(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex')
@@ -120,5 +120,110 @@ describe('auth password reset service', () => {
       new AppError(400, 'Reset token is invalid or has expired'),
     )
     expect(mockPrisma.$transaction).not.toHaveBeenCalled()
+  })
+
+  it('updates a user profile and keeps the same email when provided', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'student@example.com',
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      role: 'STUDENT',
+      avatarUrl: null,
+      isVerified: true,
+      createdAt: new Date(),
+    })
+    mockPrisma.user.update.mockResolvedValue({
+      id: 'user-1',
+      email: 'student@example.com',
+      firstName: 'Sara',
+      lastName: 'Jameson',
+      role: 'STUDENT',
+      avatarUrl: null,
+      bio: 'Biology student',
+      institution: 'Example University',
+      isVerified: true,
+      createdAt: new Date(),
+    })
+
+    const result = await updateProfile('user-1', {
+      firstName: 'Sara',
+      lastName: 'Jameson',
+      email: 'student@example.com',
+      bio: 'Biology student',
+      institution: 'Example University',
+    })
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'user-1',
+        email: 'student@example.com',
+        firstName: 'Sara',
+        lastName: 'Jameson',
+        bio: 'Biology student',
+        institution: 'Example University',
+      }),
+    )
+    expect(mockPrisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: {
+        firstName: 'Sara',
+        lastName: 'Jameson',
+        bio: 'Biology student',
+        institution: 'Example University',
+      },
+    })
+  })
+
+  it('returns profile fields from getMe', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'student@example.com',
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      role: 'STUDENT',
+      avatarUrl: null,
+      bio: 'Biology student',
+      institution: 'Example University',
+      isVerified: true,
+      createdAt: new Date(),
+    })
+
+    const result = await getMe('user-1')
+
+    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({ where: { id: 'user-1' } })
+    expect(result).toEqual(expect.objectContaining({
+      bio: 'Biology student',
+      institution: 'Example University',
+    }))
+  })
+
+  it('rejects profile updates that attempt to change email', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      email: 'student@example.com',
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      role: 'STUDENT',
+      avatarUrl: null,
+      isVerified: true,
+      createdAt: new Date(),
+    })
+
+    await expect(
+      updateProfile('user-1', {
+        firstName: 'Sarah',
+        lastName: 'Johnson',
+        email: 'new-email@example.com',
+        bio: 'Bio content',
+        institution: 'Example University',
+      }),
+    ).rejects.toMatchObject(
+      new AppError(
+        400,
+        'Email cannot be changed from this settings page. Please use the dedicated email change workflow.',
+      ),
+    )
+    expect(mockPrisma.user.update).not.toHaveBeenCalled()
   })
 })

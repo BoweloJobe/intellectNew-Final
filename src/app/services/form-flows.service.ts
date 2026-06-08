@@ -4,6 +4,7 @@ import {
   normalizeRequiredTextInput,
 } from "../utils/form-validation";
 import { getNotesService } from "./factory/service-registry";
+import { updateProfile } from "./auth.service";
 
 export type DiscussionFormInput = {
   title: string;
@@ -90,17 +91,30 @@ export async function saveNoteForm(input: NoteFormInput, existingId?: number): P
 }
 
 export async function saveProfileSettings(input: ProfileSettingsInput): Promise<ProfileSettingsInput> {
-  await withMockDelay(null, 700);
-
+  const normalizedFirstName = normalizeRequiredTextInput(input.firstName);
+  const normalizedLastName = normalizeRequiredTextInput(input.lastName);
   const normalizedEmail = normalizeEmailInput(input.email);
+  const normalizedBio = input.bio.trim();
+  const normalizedInstitution = input.institution.trim();
+
+  const result = await updateProfile({
+    firstName: normalizedFirstName,
+    lastName: normalizedLastName,
+    email: normalizedEmail,
+    bio: normalizedBio,
+    institution: normalizedInstitution,
+  });
+
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
 
   return {
-    ...input,
-    firstName: normalizeRequiredTextInput(input.firstName),
-    lastName: normalizeRequiredTextInput(input.lastName),
-    email: normalizedEmail,
-    bio: normalizeRequiredTextInput(input.bio),
-    institution: normalizeRequiredTextInput(input.institution),
+    firstName: result.user.firstName ?? "",
+    lastName: result.user.lastName ?? "",
+    email: result.user.email,
+    bio: result.user.bio ?? "",
+    institution: result.user.institution ?? "",
   };
 }
 

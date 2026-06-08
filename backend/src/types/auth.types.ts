@@ -5,6 +5,8 @@ export interface UserProfile {
   lastName: string
   role: string
   avatarUrl: string | null
+  bio: string | null
+  institution: string | null
   isVerified: boolean
   createdAt: Date
 }

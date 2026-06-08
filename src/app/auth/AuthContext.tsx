@@ -73,6 +73,7 @@ type AuthContextValue = {
     lastName: string;
     email: string;
     institution: string;
+    bio: string;
   }) => void;
   applyVerifiedSubscriptionStatus: (result: SubscriptionOverview) => void;
   signOut: () => void;
@@ -315,6 +316,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     lastName: string;
     email: string;
     institution: string;
+    bio: string;
   }) => {
     setUser((previousUser) => {
       if (!previousUser) {
@@ -329,6 +331,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         fullName: `${input.firstName} ${input.lastName}`.trim(),
         email: input.email,
         institution: input.institution,
+        bio: input.bio,
+        learningGoal: input.bio,
       });
 
       setSession((previousSession) => {

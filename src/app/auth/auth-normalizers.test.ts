@@ -11,6 +11,7 @@ const validUser = {
   role: "student",
   institution: "Test Academy",
   learningGoal: "Finish onboarding",
+  bio: "Finish onboarding",
 } as const;
 
 describe("auth-normalizers", () => {
@@ -31,7 +32,8 @@ describe("auth-normalizers", () => {
       lastName: " User ",
       displayName: " T ",
       institution: " Test Academy ",
-      learningGoal: " Keep going ",
+      learningGoal: "",
+      bio: " Keep going ",
     });
 
     expect(normalized.firstName).toBe("Test");
@@ -39,6 +41,7 @@ describe("auth-normalizers", () => {
     expect(normalized.displayName).toBe("T");
     expect(normalized.institution).toBe("Test Academy");
     expect(normalized.learningGoal).toBe("Keep going");
+    expect(normalized.bio).toBe("Keep going");
   });
 
   it("validates auth session shape", () => {

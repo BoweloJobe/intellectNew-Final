@@ -4,6 +4,7 @@ import * as AuthService from '../services/auth.service.js'
 import {
   signupSchema,
   loginSchema,
+  updateProfileSchema,
   requestResetSchema,
   resetPasswordSchema,
 } from '../validation/auth.validation.js'
@@ -31,6 +32,16 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
 export async function getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = await AuthService.getMe(req.user!.id)
+    res.json({ status: 'ok', data: { user } })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const input = validate(updateProfileSchema, req.body)
+    const user = await AuthService.updateProfile(req.user!.id, input)
     res.json({ status: 'ok', data: { user } })
   } catch (err) {
     next(err)

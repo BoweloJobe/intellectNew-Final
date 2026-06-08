@@ -9,6 +9,7 @@ import { Input } from "../components/ui/input";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
 import { confirmPasswordRules, passwordRules } from "../utils/form-validation";
 import { resetPassword } from "../../services/auth";
+import { Eye, EyeOff } from "lucide-react";
 
 type ResetPasswordFormValues = {
   password: string;
@@ -21,6 +22,8 @@ export function ResetPasswordPage() {
   const token = searchParams.get("token");
 
   const [succeeded, setSucceeded] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const { isSubmitting, submitError, clearStatus, run } = useAsyncFormSubmission();
 
   const form = useForm<ResetPasswordFormValues>({
@@ -100,15 +103,26 @@ export function ResetPasswordPage() {
                   <FormItem>
                     <FormLabel className="font-semibold text-gray-900">New Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="New password"
-                        autoComplete="new-password"
-                        onChange={(e) => { clearStatus(); field.onChange(e); }}
-                        onBlur={field.onBlur}
-                        value={field.value}
-                        name={field.name}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="New password"
+                          className="pr-10"
+                          autoComplete="new-password"
+                          onChange={(e) => { clearStatus(); field.onChange(e); }}
+                          onBlur={field.onBlur}
+                          value={field.value}
+                          name={field.name}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -128,15 +142,26 @@ export function ResetPasswordPage() {
                   <FormItem>
                     <FormLabel className="font-semibold text-gray-900">Confirm Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Confirm new password"
-                        autoComplete="new-password"
-                        onChange={(e) => { clearStatus(); field.onChange(e); }}
-                        onBlur={field.onBlur}
-                        value={field.value}
-                        name={field.name}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showConfirm ? "text" : "password"}
+                          placeholder="Confirm new password"
+                          className="pr-10"
+                          autoComplete="new-password"
+                          onChange={(e) => { clearStatus(); field.onChange(e); }}
+                          onBlur={field.onBlur}
+                          value={field.value}
+                          name={field.name}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirm(!showConfirm)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                          aria-label={showConfirm ? "Hide password" : "Show password"}
+                        >
+                          {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

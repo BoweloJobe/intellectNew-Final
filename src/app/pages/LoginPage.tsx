@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
@@ -9,6 +10,7 @@ import { Input } from "../components/ui/input";
 import { useAuth } from "../auth/AuthContext";
 import { resolveSafeLoginDestination } from "../auth/route-utils";
 import { emailRules, normalizeEmailInput, passwordRules } from "../utils/form-validation";
+import { Eye, EyeOff } from "lucide-react";
 
 type LoginFormValues = {
   email: string;
@@ -20,6 +22,8 @@ export function LoginPage() {
   const location = useLocation();
   const { signIn, signInWithProvider } = useAuth();
   const { isSubmitting, submitError, submitSuccess, clearStatus, run } = useAsyncFormSubmission();
+  const [showPassword, setShowPassword] = useState(false);
+  
   const form = useForm<LoginFormValues>({
     defaultValues: {
       email: "",
@@ -157,18 +161,28 @@ export function LoginPage() {
                     </Link>
                   </div>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Enter your password"
-                      className="bg-white/[0.45]"
-                      autoComplete="current-password"
-                      disabled={isSubmitting}
-                      {...field}
-                      onChange={(event) => {
-                        clearStatus();
-                        field.onChange(event);
-                      }}
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        className="bg-white/[0.45] pr-10"
+                        autoComplete="current-password"
+                        disabled={isSubmitting}
+                        {...field}
+                        onChange={(event) => {
+                          clearStatus();
+                          field.onChange(event);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

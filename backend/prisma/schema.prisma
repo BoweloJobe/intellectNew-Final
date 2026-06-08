@@ -17,6 +17,8 @@ model User {
   passwordHash String
   role         String   @default("STUDENT")
   avatarUrl    String?
+  bio          String?
+  institution  String?
   isVerified   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

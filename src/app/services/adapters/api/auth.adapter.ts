@@ -13,6 +13,8 @@ import type {
   SignInWithProviderResult,
   SignUpInput,
   SignUpResult,
+  UpdateProfileInput,
+  UpdateProfileResult,
   VerifyPasswordResetCodeInput,
   VerifyPasswordResetCodeResult,
 } from "../../contracts/auth.contract";
@@ -28,6 +30,8 @@ interface BackendUserProfile {
   lastName: string;
   role: string; // "STUDENT" | "INSTRUCTOR" | "ADMIN"
   avatarUrl: string | null;
+  bio: string | null;
+  institution: string | null;
   isVerified: boolean;
   createdAt: string;
 }
@@ -71,6 +75,9 @@ function mapBackendUser(profile: BackendUserProfile): AuthUser {
     role: mapRole(profile.role),
     // subscriptionTier is resolved by the subscription domain, not the auth endpoint
     subscriptionTier: "free",
+    bio: profile.bio ?? undefined,
+    institution: profile.institution ?? undefined,
+    learningGoal: profile.bio ?? undefined,
   };
 }
 
@@ -134,6 +141,28 @@ export class ApiAuthAdapter implements AuthService {
       return { ok: true, user: session.user, session };
     } catch (error) {
       const apiError = toApiError(error, { operation: "auth.signUp" });
+      return { ok: false, message: apiError.message };
+    }
+  }
+
+  async updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult> {
+    const token = getStoredToken();
+    if (!token) {
+      return { ok: false, message: 'Authentication required' };
+    }
+
+    try {
+      const response = await httpClient.patch<BackendMeResponse, UpdateProfileInput>(
+        '/auth/me',
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          body: input,
+        },
+      );
+
+      return { ok: true, user: mapBackendUser(response.data.user) };
+    } catch (error) {
+      const apiError = toApiError(error, { operation: 'auth.updateProfile' });
       return { ok: false, message: apiError.message };
     }
   }

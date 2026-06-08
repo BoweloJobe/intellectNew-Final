@@ -26,6 +26,7 @@ export function isAuthUser(value: unknown): value is AuthUser {
     (maybeUser.subscriptionTier === undefined || maybeUser.subscriptionTier === "free" || maybeUser.subscriptionTier === "pro") &&
     (maybeUser.institution === undefined || typeof maybeUser.institution === "string") &&
     (maybeUser.learningGoal === undefined || typeof maybeUser.learningGoal === "string") &&
+    (maybeUser.bio === undefined || typeof maybeUser.bio === "string") &&
     isAuthRole(maybeUser.role)
   );
 }
@@ -46,7 +47,8 @@ export function normalizeAuthUser(user: AuthUser): AuthUser {
     email: normalizeEmail(user.email),
     subscriptionTier: user.subscriptionTier === "pro" ? "pro" : user.subscriptionTier === "free" ? "free" : undefined,
     institution: user.institution?.trim() || undefined,
-    learningGoal: user.learningGoal?.trim() || undefined,
+    learningGoal: user.learningGoal?.trim() || user.bio?.trim() || undefined,
+    bio: user.bio?.trim() || undefined,
   };
 }
 

@@ -19,11 +19,15 @@ describe("auth-storage", () => {
         fullName: "User",
         email: "User@Test.COM",
         role: "student",
+        bio: "  Biology student  ",
+        institution: "  Example University  ",
       },
     });
 
     const restored = readStoredAuthSession();
     expect(restored?.user.email).toBe("user@test.com");
+    expect(restored?.user.bio).toBe("Biology student");
+    expect(restored?.user.institution).toBe("Example University");
   });
 
   it("returns null and clears invalid json", () => {

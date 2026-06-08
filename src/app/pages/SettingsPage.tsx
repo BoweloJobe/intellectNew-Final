@@ -18,12 +18,13 @@ import {
   type ProfileSettingsInput,
   type SecuritySettingsInput,
 } from "../services/form-flows.service";
-import { User, Bell, Lock, CreditCard } from "lucide-react";
+import { User, Bell, Lock, CreditCard, Eye, EyeOff } from "lucide-react";
 import {
   confirmPasswordRules,
   emailRules,
   normalizeEmailInput,
   normalizeRequiredTextInput,
+  optionalTrimmedTextRules,
   passwordRules,
   trimmedTextRules,
 } from "../utils/form-validation";
@@ -43,9 +44,9 @@ export function SettingsPage() {
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
     email: user?.email ?? "",
-    bio: user?.learningGoal ?? "Tell us about your learning journey.",
+    bio: user?.bio ?? user?.learningGoal ?? "",
     institution: user?.institution ?? "",
-  }), [user?.email, user?.firstName, user?.institution, user?.lastName, user?.learningGoal]);
+  }), [user?.bio, user?.email, user?.firstName, user?.institution, user?.lastName, user?.learningGoal]);
   const displayName = user?.fullName ?? "Learner";
   const displayEmail = user?.email ?? "";
   const avatarSeed = user?.id ?? user?.email ?? "guest";
@@ -59,6 +60,9 @@ export function SettingsPage() {
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
     : null;
   const [pageSuccessMessage, setPageSuccessMessage] = useState<string | null>(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const profileSubmission = useAsyncFormSubmission();
   const notificationsSubmission = useAsyncFormSubmission();
   const securitySubmission = useAsyncFormSubmission();
@@ -104,8 +108,8 @@ export function SettingsPage() {
       firstName: normalizeRequiredTextInput(values.firstName),
       lastName: normalizeRequiredTextInput(values.lastName),
       email: normalizeEmailInput(values.email),
-      bio: normalizeRequiredTextInput(values.bio),
-      institution: normalizeRequiredTextInput(values.institution),
+      bio: values.bio.trim(),
+      institution: values.institution.trim(),
     }), {
       successMessage: "Profile updated successfully.",
       onSuccess: async (savedProfile) => {
@@ -114,6 +118,7 @@ export function SettingsPage() {
           lastName: savedProfile.lastName,
           email: savedProfile.email,
           institution: savedProfile.institution,
+          bio: savedProfile.bio,
         });
         profileForm.reset(savedProfile);
         showPageSuccess("Profile changes saved.");
@@ -276,10 +281,7 @@ export function SettingsPage() {
                   control={profileForm.control}
                   name="bio"
                   rules={{
-                    ...trimmedTextRules({
-                      requiredMessage: "Add a short bio.",
-                      minLength: 12,
-                      minLengthMessage: "Add a little more detail for your profile bio.",
+                    ...optionalTrimmedTextRules({
                       maxLength: 280,
                       maxLengthMessage: "Keep your bio under 280 characters.",
                     }),
@@ -302,10 +304,7 @@ export function SettingsPage() {
                   control={profileForm.control}
                   name="institution"
                   rules={{
-                    ...trimmedTextRules({
-                      requiredMessage: "Institution is required.",
-                      minLength: 2,
-                      minLengthMessage: "Enter your institution.",
+                    ...optionalTrimmedTextRules({
                       maxLength: 120,
                       maxLengthMessage: "Keep institution under 120 characters.",
                     }),
@@ -399,10 +398,22 @@ export function SettingsPage() {
                     <FormItem>
                       <FormLabel>Current Password</FormLabel>
                       <FormControl>
-                        <Input type="password" className="bg-white/[0.45]" disabled={securitySubmission.isSubmitting} {...field} onChange={(event) => {
-                          securitySubmission.clearStatus();
-                          field.onChange(event);
-                        }} />
+                        <div className="relative">
+                          <Input type={showCurrentPassword ? "text" : "password"} className="bg-white/[0.45] pr-10" disabled={securitySubmission.isSubmitting} {...field} onChange={(event) => {
+                            securitySubmission.clearStatus();
+                            field.onChange(event);
+                          }} />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                            aria-label={showCurrentPassword ? "Hide password" : "Show password"}
+                            onClick={() => {
+                              setShowCurrentPassword((previous) => !previous);
+                            }}
+                          >
+                            {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -419,10 +430,22 @@ export function SettingsPage() {
                     <FormItem>
                       <FormLabel>New Password</FormLabel>
                       <FormControl>
-                        <Input type="password" className="bg-white/[0.45]" disabled={securitySubmission.isSubmitting} {...field} onChange={(event) => {
-                          securitySubmission.clearStatus();
-                          field.onChange(event);
-                        }} />
+                        <div className="relative">
+                          <Input type={showNewPassword ? "text" : "password"} className="bg-white/[0.45] pr-10" disabled={securitySubmission.isSubmitting} {...field} onChange={(event) => {
+                            securitySubmission.clearStatus();
+                            field.onChange(event);
+                          }} />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                            aria-label={showNewPassword ? "Hide password" : "Show password"}
+                            onClick={() => {
+                              setShowNewPassword((previous) => !previous);
+                            }}
+                          >
+                            {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -445,10 +468,22 @@ export function SettingsPage() {
                     <FormItem>
                       <FormLabel>Confirm New Password</FormLabel>
                       <FormControl>
-                        <Input type="password" className="bg-white/[0.45]" disabled={securitySubmission.isSubmitting} {...field} onChange={(event) => {
-                          securitySubmission.clearStatus();
-                          field.onChange(event);
-                        }} />
+                        <div className="relative">
+                          <Input type={showConfirmPassword ? "text" : "password"} className="bg-white/[0.45] pr-10" disabled={securitySubmission.isSubmitting} {...field} onChange={(event) => {
+                            securitySubmission.clearStatus();
+                            field.onChange(event);
+                          }} />
+                          <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                            onClick={() => {
+                              setShowConfirmPassword((previous) => !previous);
+                            }}
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

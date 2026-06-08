@@ -24,6 +24,7 @@ import {
   verifyPasswordResetCode,
 } from "../../services/auth";
 import { domainAdapterConfig } from "../api/config/apiConfig";
+import { Eye, EyeOff } from "lucide-react";
 
 type ForgotPasswordStep = "contact" | "verify" | "email-sent" | "reset" | "success";
 
@@ -56,6 +57,8 @@ export function ForgotPasswordPage() {
   const [step, setStep] = useState<ForgotPasswordStep>("contact");
   const [challenge, setChallenge] = useState<ResetChallengeState | null>(null);
   const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const { isSubmitting, submitError, submitSuccess, clearStatus, run } = useAsyncFormSubmission();
 
@@ -421,18 +424,28 @@ export function ForgotPasswordPage() {
                   <FormItem>
                     <FormLabel className="font-semibold text-gray-900">New Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Create a new password"
-                        className="bg-white/[0.45]"
-                        autoComplete="new-password"
-                        disabled={isSubmitting}
-                        {...field}
-                        onChange={(event) => {
-                          clearStatus();
-                          field.onChange(event);
-                        }}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showPassword ? "text" : "password"}
+                          placeholder="Create a new password"
+                          className="bg-white/[0.45] pr-10"
+                          autoComplete="new-password"
+                          disabled={isSubmitting}
+                          {...field}
+                          onChange={(event) => {
+                            clearStatus();
+                            field.onChange(event);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -452,18 +465,28 @@ export function ForgotPasswordPage() {
                   <FormItem>
                     <FormLabel className="font-semibold text-gray-900">Confirm New Password</FormLabel>
                     <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="Repeat your new password"
-                        className="bg-white/[0.45]"
-                        autoComplete="new-password"
-                        disabled={isSubmitting}
-                        {...field}
-                        onChange={(event) => {
-                          clearStatus();
-                          field.onChange(event);
-                        }}
-                      />
+                      <div className="relative">
+                        <Input
+                          type={showConfirm ? "text" : "password"}
+                          placeholder="Repeat your new password"
+                          className="bg-white/[0.45] pr-10"
+                          autoComplete="new-password"
+                          disabled={isSubmitting}
+                          {...field}
+                          onChange={(event) => {
+                            clearStatus();
+                            field.onChange(event);
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirm(!showConfirm)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                          aria-label={showConfirm ? "Hide password" : "Show password"}
+                        >
+                          {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

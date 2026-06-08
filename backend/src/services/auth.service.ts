@@ -10,6 +10,7 @@ import type { UserProfile, AuthResponse } from '../types/auth.types.js'
 import type {
   SignupInput,
   LoginInput,
+  UpdateProfileInput,
   RequestResetInput,
   ResetPasswordInput,
 } from '../validation/auth.validation.js'
@@ -29,6 +30,8 @@ function toUserProfile(user: User): UserProfile {
     lastName: user.lastName,
     role: user.role,
     avatarUrl: user.avatarUrl,
+    bio: user.bio,
+    institution: user.institution,
     isVerified: user.isVerified,
     createdAt: user.createdAt,
   }
@@ -72,6 +75,37 @@ export async function getMe(userId: string): Promise<UserProfile> {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) throw new AppError(404, 'User not found')
   return toUserProfile(user)
+}
+
+export async function updateProfile(userId: string, input: UpdateProfileInput): Promise<UserProfile> {
+  const existingUser = await prisma.user.findUnique({ where: { id: userId } })
+  if (!existingUser) {
+    throw new AppError(404, 'User not found')
+  }
+
+  const normalizedEmail = input.email.trim().toLowerCase()
+
+  if (normalizedEmail !== existingUser.email.toLowerCase()) {
+    throw new AppError(
+      400,
+      'Email cannot be changed from this settings page. Please use the dedicated email change workflow.',
+    )
+  }
+
+  const normalizedBio = input.bio?.trim() || null
+  const normalizedInstitution = input.institution?.trim() || null
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      bio: normalizedBio,
+      institution: normalizedInstitution,
+    },
+  })
+
+  return toUserProfile(updatedUser)
 }
 
 export async function requestPasswordReset(

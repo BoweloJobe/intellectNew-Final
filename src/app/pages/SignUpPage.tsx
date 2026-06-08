@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
@@ -13,20 +14,16 @@ import {
   emailRules,
   normalizeEmailInput,
   normalizeRequiredTextInput,
-  optionalTrimmedTextRules,
   passwordRules,
   trimmedTextRules,
 } from "../utils/form-validation";
+import { Eye, EyeOff } from "lucide-react";
 import type { SignUpRole } from "../services/contracts/auth.contract";
 
 type SignUpFormValues = {
   firstName: string;
   lastName: string;
-  displayName: string;
-  fullName: string;
   role: SignUpRole;
-  institution: string;
-  learningGoal: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -36,15 +33,14 @@ export function SignUpPage() {
   const navigate = useNavigate();
   const { signUp } = useAuth();
   const { isSubmitting, submitError, submitSuccess, clearStatus, run } = useAsyncFormSubmission();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const form = useForm<SignUpFormValues>({
     defaultValues: {
       firstName: "",
       lastName: "",
-      displayName: "",
-      fullName: "",
       role: "student",
-      institution: "",
-      learningGoal: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -59,16 +55,9 @@ export function SignUpPage() {
         const signUpResult = await signUp({
           firstName: normalizeRequiredTextInput(values.firstName),
           lastName: normalizeRequiredTextInput(values.lastName),
-          displayName: normalizeRequiredTextInput(values.displayName),
-          fullName:
-            values.fullName.trim().length > 0
-              ? normalizeRequiredTextInput(values.fullName)
-              : `${normalizeRequiredTextInput(values.firstName)} ${normalizeRequiredTextInput(values.lastName)}`,
           email: normalizeEmailInput(values.email),
           password: values.password,
           role: values.role,
-          institution: values.institution.trim() || undefined,
-          learningGoal: values.learningGoal.trim() || undefined,
         });
 
         if (!signUpResult.ok) {
@@ -174,74 +163,6 @@ export function SignUpPage() {
 
             <FormField
               control={form.control}
-              name="displayName"
-              rules={{
-                ...trimmedTextRules({
-                  requiredMessage: "Display name is required.",
-                  minLength: 2,
-                  minLengthMessage: "Enter a display name.",
-                  maxLength: 60,
-                  maxLengthMessage: "Keep display name under 60 characters.",
-                }),
-              }}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-semibold text-gray-900">Display Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="How people should address you"
-                      className="bg-white/[0.45]"
-                      autoComplete="nickname"
-                      disabled={isSubmitting}
-                      {...field}
-                      onChange={(event) => {
-                        clearStatus();
-                        field.onChange(event);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="fullName"
-              rules={{
-                ...trimmedTextRules({
-                  requiredMessage: "Full name is required.",
-                  minLength: 2,
-                  minLengthMessage: "Enter your full name.",
-                  maxLength: 80,
-                  maxLengthMessage: "Keep your full name under 80 characters.",
-                }),
-              }}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-semibold text-gray-900">Full Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="John Doe"
-                      className="bg-white/[0.45]"
-                      autoComplete="name"
-                      disabled={isSubmitting}
-                      {...field}
-                      onChange={(event) => {
-                        clearStatus();
-                        field.onChange(event);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="role"
               render={({ field }) => (
                 <FormItem>
@@ -260,67 +181,6 @@ export function SignUpPage() {
                       <option value="student">Student</option>
                       <option value="instructor">Instructor</option>
                     </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="institution"
-              rules={{
-                ...optionalTrimmedTextRules({
-                  maxLength: 120,
-                  maxLengthMessage: "Keep institution under 120 characters.",
-                }),
-              }}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Institution (optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="University, school, or organization"
-                      className="bg-white/[0.45]"
-                      autoComplete="organization"
-                      disabled={isSubmitting}
-                      {...field}
-                      onChange={(event) => {
-                        clearStatus();
-                        field.onChange(event);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="learningGoal"
-              rules={{
-                ...optionalTrimmedTextRules({
-                  maxLength: 160,
-                  maxLengthMessage: "Keep your learning goal under 160 characters.",
-                }),
-              }}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Primary Learning Goal (optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="What do you want to achieve first?"
-                      className="bg-white/[0.45]"
-                      disabled={isSubmitting}
-                      {...field}
-                      onChange={(event) => {
-                        clearStatus();
-                        field.onChange(event);
-                      }}
-                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -365,18 +225,28 @@ export function SignUpPage() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Create a strong password"
-                      className="bg-white/[0.45]"
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                      {...field}
-                      onChange={(event) => {
-                        clearStatus();
-                        field.onChange(event);
-                      }}
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Create a strong password"
+                        className="bg-white/[0.45] pr-10"
+                        autoComplete="new-password"
+                        disabled={isSubmitting}
+                        {...field}
+                        onChange={(event) => {
+                          clearStatus();
+                          field.onChange(event);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -399,18 +269,28 @@ export function SignUpPage() {
                 <FormItem>
                   <FormLabel>Confirm Password</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      placeholder="Confirm your password"
-                      className="bg-white/[0.45]"
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                      {...field}
-                      onChange={(event) => {
-                        clearStatus();
-                        field.onChange(event);
-                      }}
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showConfirm ? "text" : "password"}
+                        placeholder="Confirm your password"
+                        className="bg-white/[0.45] pr-10"
+                        autoComplete="new-password"
+                        disabled={isSubmitting}
+                        {...field}
+                        onChange={(event) => {
+                          clearStatus();
+                          field.onChange(event);
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirm(!showConfirm)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        aria-label={showConfirm ? "Hide password" : "Show password"}
+                      >
+                        {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

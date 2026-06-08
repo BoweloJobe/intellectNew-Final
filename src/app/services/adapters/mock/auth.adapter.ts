@@ -14,6 +14,8 @@ import type {
   SignInResult,
   SignUpInput,
   SignUpResult,
+  UpdateProfileInput,
+  UpdateProfileResult,
   VerifyPasswordResetCodeInput,
   VerifyPasswordResetCodeResult,
 } from "../../contracts/auth.contract";
@@ -167,10 +169,6 @@ export class MockAuthAdapter implements AuthService {
     const normalizedEmail = input.email.trim().toLowerCase();
     const normalizedFirstName = input.firstName.trim();
     const normalizedLastName = input.lastName.trim();
-    const normalizedDisplayName = input.displayName.trim();
-    const normalizedFullName = input.fullName.trim() || `${normalizedFirstName} ${normalizedLastName}`.trim();
-    const normalizedInstitution = input.institution?.trim();
-    const normalizedLearningGoal = input.learningGoal?.trim();
     const normalizedRole = input.role ?? "student";
 
     if (normalizedEmail.endsWith("@example.com")) {
@@ -193,13 +191,11 @@ export class MockAuthAdapter implements AuthService {
         id: `user-${Date.now()}`,
         firstName: normalizedFirstName,
         lastName: normalizedLastName,
-        displayName: normalizedDisplayName,
-        fullName: normalizedFullName,
+        displayName: normalizedFirstName,
+        fullName: `${normalizedFirstName} ${normalizedLastName}`.trim(),
         email: normalizedEmail,
         role: normalizedRole,
         subscriptionTier: "free",
-        institution: normalizedInstitution,
-        learningGoal: normalizedLearningGoal,
       },
     };
   }
@@ -320,6 +316,33 @@ export class MockAuthAdapter implements AuthService {
     return {
       ok: true,
       message: "Password updated successfully.",
+    };
+  }
+
+  async updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult> {
+    await delay(350);
+
+    const normalizedFirstName = input.firstName.trim();
+    const normalizedLastName = input.lastName.trim();
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const normalizedBio = input.bio?.trim() || undefined;
+    const normalizedInstitution = input.institution?.trim() || undefined;
+
+    return {
+      ok: true,
+      user: {
+        id: `user-${Date.now()}`,
+        firstName: normalizedFirstName,
+        lastName: normalizedLastName,
+        displayName: normalizedFirstName,
+        fullName: `${normalizedFirstName} ${normalizedLastName}`.trim(),
+        email: normalizedEmail,
+        role: 'student',
+        subscriptionTier: 'free',
+        institution: normalizedInstitution,
+        learningGoal: normalizedBio,
+        bio: normalizedBio,
+      },
     };
   }
 

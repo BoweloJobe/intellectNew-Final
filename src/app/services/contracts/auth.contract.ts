@@ -28,6 +28,7 @@ export type AuthUser = {
   subscriptionTier?: SubscriptionTier;
   institution?: string;
   learningGoal?: string;
+  bio?: string;
 };
 
 export type AuthSessionTokens = {
@@ -45,14 +46,22 @@ export type AuthSession = {
 export type SignUpInput = {
   firstName: string;
   lastName: string;
-  displayName: string;
-  fullName: string;
   email: string;
   password: string;
   role?: SignUpRole;
-  institution?: string;
-  learningGoal?: string;
 };
+
+export type UpdateProfileInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  bio?: string;
+  institution?: string;
+};
+
+export type UpdateProfileResult =
+  | { ok: true; user: AuthUser }
+  | { ok: false; message: string };
 
 export type SignInResult =
   | { ok: true; user: AuthUser; session?: AuthSession }
@@ -115,6 +124,7 @@ export interface AuthService {
   signIn(input: SignInInput): Promise<SignInResult>;
   signInWithProvider(input: SignInWithProviderInput): Promise<SignInWithProviderResult>;
   signUp(input: SignUpInput): Promise<SignUpResult>;
+  updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult>;
   sendPasswordResetCode(input: SendPasswordResetCodeInput): Promise<SendPasswordResetCodeResult>;
   verifyPasswordResetCode(input: VerifyPasswordResetCodeInput): Promise<VerifyPasswordResetCodeResult>;
   resetPassword(input: ResetPasswordInput): Promise<ResetPasswordResult>;
