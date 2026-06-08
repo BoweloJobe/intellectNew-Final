@@ -145,3 +145,10 @@ export async function getCourse(req: Request, res: Response, next: NextFunction)
     res.json({ status: 'ok', data: { course } })
   } catch (err) { next(err) }
 }
+
+export async function getLessonPage(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await CourseService.getLessonPageForUser(req.params.lessonId, req.user!)
+    res.json({ status: 'ok', data: result })
+  } catch (err) { next(err) }
+}

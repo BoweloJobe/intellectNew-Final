@@ -46,6 +46,23 @@ const instructorLessonSelect = {
   updatedAt: true,
 } as const
 
+const lessonPageLessonSelect = {
+  id: true,
+  moduleId: true,
+  courseId: true,
+  title: true,
+  description: true,
+  notes: true,
+  videoUrl: true,
+  videoDurationSecs: true,
+  estimatedMinutes: true,
+  order: true,
+  isFree: true,
+  createdAt: true,
+  updatedAt: true,
+  quiz: { select: { id: true } },
+} as const
+
 const moduleWithLessonsSelect = {
   id: true,
   title: true,
@@ -187,6 +204,129 @@ export async function attachLessonVideo(
 }
 
 // ─── Instructor: Module management ───────────────────────────────────────────
+
+export async function getLessonPageForUser(lessonId: string, user: { id: string; role: string }) {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: {
+      ...lessonPageLessonSelect,
+      module: {
+        select: {
+          id: true,
+          title: true,
+          order: true,
+          course: {
+            select: {
+              id: true,
+              title: true,
+              category: true,
+              difficulty: true,
+              thumbnailUrl: true,
+              status: true,
+              instructorId: true,
+              instructor: {
+                select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (!lesson) throw new AppError(404, 'Lesson not found')
+
+  const course = lesson.module.course
+  const isAdmin = user.role === 'ADMIN'
+  const isInstructorOwner = course.instructorId === user.id
+  const isPublished = course.status === 'APPROVED'
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId: user.id, courseId: lesson.courseId } },
+    select: { id: true },
+  })
+  const isEnrolled = enrollment !== null
+  const canReadFullLesson = isAdmin || isInstructorOwner || isEnrolled || (isPublished && lesson.isFree)
+
+  if (!canReadFullLesson) {
+    throw new AppError(403, 'Lesson is locked')
+  }
+
+  const modules = await prisma.courseModule.findMany({
+    where: { courseId: lesson.courseId },
+    orderBy: { order: 'asc' },
+    select: {
+      id: true,
+      title: true,
+      order: true,
+      lessons: {
+        orderBy: { order: 'asc' },
+        select: lessonPageLessonSelect,
+      },
+    },
+  })
+
+  const canReadAllCourseLessons = isAdmin || isInstructorOwner || isEnrolled
+  const mapLesson = (
+    candidate: {
+      id: string
+      courseId: string
+      moduleId: string
+      title: string
+      description: string | null
+      notes: string | null
+      videoUrl: string | null
+      videoDurationSecs: number | null
+      estimatedMinutes: number | null
+      order: number
+      isFree: boolean
+      quiz: { id: string } | null
+      createdAt: Date
+      updatedAt: Date
+    },
+    module: { id: string; title: string; order: number },
+  ) => {
+    const canReadCandidate = canReadAllCourseLessons || (isPublished && candidate.isFree)
+
+    return {
+      id: candidate.id,
+      courseId: candidate.courseId,
+      moduleId: module.id,
+      moduleTitle: module.title,
+      title: candidate.title,
+      description: canReadCandidate ? candidate.description : null,
+      notes: canReadCandidate ? candidate.notes : null,
+      videoUrl: canReadCandidate ? candidate.videoUrl : null,
+      videoDurationSecs: candidate.videoDurationSecs,
+      estimatedMinutes: candidate.estimatedMinutes,
+      order: candidate.order,
+      isFree: candidate.isFree,
+      quizId: canReadCandidate ? candidate.quiz?.id ?? null : null,
+      createdAt: candidate.createdAt,
+      updatedAt: candidate.updatedAt,
+      course: {
+        id: course.id,
+        title: course.title,
+        category: course.category,
+        difficulty: course.difficulty,
+        thumbnailUrl: course.thumbnailUrl,
+        instructor: course.instructor,
+      },
+    }
+  }
+
+  const courseLessons = modules.flatMap((module) =>
+    module.lessons.map((candidate) => mapLesson(candidate, module)),
+  )
+  const resolvedLesson = courseLessons.find((candidate) => candidate.id === lesson.id)
+
+  return {
+    lesson: resolvedLesson,
+    courseLessons,
+    furtherLessons: courseLessons.filter(
+      (candidate) => candidate.id !== lesson.id && candidate.moduleId === lesson.moduleId,
+    ),
+  }
+}
 
 export async function createModule(
   courseId: string,

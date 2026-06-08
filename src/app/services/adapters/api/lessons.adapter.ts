@@ -1,7 +1,7 @@
 import type { LessonsService, VideoLessonPageData } from "../../contracts/lessons.contract";
-import { LessonNotFoundError } from "../../contracts/lessons.contract";
+import { LessonCourseMismatchError, LessonNotFoundError } from "../../contracts/lessons.contract";
 import type { VideoLesson, VideoLessonNote } from "../../../models/lessons";
-import { httpClient, toApiError } from "../../../api";
+import { ApiError, httpClient, toApiError } from "../../../api";
 import { readStoredAuthSession } from "../../../auth/auth-storage";
 
 // ─── Backend response shapes ──────────────────────────────────────────────────
@@ -45,6 +45,41 @@ interface BackendCourseWithModules {
   instructor: BackendInstructor;
   modules?: BackendModule[];
 }
+
+interface BackendLessonPageItem {
+  id: string;
+  courseId: string;
+  moduleId: string;
+  moduleTitle: string;
+  title: string;
+  description: string | null;
+  notes: string | null;
+  videoUrl: string | null;
+  videoDurationSecs: number | null;
+  estimatedMinutes: number | null;
+  order: number;
+  isFree: boolean;
+  quizId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  course: {
+    id: string;
+    title: string;
+    category: string;
+    difficulty: string;
+    thumbnailUrl: string | null;
+    instructor: BackendInstructor;
+  };
+}
+
+type BackendLessonPageResponse = {
+  status: string;
+  data: {
+    lesson: BackendLessonPageItem;
+    furtherLessons: BackendLessonPageItem[];
+    courseLessons: BackendLessonPageItem[];
+  };
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -106,6 +141,54 @@ function mapToVideoLesson(
   };
 }
 
+function mapLessonPageItem(lesson: BackendLessonPageItem, totalLessonsInModule: number): VideoLesson {
+  return {
+    id: lesson.id,
+    courseId: lesson.courseId,
+    moduleId: lesson.moduleId,
+    title: lesson.title,
+    description: lesson.description ?? "",
+    videoUrl: lesson.videoUrl ?? "",
+    thumbnailUrl: lesson.course.thumbnailUrl ?? "",
+    duration: lesson.videoDurationSecs ?? (lesson.estimatedMinutes ? lesson.estimatedMinutes * 60 : 0),
+    lessonOrder: lesson.order,
+    totalLessonsInModule,
+    instructor: `${lesson.course.instructor.firstName} ${lesson.course.instructor.lastName}`.trim(),
+    instructorAvatar: lesson.course.instructor.avatarUrl ?? "",
+    courseName: lesson.course.title,
+    moduleName: lesson.moduleTitle,
+    difficulty: mapDifficulty(lesson.course.difficulty),
+    estimatedCompletionTime: lesson.estimatedMinutes ?? 0,
+    notes: parseRawNotes(lesson.notes),
+    learningObjectives: [],
+    summary: "",
+    tags: [],
+    resources: [],
+    quizAvailable: Boolean(lesson.quizId),
+    quizId: lesson.quizId ?? undefined,
+    isFreePreview: lesson.isFree,
+    createdAt: lesson.createdAt,
+    updatedAt: lesson.updatedAt,
+  };
+}
+
+function mapLessonPageResponse(response: BackendLessonPageResponse): VideoLessonPageData {
+  const moduleCounts = response.data.courseLessons.reduce<Record<string, number>>((counts, item) => {
+    counts[item.moduleId] = (counts[item.moduleId] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    lesson: mapLessonPageItem(response.data.lesson, moduleCounts[response.data.lesson.moduleId] ?? 1),
+    furtherLessons: response.data.furtherLessons.map((item) =>
+      mapLessonPageItem(item, moduleCounts[item.moduleId] ?? 1),
+    ),
+    courseLessons: response.data.courseLessons.map((item) =>
+      mapLessonPageItem(item, moduleCounts[item.moduleId] ?? 1),
+    ),
+  };
+}
+
 async function fetchCourseWithModules(courseId: string): Promise<BackendCourseWithModules> {
   const response = await httpClient.get<{ status: string; data: { course: BackendCourseWithModules } }>(
     `/courses/${courseId}`,
@@ -129,9 +212,8 @@ function flattenLessons(course: BackendCourseWithModules): VideoLesson[] {
 
 export class ApiLessonsAdapter implements LessonsService {
   async getVideoLessonData(lessonId: string): Promise<VideoLesson> {
-    // The backend has no direct /lessons/:id endpoint.
-    // This method is not the primary entrypoint; getVideoLessonPageData is used instead.
-    throw new LessonNotFoundError(lessonId);
+    const data = await this.getVideoLessonPageData("", lessonId);
+    return data.lesson;
   }
 
   async getCourseLessons(courseId: string): Promise<VideoLesson[]> {
@@ -170,34 +252,21 @@ export class ApiLessonsAdapter implements LessonsService {
 
   async getVideoLessonPageData(courseId: string, lessonId: string): Promise<VideoLessonPageData> {
     try {
-      const course = await fetchCourseWithModules(courseId);
-      const allLessons = flattenLessons(course);
+      const response = await httpClient.get<BackendLessonPageResponse>(
+        `/content/lessons/${encodeURIComponent(lessonId)}`,
+        { headers: authHeaders() },
+      );
+      const pageData = mapLessonPageResponse(response);
 
-      const lesson = allLessons.find((l) => l.id === lessonId);
-      if (!lesson) {
+      if (courseId && pageData.lesson.courseId !== courseId) {
+        throw new LessonCourseMismatchError(lessonId, courseId);
+      }
+      return pageData;
+    } catch (error) {
+      if (error instanceof LessonNotFoundError || error instanceof LessonCourseMismatchError) throw error;
+      if (error instanceof ApiError && error.status === 404) {
         throw new LessonNotFoundError(lessonId);
       }
-
-      // Discover whether this lesson has an attached quiz (backend doesn't embed
-      // quiz info in the course structure response, so we probe separately).
-      let resolvedLesson = lesson;
-      try {
-        const quizRes = await httpClient.get<{ status: string; data: { quiz: { id: string } } }>(
-          `/content/lessons/${encodeURIComponent(lessonId)}/quiz`,
-          { headers: authHeaders() },
-        );
-        resolvedLesson = { ...lesson, quizAvailable: true, quizId: quizRes.data.quiz.id };
-      } catch {
-        // 404 means no quiz for this lesson — keep quizAvailable: false
-      }
-
-      const furtherLessons = allLessons.filter(
-        (l) => l.id !== lessonId && l.moduleId === resolvedLesson.moduleId,
-      );
-
-      return { lesson: resolvedLesson, furtherLessons, courseLessons: allLessons };
-    } catch (error) {
-      if (error instanceof LessonNotFoundError) throw error;
       throw toApiError(error, { operation: "lessons.getVideoLessonPageData" });
     }
   }

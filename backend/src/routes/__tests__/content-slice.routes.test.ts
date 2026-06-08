@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import request from 'supertest'
-import express, { type Request, type Response, type NextFunction } from 'express'
+import express, { type Request, type Response, type NextFunction, type RequestHandler } from 'express'
 
 // ── Auth stub ────────────────────────────────────────────────────────────────
 vi.mock('../../middleware/auth.middleware.js', () => ({
@@ -25,10 +25,16 @@ vi.mock('../../middleware/auth.middleware.js', () => ({
     next()
   },
   requireAuth: (req: Request, _res: Response, next: NextFunction) => {
-    ;(req as unknown as { user: { id: string; role: string } }).user = {
-      id: 'user-1',
-      role: 'INSTRUCTOR',
-    }
+    const token = req.headers.authorization
+    const user =
+      token === 'Bearer valid-student-token'
+        ? { id: 'student-1', role: 'STUDENT' }
+        : token === 'Bearer valid-admin-token'
+          ? { id: 'admin-1', role: 'ADMIN' }
+          : token === 'Bearer valid-owner-token'
+            ? { id: 'instructor-1', role: 'INSTRUCTOR' }
+            : { id: 'user-1', role: 'INSTRUCTOR' }
+    ;(req as unknown as { user: { id: string; role: string } }).user = user
     next()
   },
 }))
@@ -46,6 +52,7 @@ const mockPrisma = vi.hoisted(() => ({
   courseModule: {
     findUnique: vi.fn(),
     findFirst: vi.fn(),
+    findMany: vi.fn(),
     delete: vi.fn(),
     create: vi.fn(),
   },
@@ -212,6 +219,188 @@ describe('GET /courses/:id public detail', () => {
     const lessons = res.body.data.course.modules[0].lessons
     expect(lessons[1].videoUrl).toBeNull()
     expect(lessons[1].notes).toBeNull()
+  })
+})
+
+function fakeLessonPageLesson(overrides = {}) {
+  return {
+    id: 'lesson-1',
+    moduleId: 'module-1',
+    courseId: 'course-1',
+    title: 'Lesson 1',
+    description: 'Lesson description',
+    notes: 'Lesson notes',
+    videoUrl: 'https://video.example/lesson-1',
+    videoDurationSecs: 600,
+    estimatedMinutes: 10,
+    order: 1,
+    isFree: false,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+    updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+    quiz: { id: 'quiz-1' },
+    ...overrides,
+  }
+}
+
+function fakeLessonPageRecord(overrides = {}) {
+  return {
+    ...fakeLessonPageLesson(),
+    module: {
+      id: 'module-1',
+      title: 'Module 1',
+      order: 1,
+      course: {
+        id: 'course-1',
+        title: 'Approved Course',
+        category: 'Programming',
+        difficulty: 'BEGINNER',
+        thumbnailUrl: null,
+        status: 'APPROVED',
+        instructorId: 'instructor-1',
+        instructor: { id: 'instructor-1', firstName: 'Ada', lastName: 'Lovelace', avatarUrl: null },
+      },
+    },
+    ...overrides,
+  }
+}
+
+function fakeLessonPageModules(lessons = [fakeLessonPageLesson()]) {
+  return [
+    {
+      id: 'module-1',
+      title: 'Module 1',
+      order: 1,
+      lessons,
+    },
+  ]
+}
+
+describe('GET /content/lessons/:lessonId', () => {
+  let app: express.Express
+
+  beforeEach(() => {
+    app = makeApp()
+    vi.clearAllMocks()
+  })
+
+  it('allows an enrolled student to fetch a locked lesson with content', async () => {
+    mockPrisma.lesson.findUnique.mockResolvedValue(fakeLessonPageRecord())
+    mockPrisma.enrollment.findUnique.mockResolvedValue({ id: 'enroll-1' })
+    mockPrisma.courseModule.findMany.mockResolvedValue(fakeLessonPageModules())
+
+    const res = await request(app)
+      .get('/content/lessons/lesson-1')
+      .set('Authorization', 'Bearer valid-student-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.lesson.videoUrl).toBe('https://video.example/lesson-1')
+    expect(res.body.data.lesson.notes).toBe('Lesson notes')
+    expect(res.body.data.lesson.quizId).toBe('quiz-1')
+  })
+
+  it('blocks a non-enrolled user from a locked lesson', async () => {
+    mockPrisma.lesson.findUnique.mockResolvedValue(fakeLessonPageRecord())
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+
+    const res = await request(app)
+      .get('/content/lessons/lesson-1')
+      .set('Authorization', 'Bearer valid-student-token')
+
+    expect(res.status).toBe(403)
+    expect(mockPrisma.courseModule.findMany).not.toHaveBeenCalled()
+  })
+
+  it('allows a free preview lesson for an authenticated non-enrolled user', async () => {
+    const freeLesson = fakeLessonPageLesson({ id: 'free-lesson', isFree: true })
+    mockPrisma.lesson.findUnique.mockResolvedValue(fakeLessonPageRecord({
+      ...freeLesson,
+      module: fakeLessonPageRecord().module,
+    }))
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+    mockPrisma.courseModule.findMany.mockResolvedValue(fakeLessonPageModules([freeLesson]))
+
+    const res = await request(app)
+      .get('/content/lessons/free-lesson')
+      .set('Authorization', 'Bearer valid-student-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.lesson.videoUrl).toBe('https://video.example/lesson-1')
+  })
+
+  it('does not expose quizId for locked neighboring lessons to authenticated non-enrolled users', async () => {
+    // Setup: free lesson is being viewed, but a neighboring premium lesson exists with a quiz
+    const freeLesson = fakeLessonPageLesson({ id: 'free-lesson', isFree: true, quiz: { id: 'quiz-free' } })
+    const premiumLesson = fakeLessonPageLesson({ id: 'premium-lesson', isFree: false, quiz: { id: 'quiz-prem' } })
+
+    // The DB will return the free lesson as the requested record
+    mockPrisma.lesson.findUnique.mockResolvedValueOnce(
+      fakeLessonPageRecord({ ...freeLesson, module: fakeLessonPageRecord().module }),
+    )
+
+    // Not enrolled
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+
+    // courseModule.findMany returns both lessons in the module so courseLessons contains neighbor data
+    mockPrisma.courseModule.findMany.mockResolvedValueOnce(fakeLessonPageModules([freeLesson, premiumLesson]))
+
+    const res = await request(app)
+      .get('/content/lessons/free-lesson')
+      .set('Authorization', 'Bearer valid-student-token')
+
+    expect(res.status).toBe(200)
+    // The viewed (free) lesson may expose its quizId
+    expect(res.body.data.lesson.quizId).toBe('quiz-free')
+    // The neighboring premium lesson must NOT expose its quizId to a non-enrolled user
+    const neighbor = res.body.data.courseLessons.find((c: any) => c.id === 'premium-lesson')
+    expect(neighbor).toBeDefined()
+    expect(neighbor.quizId).toBeNull()
+  })
+
+  it('returns 401 for unauthenticated requests to protected lesson endpoint', async () => {
+    // Import the real requireAuth (bypass the test's vi.mock) to verify unauthenticated behavior
+    const realAuth = await vi.importActual('../../middleware/auth.middleware.js')
+    const { requireAuth } = realAuth as { requireAuth: RequestHandler }
+    const expressApp = express()
+    expressApp.get('/test/lessons/:id', requireAuth, (req: Request, res: Response) => res.json({ ok: true }))
+
+    const res = await request(expressApp).get('/test/lessons/lesson-1')
+    expect(res.status).toBe(401)
+  })
+
+  it('allows the instructor owner to fetch their lesson', async () => {
+    mockPrisma.lesson.findUnique.mockResolvedValue(fakeLessonPageRecord())
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+    mockPrisma.courseModule.findMany.mockResolvedValue(fakeLessonPageModules())
+
+    const res = await request(app)
+      .get('/content/lessons/lesson-1')
+      .set('Authorization', 'Bearer valid-owner-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.lesson.videoUrl).toBe('https://video.example/lesson-1')
+  })
+
+  it('allows admin to fetch any lesson', async () => {
+    mockPrisma.lesson.findUnique.mockResolvedValue(fakeLessonPageRecord())
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+    mockPrisma.courseModule.findMany.mockResolvedValue(fakeLessonPageModules())
+
+    const res = await request(app)
+      .get('/content/lessons/lesson-1')
+      .set('Authorization', 'Bearer valid-admin-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.lesson.videoUrl).toBe('https://video.example/lesson-1')
+  })
+
+  it('returns 404 when lesson does not exist', async () => {
+    mockPrisma.lesson.findUnique.mockResolvedValue(null)
+
+    const res = await request(app)
+      .get('/content/lessons/missing-lesson')
+      .set('Authorization', 'Bearer valid-student-token')
+
+    expect(res.status).toBe(404)
   })
 })
 
