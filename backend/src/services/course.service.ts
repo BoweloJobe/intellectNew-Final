@@ -27,6 +27,12 @@ const lessonSelect = {
   isFree: true,
   createdAt: true,
   updatedAt: true,
+  quiz: {
+    select: {
+      id: true,
+      timeLimitSeconds: true,
+    },
+  },
 } as const
 
 // Instructor-facing: includes video upload status fields, still omits raw storageKey
@@ -44,6 +50,26 @@ const instructorLessonSelect = {
   videoUploadStatus: true,
   createdAt: true,
   updatedAt: true,
+  quiz: {
+    select: {
+      id: true,
+      timeLimitSeconds: true,
+      questions: {
+        orderBy: { order: 'asc' as const },
+        select: {
+          id: true,
+          text: true,
+          explanation: true,
+          order: true,
+          questionType: true,
+          options: {
+            orderBy: { order: 'asc' as const },
+            select: { id: true, text: true, isCorrect: true, order: true },
+          },
+        },
+      },
+    },
+  },
 } as const
 
 const lessonPageLessonSelect = {

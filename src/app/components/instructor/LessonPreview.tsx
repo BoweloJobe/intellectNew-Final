@@ -109,6 +109,7 @@ export function LessonPreview({
               {(lesson.quizQuestions?.length ?? 0) > 0
                 ? ` · ${lesson.quizQuestions!.length} question${lesson.quizQuestions!.length === 1 ? "" : "s"}`
                 : ""}
+              {lesson.quizTimeLimitMinutes ? ` · ${lesson.quizTimeLimitMinutes} min` : ""}
             </div>
           </div>
         )}

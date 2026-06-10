@@ -154,4 +154,17 @@ describe("QuizPage timed attempt behavior", () => {
 
     expect(mockSubmitQuizAttempt).toHaveBeenCalledTimes(1);
   });
+
+  it("starts a timed attempt and renders the visible countdown", async () => {
+    await act(async () => {
+      root.render(<QuizPage />);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockStartQuizAttempt).toHaveBeenCalledWith("quiz-1");
+    expect(container.textContent).toContain("0:01");
+  });
 });

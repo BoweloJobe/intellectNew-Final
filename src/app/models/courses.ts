@@ -77,6 +77,7 @@ export interface CourseLesson {
   isFreePreview?: boolean;
   quizAvailable?: boolean;
   quizId?: string;
+  quizTimeLimitSeconds?: number;
   /** Instructor-authored quiz questions stored with the lesson. */
   quizQuestions?: QuizQuestion[];
   locked?: boolean;
@@ -109,6 +110,8 @@ export interface InstructorDraftLessonInput {
   notesContent: string;
   isFreePreview: boolean;
   quizAvailable: boolean;
+  /** Optional lesson quiz duration in minutes; undefined/null means untimed. */
+  quizTimeLimitMinutes?: number | null;
   /** Instructor-authored quiz questions. When provided, quizId is auto-generated. */
   quizQuestions?: InstructorDraftQuizQuestionInput[];
   /** Manual quiz ID to link to an existing static quiz template (used when no quizQuestions). */

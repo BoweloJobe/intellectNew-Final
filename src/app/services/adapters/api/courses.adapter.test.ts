@@ -81,6 +81,121 @@ describe("ApiCoursesAdapter", () => {
     });
   });
 
+  it("creates lesson quizzes with instructor-set time limits", async () => {
+    mockHttpClient.post
+      .mockResolvedValueOnce({ status: "ok", data: { course: { ...backendCourse, id: "course-1" } } })
+      .mockResolvedValueOnce({ status: "ok", data: { module: { id: "module-1" } } })
+      .mockResolvedValueOnce({ status: "ok", data: { lesson: { id: "lesson-1" } } })
+      .mockResolvedValueOnce({ status: "ok", data: { quiz: { id: "quiz-1" } } })
+      .mockResolvedValue({ status: "ok", data: { question: { id: "question-1" } } });
+    mockHttpClient.get.mockResolvedValueOnce({
+      status: "ok",
+      data: { course: backendCourse },
+    });
+
+    await new ApiCoursesAdapter().createInstructorCourse({
+      title: "Cell Biology",
+      instructor: "Ada Lovelace",
+      category: "Biology",
+      description: "A practical course about cells.",
+      difficulty: "beginner",
+      totalLessons: 1,
+      initialStatus: "draft",
+      modules: [
+        {
+          title: "Basics",
+          lessons: [
+            {
+              title: "Cells",
+              videoUrl: "https://example.com/video",
+              description: "Cell intro",
+              duration: "10m",
+              estimatedCompletionTimeMinutes: 10,
+              notesContent: "Notes",
+              isFreePreview: false,
+              quizAvailable: true,
+              quizTimeLimitMinutes: 12,
+              quizQuestions: [
+                {
+                  prompt: "Question?",
+                  optionA: "A",
+                  optionB: "B",
+                  optionC: "C",
+                  optionD: "D",
+                  correctOption: "a",
+                  explanation: "Because.",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/content/lessons/lesson-1/quiz", {
+      body: {
+        title: "Quiz: Cells",
+        passingScore: 70,
+        timeLimitSeconds: 720,
+      },
+    });
+  });
+
+  it("updates existing lesson quiz time limits when editing courses", async () => {
+    const courseWithLesson = {
+      ...backendCourse,
+      modules: [
+        {
+          id: "module-1",
+          title: "Basics",
+          order: 0,
+          lessons: [{ id: "lesson-1", title: "Cells", order: 0 }],
+        },
+      ],
+    };
+    mockHttpClient.get
+      .mockResolvedValueOnce({ status: "ok", data: { course: courseWithLesson } })
+      .mockResolvedValueOnce({ status: "ok", data: { course: courseWithLesson } });
+    mockHttpClient.put.mockResolvedValue({ status: "ok", data: {} });
+
+    await new ApiCoursesAdapter().editInstructorCourse({
+      courseId: "course-1",
+      title: "Cell Biology",
+      instructor: "Ada Lovelace",
+      category: "Biology",
+      description: "A practical course about cells.",
+      difficulty: "beginner",
+      totalLessons: 1,
+      initialStatus: "draft",
+      modules: [
+        {
+          id: "module-1",
+          title: "Basics",
+          lessons: [
+            {
+              id: "lesson-1",
+              title: "Cells",
+              videoUrl: "https://example.com/video",
+              description: "Cell intro",
+              duration: "10m",
+              estimatedCompletionTimeMinutes: 10,
+              notesContent: "Notes",
+              isFreePreview: false,
+              quizAvailable: true,
+              quizId: "quiz-1",
+              quizTimeLimitMinutes: 5,
+              quizQuestions: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(mockHttpClient.put).toHaveBeenCalledWith("/content/quizzes/quiz-1", {
+      body: { timeLimitSeconds: 300 },
+    });
+  });
+
   it("loads saved course ids from GET /courses/saved", async () => {
     mockHttpClient.get.mockResolvedValueOnce({
       status: "ok",

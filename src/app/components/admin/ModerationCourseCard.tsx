@@ -230,6 +230,7 @@ export function ModerationCourseCard({
                               {lesson.quizAvailable && lesson.quizId ? (
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700">
                                   Quiz{quizCount > 0 ? ` · ${quizCount}q` : ""}
+                                  {lesson.quizTimeLimitSeconds ? ` · ${Math.ceil(lesson.quizTimeLimitSeconds / 60)}m` : ""}
                                 </span>
                               ) : null}
                               {/* Free badge */}

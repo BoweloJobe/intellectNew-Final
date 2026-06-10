@@ -30,6 +30,7 @@ function buildInstructorQuizTemplate(
   questions: QuizQuestion[],
   course: InstructorManagedCourse,
   estimatedMinutes: number,
+  timeLimitSeconds?: number,
 ): QuizTemplate {
   return {
     id: quizId,
@@ -37,6 +38,7 @@ function buildInstructorQuizTemplate(
     topic: lessonTitle,
     difficulty: courseDifficultyToQuizDifficulty(course.difficulty),
     estimatedDurationMinutes: Math.max(5, estimatedMinutes),
+    timeLimitSeconds,
     sourceLessonId: lessonId,
     sourceCourseId: course.id,
     questions,
@@ -59,6 +61,7 @@ function findInstructorQuizTemplateById(quizId: string): QuizTemplate | null {
             lesson.quizQuestions,
             course,
             lesson.estimatedCompletionTimeMinutes ?? 15,
+            lesson.quizTimeLimitSeconds,
           );
         }
       }
@@ -88,6 +91,7 @@ function getInstructorPracticeQuizzes(): PracticeQuiz[] {
             topic: lesson.title,
             questions: lesson.quizQuestions.length,
             difficulty: courseDifficultyToQuizDifficulty(course.difficulty),
+            timeLimitSeconds: lesson.quizTimeLimitSeconds,
             quizId: lesson.quizId,
             lessonId: lesson.id,
             courseId: course.id,
@@ -231,6 +235,7 @@ export class MockQuizzesAdapter implements QuizzesService {
                   lesson.quizQuestions,
                   course,
                   lesson.estimatedCompletionTimeMinutes ?? 15,
+                  lesson.quizTimeLimitSeconds,
                 ),
               );
             }

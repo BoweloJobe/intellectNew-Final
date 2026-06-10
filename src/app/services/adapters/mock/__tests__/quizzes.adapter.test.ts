@@ -13,4 +13,29 @@ describe("MockQuizzesAdapter", () => {
     expect(attempt.startedAt).toBeTruthy();
     expect(attempt.serverTime).toBeTruthy();
   });
+
+  it("returns expiry metadata for timed mock quizzes", async () => {
+    const adapter = new MockQuizzesAdapter();
+    const created = await adapter.createStandaloneQuiz({
+      title: "Timed mock quiz",
+      category: "Biology",
+      difficulty: "Medium",
+      timeLimitSeconds: 300,
+      questions: [
+        {
+          questionType: "MCQ",
+          text: "Question?",
+          options: [
+            { text: "A", isCorrect: true },
+            { text: "B", isCorrect: false },
+          ],
+        },
+      ],
+    });
+
+    const attempt = await adapter.startQuizAttempt(created.quizId);
+
+    expect(attempt.timeLimitSeconds).toBe(300);
+    expect(attempt.expiresAt).toBeTruthy();
+  });
 });

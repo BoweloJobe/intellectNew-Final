@@ -6,6 +6,7 @@ export const createQuizSchema = z.object({
   title: z.string().min(3).max(200).trim(),
   description: z.string().max(2000).trim().optional(),
   passingScore: z.number().int().min(1).max(100).optional(),
+  timeLimitSeconds: z.number().int().min(60).max(10800).nullable().optional(),
 })
 
 export const updateQuizSchema = createQuizSchema.partial()

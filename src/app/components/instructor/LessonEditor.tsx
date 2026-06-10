@@ -192,6 +192,7 @@ export function LessonEditor({
                   onUpdate({
                     ...lesson,
                     quizAvailable: checked,
+                    quizTimeLimitMinutes: checked ? lesson.quizTimeLimitMinutes ?? null : null,
                     quizQuestions: checked && (!lesson.quizQuestions || lesson.quizQuestions.length === 0)
                       ? [{ prompt: "", optionA: "", optionB: "", optionC: "", optionD: "", correctOption: "a", explanation: "" }]
                       : lesson.quizQuestions,
@@ -205,10 +206,27 @@ export function LessonEditor({
 
           {/* Inline Quiz Authoring */}
           {lesson.quizAvailable && (
-            <LessonQuizEditor
-              questions={lesson.quizQuestions ?? []}
-              onChange={(questions) => updateField("quizQuestions", questions)}
-            />
+            <div className="space-y-3">
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-gray-600 uppercase">Quiz Time Limit (minutes)</span>
+                <input
+                  value={lesson.quizTimeLimitMinutes ?? ""}
+                  onChange={(e) => {
+                    const value = e.target.value.trim();
+                    updateField("quizTimeLimitMinutes", value ? Number(value) : null);
+                  }}
+                  type="number"
+                  min={1}
+                  max={180}
+                  placeholder="Untimed"
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                />
+              </label>
+              <LessonQuizEditor
+                questions={lesson.quizQuestions ?? []}
+                onChange={(questions) => updateField("quizQuestions", questions)}
+              />
+            </div>
           )}
         </>
       )}

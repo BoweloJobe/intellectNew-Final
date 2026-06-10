@@ -3,7 +3,8 @@ import { AppError } from '../../errors/AppError.js'
 
 const mockPrisma = vi.hoisted(() => ({
   enrollment: { findUnique: vi.fn() },
-  quiz: { findUnique: vi.fn() },
+  lesson: { findUnique: vi.fn() },
+  quiz: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
   quizAttempt: {
     findUnique: vi.fn(),
     create: vi.fn(),
@@ -18,7 +19,7 @@ vi.mock('../../services/subscription.service.js', () => ({
   getMySubscription: vi.fn(async () => ({ isPremium: true })),
 }))
 
-import { getQuizById, startAttempt, submitAttempt } from '../quiz.service.js'
+import { createQuiz, getQuizById, startAttempt, submitAttempt, updateQuiz } from '../quiz.service.js'
 
 const now = new Date('2026-06-10T12:00:00.000Z')
 
@@ -48,6 +49,56 @@ describe('quiz attempt timing service', () => {
     vi.useFakeTimers()
     vi.setSystemTime(now)
     vi.resetAllMocks()
+  })
+
+  it('saves a lesson quiz time limit for instructor-authored quizzes', async () => {
+    mockPrisma.lesson.findUnique.mockResolvedValue({
+      id: 'lesson-1',
+      module: { course: { instructorId: 'instructor-1' } },
+    })
+    mockPrisma.quiz.findUnique.mockResolvedValue(null)
+    mockPrisma.quiz.create.mockResolvedValue({
+      id: 'quiz-1',
+      lessonId: 'lesson-1',
+      title: 'Timed lesson quiz',
+      description: null,
+      passingScore: 70,
+      timeLimitSeconds: 600,
+      questions: [],
+    })
+
+    await createQuiz('lesson-1', 'instructor-1', {
+      title: 'Timed lesson quiz',
+      timeLimitSeconds: 600,
+    })
+
+    expect(mockPrisma.quiz.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        lessonId: 'lesson-1',
+        title: 'Timed lesson quiz',
+        timeLimitSeconds: 600,
+      }),
+    }))
+  })
+
+  it('allows instructors to clear an existing quiz time limit', async () => {
+    mockPrisma.quiz.findUnique.mockResolvedValue({
+      id: 'quiz-1',
+      lessonId: null,
+      instructorId: 'instructor-1',
+    })
+    mockPrisma.quiz.update.mockResolvedValue({
+      id: 'quiz-1',
+      timeLimitSeconds: null,
+      questions: [],
+    })
+
+    await updateQuiz('quiz-1', 'instructor-1', { timeLimitSeconds: null })
+
+    expect(mockPrisma.quiz.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'quiz-1' },
+      data: { timeLimitSeconds: null },
+    }))
   })
 
   afterEach(() => {

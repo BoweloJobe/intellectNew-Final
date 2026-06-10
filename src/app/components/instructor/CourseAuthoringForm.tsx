@@ -66,6 +66,7 @@ function createEmptyLesson(): InstructorDraftLessonInput {
     notesContent: "",
     isFreePreview: false,
     quizAvailable: false,
+    quizTimeLimitMinutes: null,
     quizId: "",
   };
 }
@@ -114,6 +115,9 @@ export function CourseAuthoringForm({
           isFreePreview: lesson.isFreePreview || false,
           quizAvailable: lesson.quizAvailable || false,
           quizId: lesson.quizId,
+          quizTimeLimitMinutes: lesson.quizTimeLimitSeconds
+            ? Math.ceil(lesson.quizTimeLimitSeconds / 60)
+            : null,
           quizQuestions: lesson.quizQuestions?.map(quizQuestionToInput),
         })),
       }))
@@ -143,6 +147,10 @@ export function CourseAuthoringForm({
             isFreePreview: Boolean(lesson.isFreePreview),
             quizAvailable: Boolean(lesson.quizAvailable),
             quizId: lesson.quizId?.trim() || undefined,
+            quizTimeLimitMinutes:
+              lesson.quizAvailable && lesson.quizTimeLimitMinutes && lesson.quizTimeLimitMinutes > 0
+                ? Number(lesson.quizTimeLimitMinutes)
+                : null,
             quizQuestions: lesson.quizQuestions,
           }))
           .filter((lesson) => lesson.title.length > 0),
@@ -435,6 +443,7 @@ export function CourseAuthoringForm({
                             {lesson.quizAvailable && (lesson.quizQuestions?.length ?? 0) > 0 ? (
                               <span className="px-1 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700">
                                 Quiz · {lesson.quizQuestions!.length}q
+                                {lesson.quizTimeLimitMinutes ? ` · ${lesson.quizTimeLimitMinutes}m` : ""}
                               </span>
                             ) : null}
                           </li>

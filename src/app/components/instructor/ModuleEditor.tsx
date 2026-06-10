@@ -25,6 +25,7 @@ function createEmptyLesson(): InstructorDraftLessonInput {
     notesContent: "",
     isFreePreview: false,
     quizAvailable: false,
+    quizTimeLimitMinutes: null,
     quizId: "",
   };
 }

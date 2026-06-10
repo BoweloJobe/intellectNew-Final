@@ -33,6 +33,23 @@ interface BackendLesson {
   estimatedMinutes: number | null;
   order: number;
   isFree: boolean;
+  quiz?: {
+    id: string;
+    timeLimitSeconds: number | null;
+    questions?: Array<{
+      id: string;
+      text: string;
+      explanation: string | null;
+      order: number;
+      questionType: string;
+      options: Array<{
+        id: string;
+        text: string;
+        isCorrect: boolean;
+        order: number;
+      }>;
+    }>;
+  } | null;
 }
 
 interface BackendModule {
@@ -89,6 +106,10 @@ function isValidUrl(val: string): boolean {
   }
 }
 
+function getQuizTimeLimitSeconds(minutes?: number | null): number | undefined {
+  return minutes && minutes > 0 ? Math.round(minutes * 60) : undefined;
+}
+
 function mapDifficulty(raw: string): CourseDifficulty {
   switch (raw.toUpperCase()) {
     case "INTERMEDIATE":
@@ -123,6 +144,9 @@ function mapCourseLesson(lesson: BackendLesson): CourseLesson {
   } else {
     duration = "—";
   }
+  const orderedQuestions = [...(lesson.quiz?.questions ?? [])].sort((a, b) => a.order - b.order);
+  const optionIds = ["a", "b", "c", "d"] as const;
+
   return {
     id: lesson.id,
     title: lesson.title,
@@ -132,6 +156,24 @@ function mapCourseLesson(lesson: BackendLesson): CourseLesson {
     estimatedCompletionTimeMinutes: lesson.estimatedMinutes ?? undefined,
     notesContent: lesson.notes ?? undefined,
     isFreePreview: lesson.isFree,
+    quizAvailable: Boolean(lesson.quiz?.id),
+    quizId: lesson.quiz?.id ?? undefined,
+    quizTimeLimitSeconds: lesson.quiz?.timeLimitSeconds ?? undefined,
+    quizQuestions: orderedQuestions.map((q) => {
+      const orderedOptions = [...q.options].sort((a, b) => a.order - b.order);
+      const correctIndex = orderedOptions.findIndex((option) => option.isCorrect);
+      return {
+        id: q.id,
+        prompt: q.text,
+        questionType: q.questionType === "SHORT_ANSWER" ? "SHORT_ANSWER" : "MCQ",
+        options: orderedOptions.map((option, index) => ({
+          id: optionIds[index] ?? option.id,
+          text: option.text,
+        })),
+        correctOptionId: optionIds[Math.max(0, correctIndex)] ?? "a",
+        explanation: q.explanation ?? "",
+      };
+    }),
   };
 }
 
@@ -415,7 +457,15 @@ export class ApiCoursesAdapter implements CoursesService {
               const quizTitle = `Quiz: ${lesson.title}`.slice(0, 200);
               const quizRes = await httpClient.post<{ status: string; data: { quiz: { id: string } } }>(
                 `/content/lessons/${encodeURIComponent(lessonId)}/quiz`,
-                { body: { title: quizTitle, passingScore: 70 } },
+                {
+                  body: {
+                    title: quizTitle,
+                    passingScore: 70,
+                    ...(getQuizTimeLimitSeconds(lesson.quizTimeLimitMinutes)
+                      ? { timeLimitSeconds: getQuizTimeLimitSeconds(lesson.quizTimeLimitMinutes) }
+                      : {}),
+                  },
+                },
               );
               const quizId = quizRes.data.quiz.id;
 
@@ -532,6 +582,16 @@ export class ApiCoursesAdapter implements CoursesService {
               { body: lessonBody },
             );
             keepLessonIds.add(lesson.id);
+            if (lesson.quizId) {
+              await httpClient.put(
+                `/content/quizzes/${encodeURIComponent(lesson.quizId)}`,
+                {
+                  body: {
+                    timeLimitSeconds: getQuizTimeLimitSeconds(lesson.quizTimeLimitMinutes) ?? null,
+                  },
+                },
+              );
+            }
           } else {
             // New lesson — create
             const lessonResp = await httpClient.post<{ status: string; data: { lesson: { id: string } } }>(
@@ -547,7 +607,15 @@ export class ApiCoursesAdapter implements CoursesService {
                 const quizTitle = `Quiz: ${lesson.title}`.slice(0, 200);
                 const quizRes = await httpClient.post<{ status: string; data: { quiz: { id: string } } }>(
                   `/content/lessons/${encodeURIComponent(newLessonId)}/quiz`,
-                  { body: { title: quizTitle, passingScore: 70 } },
+                  {
+                    body: {
+                      title: quizTitle,
+                      passingScore: 70,
+                      ...(getQuizTimeLimitSeconds(lesson.quizTimeLimitMinutes)
+                        ? { timeLimitSeconds: getQuizTimeLimitSeconds(lesson.quizTimeLimitMinutes) }
+                        : {}),
+                    },
+                  },
                 );
                 const quizId = quizRes.data.quiz.id;
                 for (let qIdx = 0; qIdx < lesson.quizQuestions.length; qIdx++) {
