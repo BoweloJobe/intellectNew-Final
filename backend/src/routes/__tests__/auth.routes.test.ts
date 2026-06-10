@@ -21,6 +21,7 @@ const mockAuthService = vi.hoisted(() => ({
   login: vi.fn(),
   getMe: vi.fn(),
   updateProfile: vi.fn(),
+  changePassword: vi.fn(),
   requestPasswordReset: vi.fn(),
   resetPassword: vi.fn(),
 }))
@@ -133,5 +134,50 @@ describe('auth routes', () => {
       password: 'password123',
       role: 'INSTRUCTOR',
     })
+  })
+
+  it('requires auth for password change', async () => {
+    const res = await request(app).patch('/auth/password').send({
+      currentPassword: 'password123',
+      newPassword: 'new-password-123',
+      confirmPassword: 'new-password-123',
+    })
+
+    expect(res.status).toBe(401)
+    expect(mockAuthService.changePassword).not.toHaveBeenCalled()
+  })
+
+  it('validates and dispatches password changes for the authenticated user', async () => {
+    mockAuthService.changePassword.mockResolvedValue(undefined)
+
+    const res = await request(app)
+      .patch('/auth/password')
+      .set('Authorization', 'Bearer token')
+      .send({
+        currentPassword: 'password123',
+        newPassword: 'new-password-123',
+        confirmPassword: 'new-password-123',
+      })
+
+    expect(res.status).toBe(200)
+    expect(mockAuthService.changePassword).toHaveBeenCalledWith('user-1', {
+      currentPassword: 'password123',
+      newPassword: 'new-password-123',
+      confirmPassword: 'new-password-123',
+    })
+  })
+
+  it('rejects weak password changes before service dispatch', async () => {
+    const res = await request(app)
+      .patch('/auth/password')
+      .set('Authorization', 'Bearer token')
+      .send({
+        currentPassword: 'password123',
+        newPassword: 'short',
+        confirmPassword: 'short',
+      })
+
+    expect(res.status).toBe(400)
+    expect(mockAuthService.changePassword).not.toHaveBeenCalled()
   })
 })

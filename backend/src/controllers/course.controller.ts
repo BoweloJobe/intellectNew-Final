@@ -50,6 +50,27 @@ export async function getMyCourseDetail(req: Request, res: Response, next: NextF
   } catch (err) { next(err) }
 }
 
+export async function listSavedCourses(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const courses = await CourseService.listSavedCourses(req.user!.id)
+    res.json({ status: 'ok', data: { courses } })
+  } catch (err) { next(err) }
+}
+
+export async function saveCourse(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await CourseService.saveCourse(req.user!.id, req.params.courseId)
+    res.status(204).end()
+  } catch (err) { next(err) }
+}
+
+export async function unsaveCourse(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await CourseService.unsaveCourse(req.user!.id, req.params.courseId)
+    res.status(204).end()
+  } catch (err) { next(err) }
+}
+
 export async function createModule(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const input = validate(createModuleSchema, req.body)

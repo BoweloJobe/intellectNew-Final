@@ -11,6 +11,7 @@ import type {
   SignupInput,
   LoginInput,
   UpdateProfileInput,
+  ChangePasswordInput,
   RequestResetInput,
   ResetPasswordInput,
 } from '../validation/auth.validation.js'
@@ -106,6 +107,30 @@ export async function updateProfile(userId: string, input: UpdateProfileInput): 
   })
 
   return toUserProfile(updatedUser)
+}
+
+export async function changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) {
+    throw new AppError(404, 'User not found')
+  }
+
+  const currentPasswordValid = await bcrypt.compare(input.currentPassword, user.passwordHash)
+  if (!currentPasswordValid) {
+    throw new AppError(400, 'Current password is incorrect')
+  }
+
+  const samePassword = await bcrypt.compare(input.newPassword, user.passwordHash)
+  if (samePassword) {
+    throw new AppError(400, 'New password must be different from current password')
+  }
+
+  const passwordHash = await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS)
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash },
+  })
 }
 
 export async function requestPasswordReset(

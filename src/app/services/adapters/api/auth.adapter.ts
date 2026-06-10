@@ -3,6 +3,8 @@ import type {
   AuthService,
   AuthSession,
   AuthUser,
+  ChangePasswordInput,
+  ChangePasswordResult,
   ResetPasswordInput,
   ResetPasswordResult,
   SendPasswordResetCodeInput,
@@ -163,6 +165,25 @@ export class ApiAuthAdapter implements AuthService {
       return { ok: true, user: mapBackendUser(response.data.user) };
     } catch (error) {
       const apiError = toApiError(error, { operation: 'auth.updateProfile' });
+      return { ok: false, message: apiError.message };
+    }
+  }
+
+  async changePassword(input: ChangePasswordInput): Promise<ChangePasswordResult> {
+    const token = getStoredToken();
+    if (!token) {
+      return { ok: false, message: "Authentication required" };
+    }
+
+    try {
+      await httpClient.patch<{ status: string; message?: string }, ChangePasswordInput>(
+        "/auth/password",
+        { body: input },
+      );
+
+      return { ok: true, message: "Password updated successfully." };
+    } catch (error) {
+      const apiError = toApiError(error, { operation: "auth.changePassword" });
       return { ok: false, message: apiError.message };
     }
   }

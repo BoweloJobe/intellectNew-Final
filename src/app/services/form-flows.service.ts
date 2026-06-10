@@ -4,7 +4,7 @@ import {
   normalizeRequiredTextInput,
 } from "../utils/form-validation";
 import { getNotesService } from "./factory/service-registry";
-import { updateProfile } from "./auth.service";
+import { changePassword, updateProfile } from "./auth.service";
 import {
   getNotificationPreferences,
   saveNotificationPreferences,
@@ -132,6 +132,14 @@ export async function loadNotificationSettings(): Promise<NotificationSettingsIn
   return getNotificationPreferences();
 }
 
-export async function saveSecuritySettings(_input: SecuritySettingsInput): Promise<void> {
-  throw new Error("Password changes are not available in demo mode.");
+export async function saveSecuritySettings(input: SecuritySettingsInput): Promise<void> {
+  const result = await changePassword({
+    currentPassword: input.currentPassword,
+    newPassword: input.newPassword,
+    confirmPassword: input.confirmPassword,
+  });
+
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
 }

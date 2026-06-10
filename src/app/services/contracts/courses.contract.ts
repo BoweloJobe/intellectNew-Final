@@ -10,6 +10,9 @@ import type {
 export interface CoursesService {
   getCoursesPageData(): Promise<CoursesPageData>;
   getCourseDetails(courseId: string): Promise<CourseDetails>;
+  getSavedCourseIds(): Promise<string[]>;
+  saveCourse(courseId: string): Promise<void>;
+  unsaveCourse(courseId: string): Promise<void>;
   getEnrolledCoursesProgress(): Promise<EnrolledCourseProgress[]>;
   getInstructorManagedCourses(instructorName?: string): Promise<InstructorManagedCourse[]>;
   getCourseModerationQueue(): Promise<InstructorManagedCourse[]>;

@@ -256,6 +256,31 @@ export class ApiCoursesAdapter implements CoursesService {
     }
   }
 
+  async getSavedCourseIds(): Promise<string[]> {
+    try {
+      const response = await httpClient.get<BackendCoursesResponse>("/courses/saved");
+      return response.data.courses.map((course) => course.id);
+    } catch (error) {
+      throw toApiError(error, { operation: "courses.getSavedCourseIds" });
+    }
+  }
+
+  async saveCourse(courseId: string): Promise<void> {
+    try {
+      await httpClient.post(`/courses/${encodeURIComponent(courseId)}/save`);
+    } catch (error) {
+      throw toApiError(error, { operation: "courses.saveCourse" });
+    }
+  }
+
+  async unsaveCourse(courseId: string): Promise<void> {
+    try {
+      await httpClient.delete(`/courses/${encodeURIComponent(courseId)}/save`);
+    } catch (error) {
+      throw toApiError(error, { operation: "courses.unsaveCourse" });
+    }
+  }
+
   async getEnrolledCoursesProgress(): Promise<EnrolledCourseProgress[]> {
     try {
       const enrollmentsResponse = await httpClient.get<BackendEnrollmentsResponse>(

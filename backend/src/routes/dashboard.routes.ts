@@ -5,6 +5,12 @@ import * as DashboardController from '../controllers/dashboard.controller.js'
 
 const router = Router()
 
+router.get(
+  '/student',
+  requireAuth,
+  DashboardController.getStudentDashboard,
+)
+
 // GET /api/dashboard/instructor — instructor/admin only
 router.get(
   '/instructor',

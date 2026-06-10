@@ -8,8 +8,12 @@ import {
   completeCourseLesson as completeCourseLessonRequest,
   enrollCourse,
   getEnrolledCoursesProgress,
+  getSavedCourseIds,
+  saveCourse,
   trackCourseAccess,
+  unsaveCourse,
 } from "../../services/courses.service";
+import { logError } from "../../utils/logger";
 
 function clampProgress(progress: number): number {
   return Math.max(0, Math.min(100, progress));
@@ -39,6 +43,7 @@ type CoursesContextValue = {
   state: CoursesState;
   hydrate: (partial: LocalOwnedCoursesHydration) => void;
   reloadEnrollments: () => Promise<void>;
+  reloadSavedCourses: () => Promise<void>;
   toggleBookmark: (courseId: string) => boolean;
   setCourseProgress: (courseId: string, progress: number) => void;
   getCourseStatus: (courseId: string) => CourseStatus;
@@ -101,11 +106,29 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
           // Silently fail — app continues with empty enrollment state
         }
       },
+      reloadSavedCourses: async () => {
+        try {
+          const savedCourseIds = await getSavedCourseIds();
+          setBookmarks(savedCourseIds);
+        } catch {
+          // Silently fail; existing local/mock state remains usable.
+        }
+      },
       toggleBookmark: (courseId) => {
         const exists = bookmarks.includes(courseId);
-        setBookmarks((previous) =>
-          exists ? previous.filter((id) => id !== courseId) : [...previous, courseId],
-        );
+        void (exists ? unsaveCourse(courseId) : saveCourse(courseId))
+          .then(() => {
+            setBookmarks((previous) =>
+              exists ? previous.filter((id) => id !== courseId) : [...previous, courseId],
+            );
+          })
+          .catch((error) => {
+            logError("Saved course update failed", {
+              operation: exists ? "courses.unsaveCourse" : "courses.saveCourse",
+              courseId,
+              error,
+            });
+          });
         return !exists;
       },
       setCourseProgress: (courseId, progress) => {

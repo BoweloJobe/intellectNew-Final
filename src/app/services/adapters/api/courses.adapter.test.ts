@@ -80,4 +80,25 @@ describe("ApiCoursesAdapter", () => {
       },
     });
   });
+
+  it("loads saved course ids from GET /courses/saved", async () => {
+    mockHttpClient.get.mockResolvedValueOnce({
+      status: "ok",
+      data: { courses: [backendCourse] },
+    });
+
+    await expect(new ApiCoursesAdapter().getSavedCourseIds()).resolves.toEqual(["course-1"]);
+    expect(mockHttpClient.get).toHaveBeenCalledWith("/courses/saved");
+  });
+
+  it("saves and unsaves courses through backend endpoints", async () => {
+    mockHttpClient.post.mockResolvedValueOnce(undefined);
+    mockHttpClient.delete.mockResolvedValueOnce(undefined);
+
+    await new ApiCoursesAdapter().saveCourse("course-1");
+    await new ApiCoursesAdapter().unsaveCourse("course-1");
+
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/courses/course-1/save");
+    expect(mockHttpClient.delete).toHaveBeenCalledWith("/courses/course-1/save");
+  });
 });

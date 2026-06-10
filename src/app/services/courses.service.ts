@@ -16,6 +16,18 @@ export async function getCourseDetails(courseId: string): Promise<CourseDetails>
   return getCoursesService().getCourseDetails(courseId);
 }
 
+export async function getSavedCourseIds(): Promise<string[]> {
+  return getCoursesService().getSavedCourseIds();
+}
+
+export async function saveCourse(courseId: string): Promise<void> {
+  await getCoursesService().saveCourse(courseId);
+}
+
+export async function unsaveCourse(courseId: string): Promise<void> {
+  await getCoursesService().unsaveCourse(courseId);
+}
+
 export async function getEnrolledCoursesProgress(): Promise<EnrolledCourseProgress[]> {
   return getCoursesService().getEnrolledCoursesProgress();
 }

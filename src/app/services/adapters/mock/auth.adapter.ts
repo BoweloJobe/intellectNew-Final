@@ -2,6 +2,8 @@ import type {
   AuthService,
   AuthSession,
   AuthUser,
+  ChangePasswordInput,
+  ChangePasswordResult,
   OAuthProvider,
   PasswordResetChannel,
   ResetPasswordInput,
@@ -21,6 +23,7 @@ import type {
 } from "../../contracts/auth.contract";
 
 const DEMO_PASSWORD = "password123";
+let activeDemoPassword = DEMO_PASSWORD;
 const RESET_CODE_LENGTH = 6;
 const MAX_RESET_CODE_ATTEMPTS = 5;
 
@@ -131,7 +134,7 @@ export class MockAuthAdapter implements AuthService {
     const normalizedEmail = input.email.trim().toLowerCase();
     const matchedUser = DEMO_USERS[normalizedEmail];
 
-    if (matchedUser && input.password === DEMO_PASSWORD) {
+    if (matchedUser && input.password === activeDemoPassword) {
       return { ok: true, user: matchedUser };
     }
 
@@ -344,6 +347,29 @@ export class MockAuthAdapter implements AuthService {
         bio: normalizedBio,
       },
     };
+  }
+
+  async changePassword(input: ChangePasswordInput): Promise<ChangePasswordResult> {
+    await delay(350);
+
+    if (input.currentPassword !== activeDemoPassword) {
+      return { ok: false, message: "Current password is incorrect." };
+    }
+
+    if (input.newPassword.trim().length < 8) {
+      return { ok: false, message: "Password must be at least 8 characters." };
+    }
+
+    if (input.newPassword !== input.confirmPassword) {
+      return { ok: false, message: "Passwords do not match." };
+    }
+
+    if (input.newPassword === input.currentPassword) {
+      return { ok: false, message: "New password must be different from current password." };
+    }
+
+    activeDemoPassword = input.newPassword;
+    return { ok: true, message: "Password updated successfully." };
   }
 
   async signOut(): Promise<void> {

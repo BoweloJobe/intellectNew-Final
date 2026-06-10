@@ -168,4 +168,37 @@ describe("ApiAuthAdapter", () => {
     expect(result).toEqual({ ok: false, message: "Authentication required" });
     expect(mockHttpClient.patch).not.toHaveBeenCalled();
   });
+
+  it("changes password with PATCH /auth/password", async () => {
+    mockHttpClient.patch.mockResolvedValue({ status: "ok", message: "Password updated successfully" });
+
+    const result = await new ApiAuthAdapter().changePassword({
+      currentPassword: "password123",
+      newPassword: "new-password-123",
+      confirmPassword: "new-password-123",
+    });
+
+    expect(mockHttpClient.patch).toHaveBeenCalledWith("/auth/password", {
+      body: {
+        currentPassword: "password123",
+        newPassword: "new-password-123",
+        confirmPassword: "new-password-123",
+      },
+    });
+    expect(result).toEqual({ ok: true, message: "Password updated successfully." });
+  });
+
+  it("propagates password change backend errors", async () => {
+    mockHttpClient.patch.mockRejectedValue(
+      new ApiError({ category: "http", message: "Current password is incorrect", status: 400 }),
+    );
+
+    const result = await new ApiAuthAdapter().changePassword({
+      currentPassword: "wrong-password",
+      newPassword: "new-password-123",
+      confirmPassword: "new-password-123",
+    });
+
+    expect(result).toEqual({ ok: false, message: "Current password is incorrect" });
+  });
 });

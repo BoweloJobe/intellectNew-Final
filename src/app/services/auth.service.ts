@@ -2,6 +2,8 @@ import { getAuthService } from "./factory/service-registry";
 import type {
   AuthSession,
   AuthUser,
+  ChangePasswordInput,
+  ChangePasswordResult,
   ResetPasswordInput,
   ResetPasswordResult,
   SignInWithProviderInput,
@@ -54,6 +56,10 @@ export async function signOut(): Promise<void> {
 
 export async function updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult> {
   return getAuthService().updateProfile(input);
+}
+
+export async function changePassword(input: ChangePasswordInput): Promise<ChangePasswordResult> {
+  return getAuthService().changePassword(input);
 }
 
 export async function getCurrentUser(input?: { session?: AuthSession | null }): Promise<AuthUser | null> {

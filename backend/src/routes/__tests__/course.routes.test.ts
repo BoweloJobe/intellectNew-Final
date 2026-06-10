@@ -57,6 +57,15 @@ vi.mock('../../controllers/course.controller.js', () => ({
   getMyCourseDetail: vi.fn((_req: Request, res: Response) =>
     res.json({ handler: 'getMyCourseDetail', id: (_req as any).params.id }),
   ),
+  listSavedCourses: vi.fn((_req: Request, res: Response) =>
+    res.json({ handler: 'listSavedCourses' }),
+  ),
+  saveCourse: vi.fn((_req: Request, res: Response) =>
+    res.json({ handler: 'saveCourse', courseId: (_req as any).params.courseId }),
+  ),
+  unsaveCourse: vi.fn((_req: Request, res: Response) =>
+    res.json({ handler: 'unsaveCourse', courseId: (_req as any).params.courseId }),
+  ),
   updateCourse: vi.fn((_req: Request, res: Response) =>
     res.json({ handler: 'updateCourse' }),
   ),

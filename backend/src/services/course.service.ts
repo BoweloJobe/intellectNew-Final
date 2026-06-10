@@ -478,6 +478,46 @@ export async function listApprovedCourses(params: {
   })
 }
 
+export async function listSavedCourses(userId: string) {
+  const savedCourses = await prisma.savedCourse.findMany({
+    where: {
+      userId,
+      course: { status: 'APPROVED' },
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      course: {
+        select: coursePublicSelect,
+      },
+    },
+  })
+
+  return savedCourses.map((saved) => saved.course)
+}
+
+export async function saveCourse(userId: string, courseId: string) {
+  const course = await prisma.course.findFirst({
+    where: { id: courseId, status: 'APPROVED' },
+    select: { id: true },
+  })
+
+  if (!course) {
+    throw new AppError(404, 'Course not found')
+  }
+
+  await prisma.savedCourse.upsert({
+    where: { userId_courseId: { userId, courseId } },
+    update: {},
+    create: { userId, courseId },
+  })
+}
+
+export async function unsaveCourse(userId: string, courseId: string) {
+  await prisma.savedCourse.deleteMany({
+    where: { userId, courseId },
+  })
+}
+
 export async function getApprovedCourse(courseId: string, userId?: string) {
   const course = await prisma.course.findFirst({
     where: { id: courseId, status: 'APPROVED' },

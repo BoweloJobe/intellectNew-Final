@@ -9,9 +9,142 @@ import type {
   InstructorEngagementDataPoint,
   InstructorCoursePerformanceItem,
   InstructorSubmissionItem,
+  StudentDashboardStat,
+  StudentContinueLearningItem,
+  StudentUpcomingQuiz,
+  StudentDashboardRecommendation,
 } from '../types/dashboard.types.js'
 
 const COMPLETED_PAYMENT_STATUS = 'COMPLETED'
+
+export interface StudentDashboardPayload {
+  stats: StudentDashboardStat[]
+  continueLearning: StudentContinueLearningItem[]
+  upcomingQuizzes: StudentUpcomingQuiz[]
+  recommendations: StudentDashboardRecommendation[]
+}
+
+function emptyStudentDashboard(): StudentDashboardPayload {
+  return {
+    stats: [
+      { label: 'Courses Enrolled', value: '0', key: 'courses-enrolled' },
+      { label: 'Completed', value: '0', key: 'completed' },
+      { label: 'Study Hours', value: '0', key: 'study-hours' },
+      { label: 'Current Streak', value: '0', key: 'current-streak' },
+    ],
+    continueLearning: [],
+    upcomingQuizzes: [],
+    recommendations: [],
+  }
+}
+
+function durationLabel(estimatedHours: number | null): string {
+  return estimatedHours ? `${estimatedHours}h total` : '-'
+}
+
+function currentStreakDays(completedAtValues: Date[]): number {
+  const completedDays = new Set(completedAtValues.map((value) => value.toISOString().slice(0, 10)))
+  let streak = 0
+  const cursor = new Date()
+  cursor.setUTCHours(0, 0, 0, 0)
+
+  while (completedDays.has(cursor.toISOString().slice(0, 10))) {
+    streak += 1
+    cursor.setUTCDate(cursor.getUTCDate() - 1)
+  }
+
+  return streak
+}
+
+export async function getStudentDashboard(userId: string): Promise<StudentDashboardPayload> {
+  const enrollments = await prisma.enrollment.findMany({
+    where: { userId },
+    orderBy: { enrolledAt: 'desc' },
+    select: {
+      courseId: true,
+      completedAt: true,
+      course: {
+        select: {
+          id: true,
+          title: true,
+          estimatedHours: true,
+          modules: {
+            orderBy: { order: 'asc' },
+            select: {
+              lessons: {
+                orderBy: { order: 'asc' },
+                select: { id: true, title: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (enrollments.length === 0) {
+    return emptyStudentDashboard()
+  }
+
+  const courseIds = enrollments.map((enrollment) => enrollment.courseId)
+  const lessonProgress = await prisma.lessonProgress.findMany({
+    where: { userId, courseId: { in: courseIds } },
+    select: { courseId: true, lessonId: true, completedAt: true },
+    orderBy: { completedAt: 'desc' },
+  })
+
+  const completedByCourse = new Map<string, Set<string>>()
+  for (const progress of lessonProgress) {
+    const completedLessons = completedByCourse.get(progress.courseId) ?? new Set<string>()
+    completedLessons.add(progress.lessonId)
+    completedByCourse.set(progress.courseId, completedLessons)
+  }
+
+  let completedCoursesCount = 0
+  let completedLessonsCount = 0
+  const continueLearning: StudentContinueLearningItem[] = []
+
+  for (const enrollment of enrollments) {
+    const lessons = enrollment.course.modules.flatMap((module) => module.lessons)
+    const completedLessons = completedByCourse.get(enrollment.courseId) ?? new Set<string>()
+    const totalLessons = lessons.length
+    const completedCount = completedLessons.size
+    completedLessonsCount += completedCount
+    const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0
+    const isCompleted = enrollment.completedAt !== null || (totalLessons > 0 && completedCount >= totalLessons)
+
+    if (isCompleted) {
+      completedCoursesCount += 1
+      continue
+    }
+
+    const nextLesson = lessons.find((lesson) => !completedLessons.has(lesson.id)) ?? lessons[0]
+    continueLearning.push({
+      courseId: enrollment.course.id,
+      resumeLessonId: nextLesson?.id ?? '',
+      title: enrollment.course.title,
+      progress,
+      lesson: nextLesson?.title ?? 'First lesson',
+      duration: durationLabel(enrollment.course.estimatedHours),
+    })
+  }
+
+  return {
+    stats: [
+      { label: 'Courses Enrolled', value: String(enrollments.length), key: 'courses-enrolled' },
+      { label: 'Completed', value: String(completedCoursesCount), key: 'completed' },
+      { label: 'Study Hours', value: String(Math.round((completedLessonsCount * 20) / 60)), key: 'study-hours' },
+      {
+        label: 'Current Streak',
+        value: String(currentStreakDays(lessonProgress.map((progress) => progress.completedAt))),
+        key: 'current-streak',
+      },
+    ],
+    continueLearning: continueLearning.sort((left, right) => right.progress - left.progress).slice(0, 3),
+    upcomingQuizzes: [],
+    recommendations: [],
+  }
+}
 
 // ─── Instructor ───────────────────────────────────────────────────────────────
 

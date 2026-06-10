@@ -63,6 +63,16 @@ export type UpdateProfileResult =
   | { ok: true; user: AuthUser }
   | { ok: false; message: string };
 
+export type ChangePasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword?: string;
+};
+
+export type ChangePasswordResult =
+  | { ok: true; message: string }
+  | { ok: false; message: string };
+
 export type SignInResult =
   | { ok: true; user: AuthUser; session?: AuthSession }
   | { ok: false; message: string };
@@ -125,6 +135,7 @@ export interface AuthService {
   signInWithProvider(input: SignInWithProviderInput): Promise<SignInWithProviderResult>;
   signUp(input: SignUpInput): Promise<SignUpResult>;
   updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult>;
+  changePassword(input: ChangePasswordInput): Promise<ChangePasswordResult>;
   sendPasswordResetCode(input: SendPasswordResetCodeInput): Promise<SendPasswordResetCodeResult>;
   verifyPasswordResetCode(input: VerifyPasswordResetCodeInput): Promise<VerifyPasswordResetCodeResult>;
   resetPassword(input: ResetPasswordInput): Promise<ResetPasswordResult>;

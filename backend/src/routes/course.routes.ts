@@ -15,6 +15,9 @@ router.get('/', CourseController.listCourses)
 router.post('/', ...isInstructor, CourseController.createCourse)
 router.get('/mine/list', ...isInstructor, CourseController.getMyCourses)
 router.get('/mine/:id', ...isInstructor, CourseController.getMyCourseDetail)
+router.get('/saved', requireAuth, CourseController.listSavedCourses)
+router.post('/:courseId/save', requireAuth, CourseController.saveCourse)
+router.delete('/:courseId/save', requireAuth, CourseController.unsaveCourse)
 
 // ─── Parameterised course routes (after all specific paths) ──────────────────
 router.get('/:id', optionalAuth, CourseController.getCourse)

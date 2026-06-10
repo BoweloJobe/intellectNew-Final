@@ -1,6 +1,20 @@
 import type { Request, Response, NextFunction } from 'express'
 import * as DashboardService from '../services/dashboard.service.js'
 
+// GET /api/dashboard/student
+export async function getStudentDashboard(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const data = await DashboardService.getStudentDashboard(req.user!.id)
+    res.json({ status: 'ok', data })
+  } catch (err) {
+    next(err)
+  }
+}
+
 // GET /api/dashboard/instructor
 export async function getInstructorDashboard(
   req: Request,

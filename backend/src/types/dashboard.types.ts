@@ -61,3 +61,31 @@ export interface InstructorSubmissionItem {
   submitted: string
   status: 'pending' | 'graded'
 }
+
+export interface StudentDashboardStat {
+  label: string
+  value: string
+  key: 'courses-enrolled' | 'completed' | 'study-hours' | 'current-streak'
+}
+
+export interface StudentContinueLearningItem {
+  courseId: string
+  resumeLessonId: string
+  title: string
+  progress: number
+  lesson: string
+  duration: string
+}
+
+export interface StudentUpcomingQuiz {
+  subject: string
+  topic: string
+  date: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+}
+
+export interface StudentDashboardRecommendation {
+  title: string
+  category: string
+  duration: string
+}

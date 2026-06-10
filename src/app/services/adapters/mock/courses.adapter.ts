@@ -13,6 +13,7 @@ import { withMockDelay } from "../../mock-utils";
 // API adapter; here an empty list is a safe no-op fallback.
 
 const MOCK_MANAGED_COURSES: InstructorManagedCourse[] = [];
+const MOCK_SAVED_COURSE_IDS = new Set<string>();
 
 export function getAllMockManagedCourses(): InstructorManagedCourse[] {
   return MOCK_MANAGED_COURSES;
@@ -42,6 +43,20 @@ export class MockCoursesAdapter implements CoursesService {
   async getCourseDetails(courseId: string) {
     const details = courseDetailsMockById[courseId] ?? courseDetailsMockById["1"];
     return withMockDelay(details);
+  }
+
+  async getSavedCourseIds(): Promise<string[]> {
+    return withMockDelay([...MOCK_SAVED_COURSE_IDS]);
+  }
+
+  async saveCourse(courseId: string): Promise<void> {
+    MOCK_SAVED_COURSE_IDS.add(courseId);
+    await mockCourseMutation();
+  }
+
+  async unsaveCourse(courseId: string): Promise<void> {
+    MOCK_SAVED_COURSE_IDS.delete(courseId);
+    await mockCourseMutation();
   }
 
   async getEnrolledCoursesProgress() {

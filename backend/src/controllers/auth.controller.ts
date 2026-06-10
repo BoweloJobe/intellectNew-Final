@@ -5,6 +5,7 @@ import {
   signupSchema,
   loginSchema,
   updateProfileSchema,
+  changePasswordSchema,
   requestResetSchema,
   resetPasswordSchema,
 } from '../validation/auth.validation.js'
@@ -43,6 +44,16 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     const input = validate(updateProfileSchema, req.body)
     const user = await AuthService.updateProfile(req.user!.id, input)
     res.json({ status: 'ok', data: { user } })
+  } catch (err) {
+    next(err)
+  }
+}
+
+export async function changePassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const input = validate(changePasswordSchema, req.body)
+    await AuthService.changePassword(req.user!.id, input)
+    res.json({ status: 'ok', message: 'Password updated successfully' })
   } catch (err) {
     next(err)
   }

@@ -1,9 +1,11 @@
 import { useEffect } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { useCommunityState } from "../community/CommunityStateContext";
 import { useCoursesState } from "../courses/CoursesStateContext";
 import { useTutorState } from "../tutor/TutorStateContext";
 
 export function InitialDomainDataBootstrap() {
+  const { status } = useAuth();
   const community = useCommunityState();
   const courses = useCoursesState();
   const tutor = useTutorState();
@@ -16,6 +18,12 @@ export function InitialDomainDataBootstrap() {
     courses.reloadEnrollments();
     tutor.reloadTutorData();
   }, []);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      courses.reloadSavedCourses();
+    }
+  }, [status]);
 
   return null;
 }

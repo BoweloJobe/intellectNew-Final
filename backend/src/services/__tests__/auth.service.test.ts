@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import bcrypt from 'bcryptjs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppError } from '../../errors/AppError.js'
 
@@ -24,7 +25,7 @@ vi.mock('../../lib/mailer.js', () => ({
   passwordResetHtml: (resetUrl: string) => `<a href="${resetUrl}">Reset</a>`,
 }))
 
-import { getMe, requestPasswordReset, resetPassword, updateProfile } from '../auth.service.js'
+import { changePassword, getMe, requestPasswordReset, resetPassword, updateProfile } from '../auth.service.js'
 
 function sha256Hex(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex')
@@ -225,5 +226,56 @@ describe('auth password reset service', () => {
       ),
     )
     expect(mockPrisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects password change when current password is wrong', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      passwordHash: await bcrypt.hash('password123', 4),
+    })
+
+    await expect(
+      changePassword('user-1', {
+        currentPassword: 'wrong-password',
+        newPassword: 'new-password-123',
+      }),
+    ).rejects.toMatchObject(new AppError(400, 'Current password is incorrect'))
+    expect(mockPrisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects password change when new password matches current password', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      passwordHash: await bcrypt.hash('password123', 4),
+    })
+
+    await expect(
+      changePassword('user-1', {
+        currentPassword: 'password123',
+        newPassword: 'password123',
+      }),
+    ).rejects.toMatchObject(new AppError(400, 'New password must be different from current password'))
+    expect(mockPrisma.user.update).not.toHaveBeenCalled()
+  })
+
+  it('updates password hash after a valid password change', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'user-1',
+      passwordHash: await bcrypt.hash('password123', 4),
+    })
+    mockPrisma.user.update.mockResolvedValue({})
+
+    await changePassword('user-1', {
+      currentPassword: 'password123',
+      newPassword: 'new-password-123',
+    })
+
+    expect(mockPrisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { passwordHash: expect.any(String) },
+    })
+    const nextHash = mockPrisma.user.update.mock.calls[0][0].data.passwordHash
+    await expect(bcrypt.compare('password123', nextHash)).resolves.toBe(false)
+    await expect(bcrypt.compare('new-password-123', nextHash)).resolves.toBe(true)
   })
 })

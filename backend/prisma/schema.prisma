@@ -33,6 +33,7 @@ model User {
   notificationPreference NotificationPreference?
   subscriptions          Subscription[]
   notes                  Note[]
+  savedCourses           SavedCourse[]
   posts                  Post[]
   postLikes              PostLike[]
   postBookmarks          PostBookmark[]
@@ -91,8 +92,23 @@ model Course {
   modules     CourseModule[]
   enrollments Enrollment[]
   payments    Payment[]
+  savedBy     SavedCourse[]
 
   @@map("courses")
+}
+
+model SavedCourse {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId, createdAt])
+  @@map("saved_courses")
 }
 
 model CourseModule {
