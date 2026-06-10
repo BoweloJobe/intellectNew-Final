@@ -1,102 +1,13 @@
 import type { ActivityItem } from "../models/activity";
 import type { NotificationItem } from "../models/notifications";
 
-export const notificationsMock: NotificationItem[] = [
-  {
-    id: "notification-quiz-1",
-    title: "Quiz due soon",
-    detail: "Organic Chemistry quiz starts in 18 hours.",
-    category: "quiz",
-    source: "quiz-reminder",
-    createdAt: "2026-03-26T06:00:00.000Z",
-    minutesAgo: 25,
-    time: "25m ago",
-    read: false,
-    dismissible: true,
-    actionLabel: "Review quiz",
-    metadata: { hoursUntil: 18 },
-  },
-  {
-    id: "notification-course-1",
-    title: "Course updated",
-    detail: "Advanced Biology has 2 fresh lessons waiting for you.",
-    category: "course",
-    source: "course-update",
-    createdAt: "2026-03-26T04:30:00.000Z",
-    minutesAgo: 90,
-    time: "1h ago",
-    read: false,
-    dismissible: true,
-    actionLabel: "Open course",
-    metadata: { courseId: "1" },
-  },
-  {
-    id: "notification-badge-1",
-    title: "Badge earned",
-    detail: "You unlocked the Consistency Builder badge.",
-    category: "achievement",
-    source: "badge-earned",
-    createdAt: "2026-03-25T17:30:00.000Z",
-    minutesAgo: 840,
-    time: "14h ago",
-    read: true,
-    dismissible: true,
-    actionLabel: "View badge",
-    metadata: { badgeName: "Consistency Builder" },
-  },
-  {
-    id: "notification-community-1",
-    title: "New community replies",
-    detail: "Your DNA replication thread received 2 new replies.",
-    category: "community",
-    source: "community-reply",
-    createdAt: "2026-03-25T14:00:00.000Z",
-    minutesAgo: 1050,
-    time: "18h ago",
-    read: false,
-    dismissible: true,
-    actionLabel: "Open discussion",
-    metadata: { replyCount: 2 },
-  },
-  {
-    id: "notification-ai-1",
-    title: "Tutor suggestion",
-    detail: "AI Tutor recommends a quick Cell Structure review before tomorrow's quiz.",
-    category: "ai",
-    source: "ai-tutor-recommendation",
-    createdAt: "2026-03-24T19:30:00.000Z",
-    minutesAgo: 2100,
-    time: "1d ago",
-    read: true,
-    dismissible: true,
-    actionLabel: "Ask AI Tutor",
-    metadata: { suggestionTopic: "Cell Structure" },
-  },
-];
+/**
+ * Empty mock data for notifications.
+ * 
+ * In mock mode, we return no demo/fake notifications or activity.
+ * Users will see "No notifications yet" when there are none.
+ * Real notifications are loaded from the backend in API mode.
+ */
+export const notificationsMock: NotificationItem[] = [];
 
-export const activityMock: ActivityItem[] = [
-  {
-    id: "activity-lesson-1",
-    kind: "lesson-completed",
-    message: "Completed a lesson in Advanced Biology",
-    createdAt: "2026-03-26T07:10:00.000Z",
-  },
-  {
-    id: "activity-course-1",
-    kind: "course-joined",
-    message: "Joined Organic Chemistry",
-    createdAt: "2026-03-26T05:45:00.000Z",
-  },
-  {
-    id: "activity-community-1",
-    kind: "community-reply",
-    message: "2 new replies arrived on your DNA replication thread",
-    createdAt: "2026-03-25T14:00:00.000Z",
-  },
-  {
-    id: "activity-ai-1",
-    kind: "ai-tutor",
-    message: "AI Tutor suggested a quick Cell Structure review",
-    createdAt: "2026-03-24T19:30:00.000Z",
-  },
-];
+export const activityMock: ActivityItem[] = [];
