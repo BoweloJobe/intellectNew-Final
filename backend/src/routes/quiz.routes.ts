@@ -3,10 +3,12 @@ import { requireAuth } from '../middleware/auth.middleware.js'
 import { requireRole } from '../middleware/role.middleware.js'
 import * as QuizController from '../controllers/quiz.controller.js'
 import * as CourseController from '../controllers/course.controller.js'
+import * as EnrollmentController from '../controllers/enrollment.controller.js'
 
 const router = Router()
 const isInstructor = [requireAuth, requireRole('INSTRUCTOR', 'ADMIN')]
 router.get('/lessons/:lessonId', requireAuth, CourseController.getLessonPage)
+router.patch('/lessons/:lessonId/watch-progress', requireAuth, EnrollmentController.updateLessonWatchProgress)
 
 // ─── Instructor: create and manage a quiz on a lesson ────────────────────────
 router.post('/lessons/:lessonId/quiz', ...isInstructor, QuizController.createQuiz)

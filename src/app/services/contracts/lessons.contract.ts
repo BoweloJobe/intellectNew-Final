@@ -20,6 +20,12 @@ export interface VideoLessonPageData {
   courseLessons: VideoLesson[];
 }
 
+export interface LessonWatchProgressInput {
+  watchedSeconds?: number;
+  lastPositionSeconds?: number;
+  completed?: boolean;
+}
+
 export interface LessonsService {
   getVideoLessonData(lessonId: string): Promise<VideoLesson>;
   getCourseLessons(courseId: string): Promise<VideoLesson[]>;
@@ -27,5 +33,6 @@ export interface LessonsService {
   getLessonNotes(lessonId: string): Promise<VideoLessonNote[]>;
   completeLessonVideo(lessonId: string, courseId: string): Promise<void>;
   trackLessonProgress(lessonId: string, courseId: string, watchedDuration: number): Promise<void>;
+  saveLessonWatchProgress(lessonId: string, input: LessonWatchProgressInput): Promise<void>;
   getVideoLessonPageData(courseId: string, lessonId: string): Promise<VideoLessonPageData>;
 }

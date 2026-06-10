@@ -9,11 +9,13 @@ vi.mock("../../../../api", async () => {
     httpClient: {
       get: vi.fn(),
       post: vi.fn(),
+      patch: vi.fn(),
     },
   };
 });
 
 const mockGet = httpClient.get as MockedFunction<typeof httpClient.get>;
+const mockPatch = httpClient.patch as MockedFunction<typeof httpClient.patch>;
 
 function lessonItem(overrides = {}) {
   return {
@@ -95,5 +97,45 @@ describe("ApiLessonsAdapter", () => {
     await expect(
       new ApiLessonsAdapter().getVideoLessonPageData("course-1", "lesson-1"),
     ).rejects.toMatchObject({ status: 403, message: "Lesson is locked" });
+  });
+
+  it("saves lesson watch progress to the content endpoint", async () => {
+    mockPatch.mockResolvedValueOnce({ status: "ok", data: { watchProgress: {} } });
+
+    await new ApiLessonsAdapter().saveLessonWatchProgress("lesson-1", {
+      watchedSeconds: 120,
+      lastPositionSeconds: 45,
+      completed: true,
+    });
+
+    expect(mockPatch).toHaveBeenCalledWith("/content/lessons/lesson-1/watch-progress", {
+      body: {
+        watchedSeconds: 120,
+        lastPositionSeconds: 45,
+        completed: true,
+      },
+    });
+  });
+
+  it("sends legacy watched duration tracking through watch progress", async () => {
+    mockPatch.mockResolvedValueOnce({ status: "ok", data: { watchProgress: {} } });
+
+    await new ApiLessonsAdapter().trackLessonProgress("lesson-1", "course-1", 90);
+
+    expect(mockPatch).toHaveBeenCalledWith("/content/lessons/lesson-1/watch-progress", {
+      body: { watchedSeconds: 90 },
+    });
+  });
+
+  it("propagates watch progress API errors", async () => {
+    mockPatch.mockRejectedValueOnce(new ApiError({
+      category: "http",
+      status: 403,
+      message: "Not enrolled in this course",
+    }));
+
+    await expect(
+      new ApiLessonsAdapter().saveLessonWatchProgress("lesson-1", { watchedSeconds: 10 }),
+    ).rejects.toMatchObject({ status: 403, message: "Not enrolled in this course" });
   });
 });

@@ -1,6 +1,7 @@
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '../errors/AppError.js'
 import { fireNotification } from './notification.service.js'
+import type { UpdateLessonWatchProgressInput } from '../validation/enrollment.validation.js'
 
 export async function enroll(userId: string, courseId: string) {
   const course = await prisma.course.findFirst({
@@ -141,6 +142,63 @@ export async function markLessonComplete(userId: string, lessonId: string, cours
     completedAt: courseCompletedAt,
     lessonProgress: progressDetails,
   }
+}
+
+export async function updateLessonWatchProgress(
+  userId: string,
+  lessonId: string,
+  input: UpdateLessonWatchProgressInput,
+) {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, courseId: true },
+  })
+  if (!lesson) throw new AppError(404, 'Lesson not found')
+
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId, courseId: lesson.courseId } },
+  })
+  if (!enrollment) throw new AppError(403, 'Not enrolled in this course')
+
+  const existing = await prisma.lessonWatchProgress.findUnique({
+    where: { userId_lessonId: { userId, lessonId } },
+    select: { watchedSeconds: true },
+  })
+
+  const nextWatchedSeconds =
+    input.watchedSeconds === undefined
+      ? existing?.watchedSeconds ?? 0
+      : Math.max(existing?.watchedSeconds ?? 0, Math.floor(input.watchedSeconds))
+
+  const watchProgress = await prisma.lessonWatchProgress.upsert({
+    where: { userId_lessonId: { userId, lessonId } },
+    create: {
+      userId,
+      lessonId,
+      courseId: lesson.courseId,
+      watchedSeconds: nextWatchedSeconds,
+      lastPositionSeconds: Math.floor(input.lastPositionSeconds ?? 0),
+    },
+    update: {
+      watchedSeconds: nextWatchedSeconds,
+      ...(input.lastPositionSeconds !== undefined
+        ? { lastPositionSeconds: Math.floor(input.lastPositionSeconds) }
+        : {}),
+    },
+    select: {
+      lessonId: true,
+      courseId: true,
+      watchedSeconds: true,
+      lastPositionSeconds: true,
+      updatedAt: true,
+    },
+  })
+
+  if (input.completed === true) {
+    await markLessonComplete(userId, lessonId, lesson.courseId)
+  }
+
+  return watchProgress
 }
 
 export async function isEnrolled(userId: string, courseId: string): Promise<boolean> {

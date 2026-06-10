@@ -1,4 +1,4 @@
-import type { LessonsService, VideoLessonPageData } from "../../contracts/lessons.contract";
+import type { LessonWatchProgressInput, LessonsService, VideoLessonPageData } from "../../contracts/lessons.contract";
 import { LessonCourseMismatchError, LessonNotFoundError } from "../../contracts/lessons.contract";
 import type { VideoLesson, VideoLessonNote } from "../../../models/lessons";
 import { ApiError, httpClient, toApiError } from "../../../api";
@@ -239,8 +239,19 @@ export class ApiLessonsAdapter implements LessonsService {
     }
   }
 
-  async trackLessonProgress(_lessonId: string, _courseId: string, _watchedDuration: number): Promise<void> {
-    // No-op: the backend does not have a lesson progress tracking endpoint.
+  async trackLessonProgress(lessonId: string, _courseId: string, watchedDuration: number): Promise<void> {
+    await this.saveLessonWatchProgress(lessonId, { watchedSeconds: watchedDuration });
+  }
+
+  async saveLessonWatchProgress(lessonId: string, input: LessonWatchProgressInput): Promise<void> {
+    try {
+      await httpClient.patch(
+        `/content/lessons/${encodeURIComponent(lessonId)}/watch-progress`,
+        { body: input },
+      );
+    } catch (error) {
+      throw toApiError(error, { operation: "lessons.saveLessonWatchProgress" });
+    }
   }
 
   async getVideoLessonPageData(courseId: string, lessonId: string): Promise<VideoLessonPageData> {

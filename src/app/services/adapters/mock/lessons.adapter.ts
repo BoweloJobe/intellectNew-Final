@@ -2,7 +2,7 @@ import { getRelatedLessons, getLessonsForCourse, lessonsMockById } from "../../.
 import type { CourseLesson, CourseModule, InstructorManagedCourse } from "../../../models/courses";
 import type { VideoLesson } from "../../../models/lessons";
 import { getAllMockManagedCourses, getMockManagedCourseById } from "./courses.adapter";
-import type { LessonsService, VideoLessonPageData } from "../../contracts/lessons.contract";
+import type { LessonWatchProgressInput, LessonsService, VideoLessonPageData } from "../../contracts/lessons.contract";
 import { LessonCourseMismatchError, LessonNotFoundError } from "../../contracts/lessons.contract";
 import { withMockDelay } from "../../mock-utils";
 
@@ -201,6 +201,10 @@ export class MockLessonsAdapter implements LessonsService {
   }
 
   async trackLessonProgress(_lessonId: string, _courseId: string, _watchedDuration: number): Promise<void> {
+    await withMockDelay(null, 100);
+  }
+
+  async saveLessonWatchProgress(_lessonId: string, _input: LessonWatchProgressInput): Promise<void> {
     await withMockDelay(null, 100);
   }
 

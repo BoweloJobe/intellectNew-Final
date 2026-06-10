@@ -3,6 +3,7 @@ import type { VideoLesson, VideoLessonNote } from "../models/lessons";
 import {
   LessonCourseMismatchError,
   LessonNotFoundError,
+  type LessonWatchProgressInput,
   type VideoLessonPageData,
 } from "./contracts/lessons.contract";
 import { getLessonsService } from "./factory/service-registry";
@@ -52,6 +53,10 @@ export async function completeLessonVideo(lessonId: string, courseId: string): P
  */
 export async function trackLessonProgress(lessonId: string, courseId: string, watchedDuration: number): Promise<void> {
   await getLessonsService().trackLessonProgress(lessonId, courseId, watchedDuration);
+}
+
+export async function saveLessonWatchProgress(lessonId: string, input: LessonWatchProgressInput): Promise<void> {
+  await getLessonsService().saveLessonWatchProgress(lessonId, input);
 }
 
 /**
