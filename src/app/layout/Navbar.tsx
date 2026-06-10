@@ -390,7 +390,7 @@ export function Navbar() {
   }, [isNotificationsOpen]);
 
   return (
-    <nav className="sticky top-0 z-50 mx-4 mt-4 mb-8">
+    <nav className="fixed inset-x-0 top-0 z-50 mx-4 mt-4">
       <div 
         className="mx-auto max-w-7xl rounded-[28px] border border-white/70 bg-white/70 px-2.5 py-2 shadow-[0_12px_34px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.85)] backdrop-blur-xl"
       >

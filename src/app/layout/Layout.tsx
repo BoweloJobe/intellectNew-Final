@@ -39,7 +39,7 @@ export function Layout() {
       */}
       <div className="relative z-10 flex min-h-screen w-full min-w-0 flex-col">
         <Navbar />
-        <main className="relative w-full min-w-0 flex-1 overflow-x-clip">
+        <main className="relative w-full min-w-0 flex-1 overflow-x-clip pt-28">
           <AppErrorBoundary area="page content" className="py-16" resetKeys={[location.key]}>
             <PageTransitionOutlet />
           </AppErrorBoundary>
