@@ -1,6 +1,7 @@
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '../errors/AppError.js'
-import type { UpdateNoteInput } from '../validation/notes.validation.js'
+import type { ListNotesQueryInput, UpdateNoteInput } from '../validation/notes.validation.js'
 
 export interface NoteDto {
   id: number
@@ -11,6 +12,17 @@ export interface NoteDto {
   starred: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface PaginatedNotesDto {
+  items: NoteDto[]
+  notes: NoteDto[]
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
 }
 
 type NoteRecord = {
@@ -58,13 +70,58 @@ function toNoteDto(note: NoteRecord): NoteDto {
   }
 }
 
-export async function listNotes(userId: string): Promise<NoteDto[]> {
-  const notes = await prisma.note.findMany({
-    where: { userId },
-    orderBy: { updatedAt: 'desc' },
-  })
+function buildListNotesWhere(userId: string, input: ListNotesQueryInput): Prisma.NoteWhereInput {
+  const filters: Prisma.NoteWhereInput[] = []
 
-  return notes.map(toNoteDto)
+  if (input.search) {
+    filters.push({
+      OR: [
+        { title: { contains: input.search } },
+        { content: { contains: input.search } },
+      ],
+    })
+  }
+
+  if (input.course) {
+    filters.push({ course: input.course })
+  }
+
+  if (input.tag) {
+    filters.push({ tags: { contains: JSON.stringify(input.tag) } })
+  }
+
+  if (input.starred !== undefined) {
+    filters.push({ starred: input.starred })
+  }
+
+  return filters.length > 0 ? { userId, AND: filters } : { userId }
+}
+
+export async function listNotes(userId: string, input: ListNotesQueryInput): Promise<PaginatedNotesDto> {
+  const where = buildListNotesWhere(userId, input)
+  const skip = (input.page - 1) * input.pageSize
+  const [total, notes] = await Promise.all([
+    prisma.note.count({ where }),
+    prisma.note.findMany({
+      where,
+      orderBy: { updatedAt: 'desc' },
+      skip,
+      take: input.pageSize,
+    }),
+  ])
+  const items = notes.map(toNoteDto)
+  const totalPages = Math.ceil(total / input.pageSize)
+
+  return {
+    items,
+    notes: items,
+    page: input.page,
+    pageSize: input.pageSize,
+    total,
+    totalPages,
+    hasNextPage: input.page < totalPages,
+    hasPreviousPage: input.page > 1,
+  }
 }
 
 export async function createNote(userId: string, input: CreateNoteData): Promise<NoteDto> {

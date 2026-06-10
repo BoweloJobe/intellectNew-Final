@@ -30,23 +30,76 @@ describe("ApiNotesAdapter", () => {
     vi.resetAllMocks();
   });
 
-  it("lists notes from GET /notes and maps the response", async () => {
+  it("lists notes from GET /notes with query params and maps pagination metadata", async () => {
+    mockHttpClient.get.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [backendNote],
+        page: 2,
+        pageSize: 10,
+        total: 21,
+        totalPages: 3,
+        hasNextPage: true,
+        hasPreviousPage: true,
+      },
+    });
+
+    const result = await new ApiNotesAdapter().listNotes({
+      search: "light",
+      course: "Advanced Biology",
+      tag: "Plants",
+      starred: true,
+      page: 2,
+      pageSize: 10,
+    });
+
+    expect(mockHttpClient.get).toHaveBeenCalledWith("/notes", {
+      query: {
+        search: "light",
+        course: "Advanced Biology",
+        tag: "Plants",
+        starred: true,
+        page: 2,
+        pageSize: 10,
+      },
+    });
+    expect(result).toEqual({
+      items: [
+        {
+          id: 1,
+          title: backendNote.title,
+          content: backendNote.content,
+          course: backendNote.course,
+          tags: backendNote.tags,
+          starred: true,
+          date: "Jun 2, 2026",
+        },
+      ],
+      page: 2,
+      pageSize: 10,
+      total: 21,
+      totalPages: 3,
+      hasNextPage: true,
+      hasPreviousPage: true,
+    });
+  });
+
+  it("keeps getNotesLibrary compatible with the paginated response", async () => {
     mockHttpClient.get.mockResolvedValue({ status: "ok", data: { notes: [backendNote] } });
 
     const notes = await new ApiNotesAdapter().getNotesLibrary();
 
-    expect(mockHttpClient.get).toHaveBeenCalledWith("/notes");
-    expect(notes).toEqual([
-      {
-        id: 1,
-        title: backendNote.title,
-        content: backendNote.content,
-        course: backendNote.course,
-        tags: backendNote.tags,
-        starred: true,
-        date: "Jun 2, 2026",
+    expect(mockHttpClient.get).toHaveBeenCalledWith("/notes", {
+      query: {
+        search: undefined,
+        course: undefined,
+        tag: undefined,
+        starred: undefined,
+        page: undefined,
+        pageSize: undefined,
       },
-    ]);
+    });
+    expect(notes).toHaveLength(1);
   });
 
   it("creates a note with POST /notes", async () => {

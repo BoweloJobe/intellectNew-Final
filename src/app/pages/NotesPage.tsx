@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
@@ -65,17 +65,23 @@ export function NotesPage() {
     mode: "onBlur",
   });
 
-  const loadNotes = () => {
+  const loadNotes = useCallback(() => {
     void runLoadNotes(async () => {
-      const library = await getNotesLibrary();
+      const library = await getNotesLibrary({
+        search: searchQuery.trim() || undefined,
+        tag: activeTag ?? undefined,
+        starred: activeFilter === "starred" ? true : undefined,
+        page: 1,
+        pageSize: 100,
+      });
       setNotes(library);
       return library;
     });
-  };
+  }, [activeFilter, activeTag, runLoadNotes, searchQuery]);
 
   useEffect(() => {
     loadNotes();
-  }, [runLoadNotes]);
+  }, [loadNotes]);
 
   useEffect(() => {
     if (querySearch.trim().length === 0) {

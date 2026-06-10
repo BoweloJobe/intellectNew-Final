@@ -19,6 +19,7 @@ vi.mock('../../middleware/auth.middleware.js', () => ({
 const mockPrisma = vi.hoisted(() => ({
   note: {
     findMany: vi.fn(),
+    count: vi.fn(),
     findFirst: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
@@ -73,6 +74,7 @@ describe('notes routes', () => {
 
     expect(res.status).toBe(401)
     expect(mockPrisma.note.findMany).not.toHaveBeenCalled()
+    expect(mockPrisma.note.count).not.toHaveBeenCalled()
   })
 
   it('creates a note for the authenticated user', async () => {
@@ -95,16 +97,121 @@ describe('notes routes', () => {
   })
 
   it('lists only notes owned by the authenticated user', async () => {
+    mockPrisma.note.count.mockResolvedValue(1)
     mockPrisma.note.findMany.mockResolvedValue([noteRecord])
 
     const res = await request(app).get('/notes').set('Authorization', 'Bearer token')
 
     expect(res.status).toBe(200)
+    expect(mockPrisma.note.count).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+    })
     expect(mockPrisma.note.findMany).toHaveBeenCalledWith({
       where: { userId: 'user-1' },
       orderBy: { updatedAt: 'desc' },
+      skip: 0,
+      take: 20,
     })
+    expect(res.body.data.items).toHaveLength(1)
     expect(res.body.data.notes).toHaveLength(1)
+    expect(res.body.data).toMatchObject({
+      page: 1,
+      pageSize: 20,
+      total: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPreviousPage: false,
+    })
+  })
+
+  it('searches note title and content while preserving ownership', async () => {
+    mockPrisma.note.count.mockResolvedValue(1)
+    mockPrisma.note.findMany.mockResolvedValue([noteRecord])
+
+    const res = await request(app).get('/notes?search=light').set('Authorization', 'Bearer token')
+
+    const expectedWhere = {
+      userId: 'user-1',
+      AND: [
+        {
+          OR: [
+            { title: { contains: 'light' } },
+            { content: { contains: 'light' } },
+          ],
+        },
+      ],
+    }
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.note.count).toHaveBeenCalledWith({ where: expectedWhere })
+    expect(mockPrisma.note.findMany).toHaveBeenCalledWith({
+      where: expectedWhere,
+      orderBy: { updatedAt: 'desc' },
+      skip: 0,
+      take: 20,
+    })
+  })
+
+  it('filters by course, tag, and starred while preserving ownership', async () => {
+    mockPrisma.note.count.mockResolvedValue(1)
+    mockPrisma.note.findMany.mockResolvedValue([noteRecord])
+
+    const res = await request(app)
+      .get('/notes?course=Advanced%20Biology&tag=Plants&starred=true')
+      .set('Authorization', 'Bearer token')
+
+    const expectedWhere = {
+      userId: 'user-1',
+      AND: [
+        { course: 'Advanced Biology' },
+        { tags: { contains: JSON.stringify('Plants') } },
+        { starred: true },
+      ],
+    }
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.note.count).toHaveBeenCalledWith({ where: expectedWhere })
+    expect(mockPrisma.note.findMany).toHaveBeenCalledWith({
+      where: expectedWhere,
+      orderBy: { updatedAt: 'desc' },
+      skip: 0,
+      take: 20,
+    })
+  })
+
+  it('returns pagination metadata and caps page size', async () => {
+    mockPrisma.note.count.mockResolvedValue(250)
+    mockPrisma.note.findMany.mockResolvedValue([noteRecord])
+
+    const res = await request(app).get('/notes?page=2&pageSize=500').set('Authorization', 'Bearer token')
+
+    expect(res.status).toBe(200)
+    expect(mockPrisma.note.findMany).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+      orderBy: { updatedAt: 'desc' },
+      skip: 100,
+      take: 100,
+    })
+    expect(res.body.data).toMatchObject({
+      page: 2,
+      pageSize: 100,
+      total: 250,
+      totalPages: 3,
+      hasNextPage: true,
+      hasPreviousPage: true,
+    })
+  })
+
+  it('rejects invalid list query values', async () => {
+    const invalidQueries = ['page=0', 'page=-1', 'page=1.5', 'pageSize=0', 'pageSize=abc', 'starred=yes']
+
+    for (const query of invalidQueries) {
+      const res = await request(app).get(`/notes?${query}`).set('Authorization', 'Bearer token')
+      expect(res.status).toBe(400)
+    }
+
+    expect(mockPrisma.note.count).not.toHaveBeenCalled()
+    expect(mockPrisma.note.findMany).not.toHaveBeenCalled()
   })
 
   it('reads an owned note', async () => {

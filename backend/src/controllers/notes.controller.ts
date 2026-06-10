@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction } from 'express'
 import { AppError } from '../errors/AppError.js'
 import { validate } from '../lib/validate.js'
-import { createNoteSchema, updateNoteSchema } from '../validation/notes.validation.js'
+import {
+  createNoteSchema,
+  listNotesQuerySchema,
+  updateNoteSchema,
+  type ListNotesQueryInput,
+} from '../validation/notes.validation.js'
 import * as NotesService from '../services/notes.service.js'
 
 function parseNoteId(rawId: string): number {
@@ -18,8 +23,9 @@ function parseNoteId(rawId: string): number {
 
 export async function listNotes(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const notes = await NotesService.listNotes(req.user!.id)
-    res.json({ status: 'ok', data: { notes } })
+    const query = validate(listNotesQuerySchema, req.query) as ListNotesQueryInput
+    const result = await NotesService.listNotes(req.user!.id, query)
+    res.json({ status: 'ok', data: result })
   } catch (err) {
     next(err)
   }

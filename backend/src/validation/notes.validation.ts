@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+const MAX_NOTES_PAGE_SIZE = 100
+
 const noteTagsSchema = z
   .array(
     z
@@ -37,5 +39,50 @@ export const updateNoteSchema = createNoteSchema.partial().refine(
   { message: 'At least one field is required' },
 )
 
+const optionalQueryText = (max: number) =>
+  z.preprocess(
+    (value) => {
+      if (value === undefined) return undefined
+      if (typeof value !== 'string') return value
+
+      const trimmed = value.trim()
+      return trimmed.length > 0 ? trimmed : undefined
+    },
+    z.string().max(max).optional(),
+  )
+
+const positiveIntegerQuery = (fieldName: string, defaultValue: number) =>
+  z.preprocess(
+    (value) => {
+      if (value === undefined || value === '') return defaultValue
+      if (typeof value === 'string' && /^[1-9]\d*$/.test(value)) return Number(value)
+      return value
+    },
+    z
+      .number({ invalid_type_error: `${fieldName} must be a positive integer` })
+      .int(`${fieldName} must be a positive integer`)
+      .positive(`${fieldName} must be a positive integer`),
+  )
+
+export const listNotesQuerySchema = z
+  .object({
+    search: optionalQueryText(200),
+    course: optionalQueryText(120),
+    tag: optionalQueryText(40),
+    starred: z
+      .preprocess((value) => {
+        if (value === undefined || value === '') return undefined
+        if (value === 'true') return true
+        if (value === 'false') return false
+        return value
+      }, z.boolean({ invalid_type_error: 'starred must be true or false' }).optional()),
+    page: positiveIntegerQuery('page', 1).default(1),
+    pageSize: positiveIntegerQuery('pageSize', 20)
+      .default(20)
+      .transform((value) => Math.min(value, MAX_NOTES_PAGE_SIZE)),
+  })
+  .strict()
+
 export type CreateNoteInput = z.infer<typeof createNoteSchema>
+export type ListNotesQueryInput = z.infer<typeof listNotesQuerySchema>
 export type UpdateNoteInput = z.infer<typeof updateNoteSchema>

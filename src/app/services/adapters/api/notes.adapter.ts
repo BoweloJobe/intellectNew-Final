@@ -1,4 +1,4 @@
-import type { NotesService } from "../../contracts/notes.contract";
+import type { NotesListParams, NotesService, PaginatedNotesResult } from "../../contracts/notes.contract";
 import type { NoteFormInput, NoteSubmissionResult } from "../../form-flows.service";
 import { httpClient, toApiError } from "../../../api";
 
@@ -13,7 +13,19 @@ type BackendNote = {
   updatedAt: string;
 };
 
-type BackendNotesResponse = { status: string; data: { notes: BackendNote[] } };
+type BackendNotesResponse = {
+  status: string;
+  data: {
+    items?: BackendNote[];
+    notes?: BackendNote[];
+    page?: number;
+    pageSize?: number;
+    total?: number;
+    totalPages?: number;
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
+  };
+};
 type BackendNoteResponse = { status: string; data: { note: BackendNote } };
 
 function formatNoteDate(value: string): string {
@@ -42,12 +54,37 @@ function toNoteSubmissionResult(note: BackendNote): NoteSubmissionResult {
 }
 
 export class ApiNotesAdapter implements NotesService {
-  async getNotesLibrary(): Promise<NoteSubmissionResult[]> {
+  async getNotesLibrary(params?: NotesListParams): Promise<NoteSubmissionResult[]> {
+    const result = await this.listNotes(params);
+    return result.items;
+  }
+
+  async listNotes(params: NotesListParams = {}): Promise<PaginatedNotesResult> {
     try {
-      const response = await httpClient.get<BackendNotesResponse>("/notes");
-      return response.data.notes.map(toNoteSubmissionResult);
+      const response = await httpClient.get<BackendNotesResponse>("/notes", {
+        query: {
+          search: params.search,
+          course: params.course,
+          tag: params.tag,
+          starred: params.starred,
+          page: params.page,
+          pageSize: params.pageSize,
+        },
+      });
+      const backendNotes = response.data.items ?? response.data.notes ?? [];
+      const items = backendNotes.map(toNoteSubmissionResult);
+
+      return {
+        items,
+        page: response.data.page ?? params.page ?? 1,
+        pageSize: response.data.pageSize ?? params.pageSize ?? items.length,
+        total: response.data.total ?? items.length,
+        totalPages: response.data.totalPages ?? 1,
+        hasNextPage: response.data.hasNextPage ?? false,
+        hasPreviousPage: response.data.hasPreviousPage ?? false,
+      };
     } catch (error) {
-      throw toApiError(error, { operation: "notes.getNotesLibrary" });
+      throw toApiError(error, { operation: "notes.listNotes" });
     }
   }
 
