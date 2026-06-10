@@ -20,7 +20,7 @@ interface SolidCardProps extends ComponentPropsWithoutRef<"div"> {
 export function SolidCard({ children, className = "", hover = false, ...rest }: SolidCardProps) {
   return (
     <div
-      className={`rounded-xl border p-4 ${
+      className={`ix-card-slide-up rounded-xl border p-4 ${
         hover
           ? "transition-[transform,box-shadow] duration-200 ease-out hover:shadow-md hover:-translate-y-[1px] motion-reduce:transition-none motion-reduce:hover:translate-y-0 cursor-pointer"
           : ""

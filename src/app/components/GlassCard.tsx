@@ -9,7 +9,7 @@ interface GlassCardProps {
 export function GlassCard({ children, className = '', hover = false }: GlassCardProps) {
   return (
     <div 
-      className={`rounded-2xl backdrop-blur-xl border p-6 ${
+      className={`ix-card-slide-up rounded-2xl backdrop-blur-xl border p-6 ${
         hover ? 'transition-[transform,box-shadow] duration-200 ease-out hover:shadow-2xl hover:-translate-y-[2px] motion-reduce:transition-none motion-reduce:hover:translate-y-0' : ''
       } ${className}`}
       style={{

@@ -76,11 +76,31 @@
   --motion-tooltip: var(--duration-fast) var(--easing-out);
 }
 
+@keyframes ix-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ix-card-slide-up {
+  animation: ix-slide-up var(--motion-card) both;
+}
+
 /* Respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0ms;
     --duration-normal: 0ms;
     --duration-slow: 0ms;
+  }
+
+  .ix-card-slide-up {
+    animation: none;
   }
 }
