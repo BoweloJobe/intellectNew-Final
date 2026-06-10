@@ -25,15 +25,14 @@ vi.mock('../../middleware/role.middleware.js', () => ({
       next(),
 }))
 
-const mockEnrollmentService = vi.hoisted(() => ({
-  updateLessonWatchProgress: vi.fn(),
-}))
-
-vi.mock('../../services/enrollment.service.js', () => mockEnrollmentService)
 vi.mock('../../controllers/course.controller.js', () => ({
   getLessonPage: vi.fn((_req: Request, res: Response) => res.json({ status: 'ok' })),
 }))
-vi.mock('../../controllers/quiz.controller.js', () => ({
+vi.mock('../../controllers/enrollment.controller.js', () => ({
+  updateLessonWatchProgress: vi.fn(),
+}))
+
+const mockQuizController = vi.hoisted(() => ({
   createQuiz: vi.fn(),
   getQuizInstructor: vi.fn(),
   updateQuiz: vi.fn(),
@@ -50,9 +49,11 @@ vi.mock('../../controllers/quiz.controller.js', () => ({
   getMyAttempts: vi.fn(),
 }))
 
+vi.mock('../../controllers/quiz.controller.js', () => mockQuizController)
+
 import quizRouter from '../quiz.routes.js'
 
-describe('PATCH /content/lessons/:lessonId/watch-progress', () => {
+describe('POST /content/quizzes/:quizId/attempts/start', () => {
   let app: express.Express
 
   beforeEach(() => {
@@ -64,42 +65,22 @@ describe('PATCH /content/lessons/:lessonId/watch-progress', () => {
   })
 
   it('returns 401 when unauthenticated', async () => {
-    const res = await request(app)
-      .patch('/content/lessons/lesson-1/watch-progress')
-      .send({ watchedSeconds: 10 })
+    const res = await request(app).post('/content/quizzes/quiz-1/attempts/start')
 
     expect(res.status).toBe(401)
-    expect(mockEnrollmentService.updateLessonWatchProgress).not.toHaveBeenCalled()
+    expect(mockQuizController.startAttempt).not.toHaveBeenCalled()
   })
 
-  it('updates watch progress for the authenticated user', async () => {
-    mockEnrollmentService.updateLessonWatchProgress.mockResolvedValue({
-      lessonId: 'lesson-1',
-      courseId: 'course-1',
-      watchedSeconds: 10,
-      lastPositionSeconds: 5,
-      updatedAt: new Date(),
+  it('routes authenticated start requests to the quiz controller', async () => {
+    mockQuizController.startAttempt.mockImplementation((_req: Request, res: Response) => {
+      res.status(201).json({ status: 'ok', data: { attempt: { attemptId: 'attempt-1' } } })
     })
 
     const res = await request(app)
-      .patch('/content/lessons/lesson-1/watch-progress')
+      .post('/content/quizzes/quiz-1/attempts/start')
       .set('Authorization', 'Bearer valid-student-token')
-      .send({ watchedSeconds: 10, lastPositionSeconds: 5 })
 
-    expect(res.status).toBe(200)
-    expect(mockEnrollmentService.updateLessonWatchProgress).toHaveBeenCalledWith('student-1', 'lesson-1', {
-      watchedSeconds: 10,
-      lastPositionSeconds: 5,
-    })
-  })
-
-  it('rejects invalid negative values before service dispatch', async () => {
-    const res = await request(app)
-      .patch('/content/lessons/lesson-1/watch-progress')
-      .set('Authorization', 'Bearer valid-student-token')
-      .send({ watchedSeconds: -1 })
-
-    expect(res.status).toBe(400)
-    expect(mockEnrollmentService.updateLessonWatchProgress).not.toHaveBeenCalled()
+    expect(res.status).toBe(201)
+    expect(mockQuizController.startAttempt).toHaveBeenCalled()
   })
 })

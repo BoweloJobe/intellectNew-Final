@@ -15,7 +15,7 @@ import type {
   PastQuiz,
   PracticeQuiz,
 } from "../models/quizzes";
-import { getQuizTemplate, getQuizzesPageData, submitQuizAttempt } from "../services/quizzes.service";
+import { getQuizTemplate, getQuizzesPageData, startQuizAttempt, submitQuizAttempt } from "../services/quizzes.service";
 import {
   createProductNotification,
   useNotificationsState,
@@ -32,6 +32,8 @@ type QuizPageLocationState = {
 
 interface ActiveQuizAttempt {
   template: QuizTemplate;
+  attemptId: string;
+  expiresAt?: string | null;
   answersByQuestionId: Record<string, string | undefined>;
   currentQuestionIndex: number;
   startedAt: number;
@@ -82,6 +84,7 @@ export function QuizPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const hasAutoStartedFromContext = useRef(false);
   const isAutoSubmittingRef = useRef(false);
+  const isSubmittingAttemptRef = useRef(false);
 
   const showActionFeedback = (message: string) => {
     setSuccessMessage(message);
@@ -104,28 +107,31 @@ export function QuizPage() {
 
   // ── Countdown timer ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!activeAttempt?.template.timeLimitSeconds) {
+    if (!activeAttempt?.expiresAt) {
       setTimeLeft(null);
       return;
     }
 
-    // Initialise time left from the template limit
-    const limit = activeAttempt.template.timeLimitSeconds;
-    const elapsed = Math.round((Date.now() - activeAttempt.startedAt) / 1000);
-    setTimeLeft(Math.max(0, limit - elapsed));
+    const getSecondsUntilExpiry = () => {
+      const expiresAtMs = Date.parse(activeAttempt.expiresAt ?? "");
+      if (!Number.isFinite(expiresAtMs)) return 0;
+      return Math.max(0, Math.ceil((expiresAtMs - Date.now()) / 1000));
+    };
+
+    setTimeLeft(getSecondsUntilExpiry());
 
     const interval = window.setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev === null) return null;
-        if (prev <= 1) {
+      const nextTimeLeft = getSecondsUntilExpiry();
+      setTimeLeft(() => {
+        if (nextTimeLeft <= 0) {
           // Time's up — auto-submit once
           if (!isAutoSubmittingRef.current) {
             isAutoSubmittingRef.current = true;
-            void finishAttempt();
+            void finishAttempt({ automatic: true });
           }
           return 0;
         }
-        return prev - 1;
+        return nextTimeLeft;
       });
     }, 1000);
 
@@ -133,7 +139,7 @@ export function QuizPage() {
       window.clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeAttempt?.template.id, activeAttempt?.startedAt]);
+  }, [activeAttempt?.template.id, activeAttempt?.expiresAt]);
 
   // Reset auto-submit guard when a new attempt begins
   useEffect(() => {
@@ -170,8 +176,10 @@ export function QuizPage() {
     contextLabel: string,
   ) => {
     let template: QuizTemplate;
+    let attempt;
     try {
       template = await getQuizTemplate(input);
+      attempt = await startQuizAttempt(template.id);
     } catch {
       pushNotification(
         createProductNotification({
@@ -187,9 +195,11 @@ export function QuizPage() {
     setAttemptResult(null);
     setActiveAttempt({
       template,
+      attemptId: attempt.attemptId,
+      expiresAt: attempt.expiresAt,
       answersByQuestionId: {},
       currentQuestionIndex: 0,
-      startedAt: Date.now(),
+      startedAt: Date.parse(attempt.startedAt) || Date.now(),
       contextLabel,
     });
 
@@ -235,11 +245,12 @@ export function QuizPage() {
     );
   }, [courseIdParam, lessonIdParam, quizContextLabel, quizIdParam]);
 
-  const finishAttempt = async () => {
-    if (!activeAttempt || isSubmittingAttempt) {
+  const finishAttempt = async (options?: { automatic?: boolean }) => {
+    if (!activeAttempt || isSubmittingAttemptRef.current) {
       return;
     }
 
+    isSubmittingAttemptRef.current = true;
     setIsSubmittingAttempt(true);
     try {
       const elapsedSeconds = Math.max(1, Math.round((Date.now() - activeAttempt.startedAt) / 1000));
@@ -255,6 +266,7 @@ export function QuizPage() {
       );
       const result = await submitQuizAttempt({
         quizId: activeAttempt.template.id,
+        attemptId: activeAttempt.attemptId,
         answersByQuestionId: fullAnswerMap,
         elapsedSeconds,
       });
@@ -301,7 +313,23 @@ export function QuizPage() {
       showActionFeedback(
         `${resultTone} on ${activeAttempt.template.topic}: ${result.percentage}%.`,
       );
+    } catch {
+      if (options?.automatic) {
+        setActiveAttempt(null);
+        setTimeLeft(null);
+      } else {
+        isAutoSubmittingRef.current = false;
+      }
+      pushNotification(
+        createProductNotification({
+          title: "Quiz submission failed",
+          detail: "Your quiz could not be submitted. Please try again.",
+          category: "quiz",
+          source: "quiz-reminder",
+        }),
+      );
     } finally {
+      isSubmittingAttemptRef.current = false;
       setIsSubmittingAttempt(false);
     }
   };

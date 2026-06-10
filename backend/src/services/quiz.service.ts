@@ -12,6 +12,10 @@ import type {
   SubmitAttemptInput,
 } from '../validation/quiz.validation.js'
 
+const ATTEMPT_STATUS_IN_PROGRESS = 'IN_PROGRESS'
+const ATTEMPT_STATUS_SUBMITTED = 'SUBMITTED'
+const ATTEMPT_STATUS_EXPIRED = 'EXPIRED'
+
 // ─── Shared selectors ─────────────────────────────────────────────────────────
 
 /** Full quiz shape for instructors — includes correct answers */
@@ -317,6 +321,76 @@ export async function getQuizById(quizId: string, userId: string) {
   return quiz
 }
 
+async function assertStudentQuizAccess(quiz: {
+  lessonId: string | null
+  lesson: { courseId: string } | null
+  isPremium: boolean
+}, userId: string): Promise<void> {
+  if (quiz.lessonId !== null) {
+    if (!quiz.lesson) throw new AppError(404, 'Quiz not found')
+    const enrollment = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId, courseId: quiz.lesson.courseId } },
+    })
+    if (!enrollment) throw new AppError(403, 'Not enrolled in this course')
+    return
+  }
+
+  if (quiz.isPremium) {
+    const sub = await getMySubscription(userId)
+    if (!sub.isPremium) throw new AppError(403, 'A Pro subscription is required to access this quiz')
+  }
+}
+
+export async function startAttempt(quizId: string, userId: string) {
+  const quiz = await prisma.quiz.findUnique({
+    where: { id: quizId },
+    select: {
+      id: true,
+      lessonId: true,
+      timeLimitSeconds: true,
+      isPremium: true,
+      lesson: { select: { courseId: true } },
+    },
+  })
+  if (!quiz) throw new AppError(404, 'Quiz not found')
+
+  await assertStudentQuizAccess(quiz, userId)
+
+  const startedAt = new Date()
+  const expiresAt = quiz.timeLimitSeconds
+    ? new Date(startedAt.getTime() + quiz.timeLimitSeconds * 1000)
+    : null
+
+  const attempt = await prisma.quizAttempt.create({
+    data: {
+      quizId,
+      userId,
+      score: 0,
+      passed: false,
+      status: ATTEMPT_STATUS_IN_PROGRESS,
+      startedAt,
+      ...(expiresAt ? { expiresAt } : {}),
+    },
+    select: {
+      id: true,
+      quizId: true,
+      status: true,
+      startedAt: true,
+      expiresAt: true,
+    },
+  })
+
+  return {
+    attemptId: attempt.id,
+    quizId: attempt.quizId,
+    status: attempt.status,
+    startedAt: attempt.startedAt.toISOString(),
+    expiresAt: attempt.expiresAt?.toISOString() ?? null,
+    serverTime: startedAt.toISOString(),
+    timeLimitSeconds: quiz.timeLimitSeconds,
+  }
+}
+
 export async function submitAttempt(
   quizId: string,
   userId: string,
@@ -334,16 +408,43 @@ export async function submitAttempt(
   })
   if (!quiz) throw new AppError(404, 'Quiz not found')
 
-  // Access control: lesson-bound quizzes require enrollment; standalone premium quizzes require subscription
-  if (quiz.lessonId !== null) {
-    if (!quiz.lesson) throw new AppError(404, 'Quiz not found')
-    const enrollment = await prisma.enrollment.findUnique({
-      where: { userId_courseId: { userId, courseId: quiz.lesson.courseId } },
+  await assertStudentQuizAccess(quiz, userId)
+
+  let existingAttempt: {
+    id: string
+    quizId: string
+    userId: string
+    status: string
+    expiresAt: Date | null
+  } | null = null
+
+  if (input.attemptId) {
+    existingAttempt = await prisma.quizAttempt.findUnique({
+      where: { id: input.attemptId },
+      select: { id: true, quizId: true, userId: true, status: true, expiresAt: true },
     })
-    if (!enrollment) throw new AppError(403, 'Not enrolled in this course')
-  } else if (quiz.isPremium) {
-    const sub = await getMySubscription(userId)
-    if (!sub.isPremium) throw new AppError(403, 'A Pro subscription is required to access this quiz')
+
+    if (!existingAttempt || existingAttempt.quizId !== quizId || existingAttempt.userId !== userId) {
+      throw new AppError(404, 'Quiz attempt not found')
+    }
+
+    if (existingAttempt.status === ATTEMPT_STATUS_SUBMITTED) {
+      throw new AppError(409, 'Quiz attempt already submitted')
+    }
+
+    if (existingAttempt.status === ATTEMPT_STATUS_EXPIRED) {
+      throw new AppError(409, 'Quiz attempt expired')
+    }
+
+    if (existingAttempt.expiresAt && Date.now() > existingAttempt.expiresAt.getTime()) {
+      await prisma.quizAttempt.update({
+        where: { id: existingAttempt.id },
+        data: { status: ATTEMPT_STATUS_EXPIRED },
+      })
+      throw new AppError(409, 'Quiz attempt expired')
+    }
+  } else if (quiz.timeLimitSeconds) {
+    throw new AppError(400, 'Start a quiz attempt before submitting this timed quiz')
   }
 
   if (input.answers.length !== quiz.questions.length) {
@@ -431,32 +532,52 @@ export async function submitAttempt(
     explanationMap.set(q.id, q.explanation ?? '')
   }
 
-  const attempt = await prisma.quizAttempt.create({
-    data: {
-      quizId,
-      userId,
-      score,
-      passed,
-      answers: {
-        createMany: { data: gradedAnswers },
+  const attemptSelect = {
+    id: true,
+    score: true,
+    passed: true,
+    submittedAt: true,
+    status: true,
+    startedAt: true,
+    expiresAt: true,
+    answers: {
+      select: {
+        questionId: true,
+        selectedOptionId: true,
+        textAnswer: true,
+        isCorrect: true,
+        marksAwarded: true,
       },
     },
-    select: {
-      id: true,
-      score: true,
-      passed: true,
-      submittedAt: true,
-      answers: {
-        select: {
-          questionId: true,
-          selectedOptionId: true,
-          textAnswer: true,
-          isCorrect: true,
-          marksAwarded: true,
+  } as const
+
+  const attempt = existingAttempt
+    ? await prisma.quizAttempt.update({
+        where: { id: existingAttempt.id },
+        data: {
+          score,
+          passed,
+          status: ATTEMPT_STATUS_SUBMITTED,
+          submittedAt: new Date(),
+          answers: {
+            createMany: { data: gradedAnswers },
+          },
         },
-      },
-    },
-  })
+        select: attemptSelect,
+      })
+    : await prisma.quizAttempt.create({
+        data: {
+          quizId,
+          userId,
+          score,
+          passed,
+          status: ATTEMPT_STATUS_SUBMITTED,
+          answers: {
+            createMany: { data: gradedAnswers },
+          },
+        },
+        select: attemptSelect,
+      })
 
   // Enrich each answer with question-type-specific grading details
   const enrichedAnswers = attempt.answers.map((a) => {
@@ -499,6 +620,9 @@ export async function submitAttempt(
 
   const result = {
     ...attempt,
+    startedAt: attempt.startedAt.toISOString(),
+    expiresAt: attempt.expiresAt?.toISOString() ?? null,
+    submittedAt: attempt.submittedAt.toISOString(),
     answers: enrichedAnswers,
     totalQuestions: quiz.questions.length,
     marksEarned: totalMarksEarned,
@@ -522,7 +646,7 @@ export async function submitAttempt(
 
 export async function getMyAttempts(quizId: string, userId: string) {
   return prisma.quizAttempt.findMany({
-    where: { quizId, userId },
+    where: { quizId, userId, status: ATTEMPT_STATUS_SUBMITTED },
     orderBy: { submittedAt: 'desc' },
     select: {
       id: true,
@@ -600,7 +724,7 @@ export async function getStudentAvailableQuizzes(userId: string) {
 /** Most recent quiz attempt per quiz for the student */
 export async function getStudentAttemptHistory(userId: string) {
   return prisma.quizAttempt.findMany({
-    where: { userId },
+    where: { userId, status: ATTEMPT_STATUS_SUBMITTED },
     orderBy: { submittedAt: 'desc' },
     take: 50,
     select: {

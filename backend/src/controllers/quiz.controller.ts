@@ -90,6 +90,13 @@ export async function submitAttempt(req: Request, res: Response, next: NextFunct
   } catch (err) { next(err) }
 }
 
+export async function startAttempt(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const attempt = await QuizService.startAttempt(req.params.quizId, req.user!.id)
+    res.status(201).json({ status: 'ok', data: { attempt } })
+  } catch (err) { next(err) }
+}
+
 export async function getMyAttempts(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const attempts = await QuizService.getMyAttempts(req.params.quizId, req.user!.id)

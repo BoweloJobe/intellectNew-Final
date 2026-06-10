@@ -10,6 +10,7 @@ import type {
   PastQuiz,
   StandaloneQuizInput,
   StandaloneQuizCreatedResult,
+  QuizAttemptStartResult,
 } from "../../../models/quizzes";
 import { ApiError, httpClient, toApiError } from "../../../api";
 import { readStoredAuthSession } from "../../../auth/auth-storage";
@@ -68,6 +69,16 @@ interface BackendAttemptResult {
   passingScore: number;
 }
 
+interface BackendAttemptStart {
+  attemptId: string;
+  quizId: string;
+  status: string;
+  startedAt: string;
+  expiresAt: string | null;
+  serverTime: string;
+  timeLimitSeconds: number | null;
+}
+
 interface BackendAvailableQuiz {
   id: string;
   title: string;
@@ -109,6 +120,7 @@ interface BackendAttemptSummary {
 }
 
 type BackendQuizResponse = { status: string; data: { quiz: BackendQuiz } };
+type BackendAttemptStartResponse = { status: string; data: { attempt: BackendAttemptStart } };
 type BackendAttemptResponse = { status: string; data: { result: BackendAttemptResult } };
 type BackendAvailableQuizzesResponse = { status: string; data: { quizzes: BackendAvailableQuiz[] } };
 type BackendAttemptHistoryResponse = { status: string; data: { attempts: BackendAttemptSummary[] } };
@@ -286,6 +298,19 @@ export class ApiQuizzesAdapter implements QuizzesService {
     }
   }
 
+  async startQuizAttempt(quizId: string): Promise<QuizAttemptStartResult> {
+    try {
+      requireAuthToken("quizzes.startQuizAttempt");
+      const response = await httpClient.post<BackendAttemptStartResponse>(
+        `/content/quizzes/${encodeURIComponent(quizId)}/attempts/start`,
+      );
+
+      return response.data.attempt;
+    } catch (error) {
+      throw toApiError(error, { operation: "quizzes.startQuizAttempt" });
+    }
+  }
+
   async submitQuizAttempt(input: QuizSubmissionInput): Promise<QuizAttemptResult> {
     // Convert frontend map { [questionId]: selectedOptionId } → backend array.
     // The backend requires every question to have an answer entry; unanswered
@@ -302,7 +327,7 @@ export class ApiQuizzesAdapter implements QuizzesService {
       requireAuthToken("quizzes.submitQuizAttempt");
       const response = await httpClient.post<BackendAttemptResponse>(
         `/content/quizzes/${encodeURIComponent(input.quizId)}/attempt`,
-        { body: { answers } },
+        { body: { attemptId: input.attemptId, answers } },
       );
       const result = response.data.result;
 

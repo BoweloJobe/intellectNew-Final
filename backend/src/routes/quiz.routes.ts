@@ -27,6 +27,7 @@ router.get('/quizzes/my/available', requireAuth, QuizController.getMyAvailableQu
 router.get('/quizzes/my/attempts', requireAuth, QuizController.getMyAttemptHistory)
 router.get('/lessons/:lessonId/quiz', requireAuth, QuizController.getQuizStudent)
 router.get('/quizzes/:quizId', requireAuth, QuizController.getQuizStudentById)
+router.post('/quizzes/:quizId/attempts/start', requireAuth, QuizController.startAttempt)
 router.post('/quizzes/:quizId/attempt', requireAuth, QuizController.submitAttempt)
 router.get('/quizzes/:quizId/attempts/my', requireAuth, QuizController.getMyAttempts)
 

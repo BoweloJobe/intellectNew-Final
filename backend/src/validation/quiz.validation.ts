@@ -103,6 +103,7 @@ export const createStandaloneQuizSchema = z
 // ─── Quiz submission ──────────────────────────────────────────────────────────
 
 export const submitAttemptSchema = z.object({
+  attemptId: z.string().cuid().optional(),
   answers: z
     .array(
       z.object({

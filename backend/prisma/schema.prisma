@@ -270,14 +270,18 @@ model QuizAttempt {
   id          String   @id @default(cuid())
   quizId      String
   userId      String
-  score       Int
-  passed      Boolean
+  score       Int      @default(0)
+  passed      Boolean  @default(false)
+  status      String   @default("IN_PROGRESS")
+  startedAt   DateTime @default(now())
+  expiresAt   DateTime?
   submittedAt DateTime @default(now())
 
   quiz    Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
   user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   answers QuizAttemptAnswer[]
 
+  @@index([quizId, userId, status])
   @@map("quiz_attempts")
 }
 

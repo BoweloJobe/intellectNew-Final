@@ -1,5 +1,6 @@
 import type {
   GetQuizTemplateInput,
+  QuizAttemptStartResult,
   QuizAttemptResult,
   QuizzesPageData,
   QuizSubmissionInput,
@@ -15,6 +16,10 @@ export async function getQuizzesPageData(): Promise<QuizzesPageData> {
 
 export async function getQuizTemplate(input: GetQuizTemplateInput): Promise<QuizTemplate> {
   return getQuizzesService().getQuizTemplate(input);
+}
+
+export async function startQuizAttempt(quizId: string): Promise<QuizAttemptStartResult> {
+  return getQuizzesService().startQuizAttempt(quizId);
 }
 
 export async function submitQuizAttempt(input: QuizSubmissionInput): Promise<QuizAttemptResult> {

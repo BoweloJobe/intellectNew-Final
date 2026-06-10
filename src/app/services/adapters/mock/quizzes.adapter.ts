@@ -243,6 +243,26 @@ export class MockQuizzesAdapter implements QuizzesService {
     return withMockDelay(getQuizTemplateMock(input));
   }
 
+  async startQuizAttempt(quizId: string) {
+    const template = standaloneQuizStore.get(quizId)?.template
+      ?? findInstructorQuizTemplateById(quizId);
+    const startedAt = new Date();
+    const timeLimitSeconds = template?.timeLimitSeconds ?? null;
+    const expiresAt = timeLimitSeconds
+      ? new Date(startedAt.getTime() + timeLimitSeconds * 1000).toISOString()
+      : null;
+
+    return withMockDelay({
+      attemptId: `mock-attempt-${Date.now()}`,
+      quizId,
+      status: "IN_PROGRESS",
+      startedAt: startedAt.toISOString(),
+      expiresAt,
+      serverTime: startedAt.toISOString(),
+      timeLimitSeconds,
+    });
+  }
+
   async submitQuizAttempt(input: Parameters<QuizzesService["submitQuizAttempt"]>[0]) {
     // 1. Session-created standalone quiz — grade against real stored answers
     const stored = standaloneQuizStore.get(input.quizId);

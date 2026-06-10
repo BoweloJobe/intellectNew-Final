@@ -1,5 +1,6 @@
 import type {
   GetQuizTemplateInput,
+  QuizAttemptStartResult,
   QuizAttemptResult,
   QuizzesPageData,
   QuizSubmissionInput,
@@ -11,6 +12,7 @@ import type {
 export interface QuizzesService {
   getQuizzesPageData(): Promise<QuizzesPageData>;
   getQuizTemplate(input: GetQuizTemplateInput): Promise<QuizTemplate>;
+  startQuizAttempt(quizId: string): Promise<QuizAttemptStartResult>;
   submitQuizAttempt(input: QuizSubmissionInput): Promise<QuizAttemptResult>;
   createStandaloneQuiz(input: StandaloneQuizInput): Promise<StandaloneQuizCreatedResult>;
 }

@@ -52,8 +52,19 @@ export interface GetQuizTemplateInput {
 
 export interface QuizSubmissionInput {
   quizId: string;
+  attemptId?: string;
   answersByQuestionId: Record<string, string | undefined>;
   elapsedSeconds: number;
+}
+
+export interface QuizAttemptStartResult {
+  attemptId: string;
+  quizId: string;
+  status: string;
+  startedAt: string;
+  expiresAt?: string | null;
+  serverTime: string;
+  timeLimitSeconds?: number | null;
 }
 
 export interface QuizQuestionResult {
