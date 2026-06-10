@@ -80,6 +80,29 @@ describe("ApiAuthAdapter", () => {
         lastName: "Johnson",
         role: "INSTRUCTOR",
       },
+      auth: "none",
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("sends login without requiring an existing bearer token", async () => {
+    mockReadStoredAuthSession.mockReturnValue(null);
+    mockHttpClient.post.mockResolvedValue({
+      status: "ok",
+      data: { token: "token", user: backendUser },
+    });
+
+    const result = await new ApiAuthAdapter().signIn({
+      email: "student@example.com",
+      password: "password123",
+    });
+
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/auth/login", {
+      body: {
+        email: "student@example.com",
+        password: "password123",
+      },
+      auth: "none",
     });
     expect(result.ok).toBe(true);
   });
@@ -99,7 +122,6 @@ describe("ApiAuthAdapter", () => {
     });
 
     expect(mockHttpClient.patch).toHaveBeenCalledWith("/auth/me", {
-      headers: { Authorization: "Bearer access-token" },
       body: {
         firstName: "Sarah",
         lastName: "Johnson",

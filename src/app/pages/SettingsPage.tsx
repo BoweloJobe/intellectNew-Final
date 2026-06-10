@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Textarea } from "../components/ui/textarea";
 import {
   saveNotificationSettings,
+  loadNotificationSettings,
   saveProfileSettings,
   saveSecuritySettings,
   type NotificationSettingsInput,
@@ -86,6 +87,16 @@ export function SettingsPage() {
       emailNotifications: true,
     },
   });
+
+  useEffect(() => {
+    void notificationsSubmission.run(loadNotificationSettings, {
+      successMessage: "",
+      clearSuccessAfterMs: 0,
+      onSuccess: async (savedPreferences) => {
+        notificationsForm.reset(savedPreferences);
+      },
+    });
+  }, []);
 
   const securityForm = useForm<SecuritySettingsInput>({
     defaultValues: {

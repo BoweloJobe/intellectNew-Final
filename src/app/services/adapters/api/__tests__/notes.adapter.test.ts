@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../../../api";
 import { httpClient } from "../../../../api/client/httpClient";
-import { readStoredAuthSession } from "../../../../auth/auth-storage";
 import { ApiNotesAdapter } from "../notes.adapter";
 
 vi.mock("../../../../api/client/httpClient", () => ({
@@ -13,12 +12,7 @@ vi.mock("../../../../api/client/httpClient", () => ({
   },
 }));
 
-vi.mock("../../../../auth/auth-storage", () => ({
-  readStoredAuthSession: vi.fn(),
-}));
-
 const mockHttpClient = vi.mocked(httpClient);
-const mockReadStoredAuthSession = vi.mocked(readStoredAuthSession);
 
 const backendNote = {
   id: 1,
@@ -34,17 +28,6 @@ const backendNote = {
 describe("ApiNotesAdapter", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mockReadStoredAuthSession.mockReturnValue({
-      user: {
-        id: "user-1",
-        email: "user@example.com",
-        firstName: "User",
-        lastName: "One",
-        fullName: "User One",
-        role: "student",
-      },
-      tokens: { accessToken: "access-token", refreshToken: "refresh-token" },
-    });
   });
 
   it("lists notes from GET /notes and maps the response", async () => {
@@ -52,9 +35,7 @@ describe("ApiNotesAdapter", () => {
 
     const notes = await new ApiNotesAdapter().getNotesLibrary();
 
-    expect(mockHttpClient.get).toHaveBeenCalledWith("/notes", {
-      headers: { Authorization: "Bearer access-token" },
-    });
+    expect(mockHttpClient.get).toHaveBeenCalledWith("/notes");
     expect(notes).toEqual([
       {
         id: 1,
@@ -87,7 +68,6 @@ describe("ApiNotesAdapter", () => {
         tags: backendNote.tags,
         starred: true,
       },
-      headers: { Authorization: "Bearer access-token" },
     });
     expect(result.id).toBe(1);
   });
@@ -114,7 +94,6 @@ describe("ApiNotesAdapter", () => {
         tags: backendNote.tags,
         starred: false,
       },
-      headers: { Authorization: "Bearer access-token" },
     });
   });
 
@@ -123,9 +102,7 @@ describe("ApiNotesAdapter", () => {
 
     await new ApiNotesAdapter().deleteNote(1);
 
-    expect(mockHttpClient.delete).toHaveBeenCalledWith("/notes/1", {
-      headers: { Authorization: "Bearer access-token" },
-    });
+    expect(mockHttpClient.delete).toHaveBeenCalledWith("/notes/1");
   });
 
   it("does not swallow API errors", async () => {

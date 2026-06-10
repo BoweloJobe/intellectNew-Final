@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '../errors/AppError.js'
+import type { NotificationPreferenceInput } from '../validation/notification.validation.js'
 
 export type NotificationType =
   | 'ENROLLMENT_CONFIRMED'
@@ -11,6 +12,50 @@ export type NotificationType =
   | 'SUBSCRIPTION_CANCELED'
   | 'SUBSCRIPTION_EXPIRED'
 
+export type NotificationPreferenceDto = NotificationPreferenceInput
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferenceDto = {
+  courseUpdates: true,
+  quizReminders: true,
+  assignmentDeadlines: true,
+  communityActivity: false,
+  weeklyProgressReport: true,
+  emailNotifications: true,
+}
+
+function toPreferenceDto(preferences: NotificationPreferenceDto | null): NotificationPreferenceDto {
+  if (!preferences) {
+    return DEFAULT_NOTIFICATION_PREFERENCES
+  }
+
+  return {
+    courseUpdates: preferences.courseUpdates,
+    quizReminders: preferences.quizReminders,
+    assignmentDeadlines: preferences.assignmentDeadlines,
+    communityActivity: preferences.communityActivity,
+    weeklyProgressReport: preferences.weeklyProgressReport,
+    emailNotifications: preferences.emailNotifications,
+  }
+}
+
+function preferenceAllowsType(preferences: NotificationPreferenceDto, type: NotificationType): boolean {
+  switch (type) {
+    case 'QUIZ_PASSED':
+    case 'QUIZ_FAILED':
+      return preferences.quizReminders
+    case 'COURSE_APPROVED':
+    case 'COURSE_REJECTED':
+      return preferences.courseUpdates
+    default:
+      return true
+  }
+}
+
+async function getNotificationPreferencesForDelivery(userId: string): Promise<NotificationPreferenceDto> {
+  const preferences = await prisma.notificationPreference.findUnique({ where: { userId } })
+  return toPreferenceDto(preferences)
+}
+
 export async function createNotification(
   userId: string,
   type: NotificationType,
@@ -18,6 +63,11 @@ export async function createNotification(
   body: string,
   metadata?: Record<string, unknown>,
 ): Promise<void> {
+  const preferences = await getNotificationPreferencesForDelivery(userId)
+  if (!preferenceAllowsType(preferences, type)) {
+    return
+  }
+
   await prisma.notification.create({
     data: { userId, type, title, body, metadata: metadata !== undefined ? JSON.stringify(metadata) : undefined },
   })
@@ -75,4 +125,22 @@ export async function markAllRead(userId: string): Promise<void> {
 
 export async function getUnreadCount(userId: string): Promise<number> {
   return prisma.notification.count({ where: { userId, isRead: false } })
+}
+
+export async function getMyNotificationPreferences(userId: string): Promise<NotificationPreferenceDto> {
+  const preferences = await prisma.notificationPreference.findUnique({ where: { userId } })
+  return toPreferenceDto(preferences)
+}
+
+export async function saveMyNotificationPreferences(
+  userId: string,
+  input: NotificationPreferenceInput,
+): Promise<NotificationPreferenceDto> {
+  const preferences = await prisma.notificationPreference.upsert({
+    where: { userId },
+    create: { userId, ...input },
+    update: input,
+  })
+
+  return toPreferenceDto(preferences)
 }

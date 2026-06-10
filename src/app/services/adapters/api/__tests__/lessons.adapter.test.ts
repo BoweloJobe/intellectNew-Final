@@ -13,12 +13,6 @@ vi.mock("../../../../api", async () => {
   };
 });
 
-vi.mock("../../../../auth/auth-storage", () => ({
-  readStoredAuthSession: () => ({
-    tokens: { accessToken: "test-token" },
-  }),
-}));
-
 const mockGet = httpClient.get as MockedFunction<typeof httpClient.get>;
 
 function lessonItem(overrides = {}) {
@@ -72,9 +66,7 @@ describe("ApiLessonsAdapter", () => {
 
     const data = await new ApiLessonsAdapter().getVideoLessonPageData("course-1", "lesson-1");
 
-    expect(mockGet).toHaveBeenCalledWith("/content/lessons/lesson-1", {
-      headers: { Authorization: "Bearer test-token" },
-    });
+    expect(mockGet).toHaveBeenCalledWith("/content/lessons/lesson-1");
     expect(data.lesson.id).toBe("lesson-1");
     expect(data.lesson.videoUrl).toBe("https://video.example/lesson-1");
     expect(data.lesson.quizAvailable).toBe(true);

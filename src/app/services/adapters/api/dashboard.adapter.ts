@@ -7,7 +7,6 @@ import type {
   StudentDashboardData,
 } from "../../../models/dashboard";
 import { httpClient, toApiError } from "../../../api";
-import { readStoredAuthSession } from "../../../auth/auth-storage";
 
 // ─── Backend response shapes ──────────────────────────────────────────────────
 
@@ -44,11 +43,6 @@ type BackendAdminDashboardResponse = { status: string; data: AdminDashboardData 
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function authHeaders(): Record<string, string> {
-  const token = readStoredAuthSession()?.tokens?.accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 // ─── Adapter ──────────────────────────────────────────────────────────────────
 
 export class ApiDashboardAdapter implements DashboardService {
@@ -57,7 +51,6 @@ export class ApiDashboardAdapter implements DashboardService {
       // Fetch all enrollments
       const enrollmentsResp = await httpClient.get<BackendEnrollmentsResponse>(
         "/enrollments/my",
-        { headers: authHeaders() },
       );
       const enrollments = enrollmentsResp.data.enrollments;
 
@@ -70,7 +63,6 @@ export class ApiDashboardAdapter implements DashboardService {
         enrollments.map((e) =>
           httpClient.get<BackendCourseProgressResponse>(
             `/enrollments/courses/${encodeURIComponent(e.course.id)}/progress`,
-            { headers: authHeaders() },
           ),
         ),
       );
@@ -139,7 +131,6 @@ export class ApiDashboardAdapter implements DashboardService {
     try {
       const resp = await httpClient.get<BackendInstructorDashboardResponse>(
         "/dashboard/instructor",
-        { headers: authHeaders() },
       );
       return resp.data;
     } catch (error) {
@@ -151,7 +142,6 @@ export class ApiDashboardAdapter implements DashboardService {
     try {
       const resp = await httpClient.get<BackendAdminDashboardResponse>(
         "/dashboard/admin",
-        { headers: authHeaders() },
       );
       return resp.data;
     } catch (error) {
@@ -173,4 +163,3 @@ function emptyStudentDashboard(): StudentDashboardData {
     recommendations: [],
   };
 }
-

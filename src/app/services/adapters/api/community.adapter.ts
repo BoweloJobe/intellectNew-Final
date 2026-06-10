@@ -1,7 +1,6 @@
 import type { CommunityService, CreatePostInput, CreatePostResult } from "../../contracts/community.contract";
 import type { CommunityPageData, Discussion } from "../../../models/community";
 import { httpClient, toApiError } from "../../../api";
-import { readStoredAuthSession } from "../../../auth/auth-storage";
 
 // ─── Backend response shapes ──────────────────────────────────────────────────
 
@@ -25,11 +24,6 @@ type BackendPostsResponse = { status: string; data: { posts: BackendPost[] } };
 type BackendCreatePostResponse = { status: string; data: { post: BackendPost } };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function authHeaders(): Record<string, string> {
-  const token = readStoredAuthSession()?.tokens?.accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 function formatHoursAgo(hoursAgo: number): string {
   if (hoursAgo < 1) return "Just now";
@@ -63,9 +57,7 @@ function toDiscussion(post: BackendPost): Discussion {
 export class ApiCommunityAdapter implements CommunityService {
   async getCommunityPageData(): Promise<CommunityPageData> {
     try {
-      const resp = await httpClient.get<BackendPostsResponse>("/community/posts", {
-        headers: authHeaders(),
-      });
+      const resp = await httpClient.get<BackendPostsResponse>("/community/posts");
       const discussions: Discussion[] = resp.data.posts.map(toDiscussion);
       return {
         discussions,
@@ -83,7 +75,7 @@ export class ApiCommunityAdapter implements CommunityService {
     try {
       const resp = await httpClient.post<BackendCreatePostResponse>(
         "/community/posts",
-        { body: { title: input.title, body: input.body, category: input.category }, headers: authHeaders() },
+        { body: { title: input.title, body: input.body, category: input.category } },
       );
       const post = resp.data.post;
       return { id: post.id, title: post.title, category: post.category };
@@ -96,7 +88,6 @@ export class ApiCommunityAdapter implements CommunityService {
     try {
       await httpClient.post(
         `/community/posts/${encodeURIComponent(discussionId)}/like`,
-        { headers: authHeaders() },
       );
     } catch (error) {
       throw toApiError(error, { operation: "community.likeDiscussion" });
@@ -107,7 +98,6 @@ export class ApiCommunityAdapter implements CommunityService {
     try {
       await httpClient.delete(
         `/community/posts/${encodeURIComponent(discussionId)}/like`,
-        { headers: authHeaders() },
       );
     } catch (error) {
       throw toApiError(error, { operation: "community.unlikeDiscussion" });
@@ -118,7 +108,6 @@ export class ApiCommunityAdapter implements CommunityService {
     try {
       await httpClient.post(
         `/community/posts/${encodeURIComponent(discussionId)}/bookmark`,
-        { headers: authHeaders() },
       );
     } catch (error) {
       throw toApiError(error, { operation: "community.bookmarkDiscussion" });
@@ -129,7 +118,6 @@ export class ApiCommunityAdapter implements CommunityService {
     try {
       await httpClient.delete(
         `/community/posts/${encodeURIComponent(discussionId)}/bookmark`,
-        { headers: authHeaders() },
       );
     } catch (error) {
       throw toApiError(error, { operation: "community.unbookmarkDiscussion" });

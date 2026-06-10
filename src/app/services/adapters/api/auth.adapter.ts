@@ -101,7 +101,7 @@ export class ApiAuthAdapter implements AuthService {
     try {
       const response = await httpClient.post<BackendAuthResponse, { email: string; password: string }>(
         "/auth/login",
-        { body: { email: input.email, password: input.password } },
+        { body: { email: input.email, password: input.password }, auth: "none" },
       );
 
       const session = buildSession(response.data.token, response.data.user);
@@ -135,6 +135,7 @@ export class ApiAuthAdapter implements AuthService {
           lastName: input.lastName,
           role: input.role === "instructor" ? "INSTRUCTOR" : "STUDENT",
         },
+        auth: "none",
       });
 
       const session = buildSession(response.data.token, response.data.user);
@@ -155,7 +156,6 @@ export class ApiAuthAdapter implements AuthService {
       const response = await httpClient.patch<BackendMeResponse, UpdateProfileInput>(
         '/auth/me',
         {
-          headers: { Authorization: `Bearer ${token}` },
           body: input,
         },
       );
@@ -174,9 +174,7 @@ export class ApiAuthAdapter implements AuthService {
     }
 
     try {
-      const response = await httpClient.get<BackendMeResponse>("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const response = await httpClient.get<BackendMeResponse>("/auth/me");
 
       return mapBackendUser(response.data.user);
     } catch (error) {
@@ -191,9 +189,10 @@ export class ApiAuthAdapter implements AuthService {
   async signOut(): Promise<void> {
     const token = getStoredToken();
     try {
-      await httpClient.post<void>("/auth/logout", {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
+      if (!token) {
+        return;
+      }
+      await httpClient.post<void>("/auth/logout");
     } catch {
       // Fire-and-forget: client-side state is already cleared before this resolves.
     }
@@ -215,6 +214,7 @@ export class ApiAuthAdapter implements AuthService {
     try {
       await httpClient.post<{ status: string }>("/auth/forgot-password/request", {
         body: { email: input.destination },
+        auth: "none",
       });
 
       return {
@@ -250,6 +250,7 @@ export class ApiAuthAdapter implements AuthService {
     try {
       await httpClient.post<{ status: string }>("/auth/forgot-password/reset", {
         body: { token: input.verificationToken, password: input.newPassword },
+        auth: "none",
       });
 
       return { ok: true, message: "Your password has been reset. You can now sign in." };

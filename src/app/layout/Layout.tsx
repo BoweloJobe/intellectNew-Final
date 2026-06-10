@@ -7,7 +7,7 @@ export function Layout() {
   const location = useLocation();
 
   return (
-    <div className="relative isolate min-h-screen overflow-x-hidden bg-[#f5f5f5]">
+    <div className="relative isolate min-h-screen w-full overflow-x-hidden bg-[#f5f5f5]">
       {/*
         Decorative DNA composition layer.
         - Fixed so it does not scroll with the page
@@ -37,9 +37,9 @@ export function Layout() {
         ✓ min-h-screen prevents gaps below content
         ✓ PageTransitionOutlet ensures smooth transitions without background visibility
       */}
-      <div className="relative z-10 min-h-screen flex flex-col">
+      <div className="relative z-10 flex min-h-screen w-full min-w-0 flex-col">
         <Navbar />
-        <main className="flex-1">
+        <main className="relative w-full min-w-0 flex-1 overflow-x-clip">
           <AppErrorBoundary area="page content" className="py-16" resetKeys={[location.key]}>
             <PageTransitionOutlet />
           </AppErrorBoundary>

@@ -135,10 +135,6 @@ function requireAuthToken(operation: string): string {
   return token;
 }
 
-function protectedHeaders(operation: string): Record<string, string> {
-  return { Authorization: `Bearer ${requireAuthToken(operation)}` };
-}
-
 function mapCourseDifficulty(raw: string): QuizDifficulty {
   switch (raw.toUpperCase()) {
     case "INTERMEDIATE": return "Medium";
@@ -244,13 +240,10 @@ function mapToPastQuiz(attempt: BackendAttemptSummary): PastQuiz {
 export class ApiQuizzesAdapter implements QuizzesService {
   async getQuizzesPageData(): Promise<QuizzesPageData> {
     try {
+      requireAuthToken("quizzes.getQuizzesPageData");
       const [availableRes, attemptsRes] = await Promise.all([
-        httpClient.get<BackendAvailableQuizzesResponse>("/content/quizzes/my/available", {
-          headers: protectedHeaders("quizzes.getQuizzesPageData"),
-        }),
-        httpClient.get<BackendAttemptHistoryResponse>("/content/quizzes/my/attempts", {
-          headers: protectedHeaders("quizzes.getQuizzesPageData"),
-        }),
+        httpClient.get<BackendAvailableQuizzesResponse>("/content/quizzes/my/available"),
+        httpClient.get<BackendAttemptHistoryResponse>("/content/quizzes/my/attempts"),
       ]);
 
       return {
@@ -266,9 +259,9 @@ export class ApiQuizzesAdapter implements QuizzesService {
   async getQuizTemplate(input: Parameters<QuizzesService["getQuizTemplate"]>[0]): Promise<QuizTemplate> {
     try {
       if (input.lessonId) {
+        requireAuthToken("quizzes.getQuizTemplate");
         const response = await httpClient.get<BackendQuizResponse>(
           `/content/lessons/${encodeURIComponent(input.lessonId)}/quiz`,
-          { headers: protectedHeaders("quizzes.getQuizTemplate") },
         );
         return mapBackendQuiz(response.data.quiz, {
           subject: input.subject,
@@ -277,9 +270,9 @@ export class ApiQuizzesAdapter implements QuizzesService {
       }
 
       if (input.quizId) {
+        requireAuthToken("quizzes.getQuizTemplate");
         const response = await httpClient.get<BackendQuizResponse>(
           `/content/quizzes/${encodeURIComponent(input.quizId)}`,
-          { headers: protectedHeaders("quizzes.getQuizTemplate") },
         );
         return mapBackendQuiz(response.data.quiz, {
           subject: input.subject,
@@ -306,9 +299,10 @@ export class ApiQuizzesAdapter implements QuizzesService {
     );
 
     try {
+      requireAuthToken("quizzes.submitQuizAttempt");
       const response = await httpClient.post<BackendAttemptResponse>(
         `/content/quizzes/${encodeURIComponent(input.quizId)}/attempt`,
-        { body: { answers }, headers: protectedHeaders("quizzes.submitQuizAttempt") },
+        { body: { answers } },
       );
       const result = response.data.result;
 
@@ -350,9 +344,10 @@ export class ApiQuizzesAdapter implements QuizzesService {
     }
     // ── End diagnostic ──
     try {
+      requireAuthToken("quizzes.createStandaloneQuiz");
       const response = await httpClient.post<BackendStandaloneQuizCreatedResponse>(
         "/content/quizzes/standalone",
-        { body: input, headers: protectedHeaders("quizzes.createStandaloneQuiz") },
+        { body: input },
       );
       if (import.meta.env.DEV) {
         console.info(

@@ -5,7 +5,6 @@ import type {
   SubjectMasteryDataPoint,
 } from "../../../models/progress";
 import { httpClient, toApiError } from "../../../api";
-import { readStoredAuthSession } from "../../../auth/auth-storage";
 
 // ─── Backend response shapes ──────────────────────────────────────────────────
 
@@ -52,11 +51,6 @@ const EMPTY_PROGRESS_DATA: ProgressPageData = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function authHeaders(): Record<string, string> {
-  const token = readStoredAuthSession()?.tokens?.accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 function buildSubjectMastery(
   categoryProgressMap: Map<string, number[]>,
@@ -113,7 +107,6 @@ export class ApiProgressAdapter implements ProgressService {
       // 1. Fetch all enrollments for the current user
       const enrollmentsResp = await httpClient.get<BackendEnrollmentsResponse>(
         "/enrollments/my",
-        { headers: authHeaders() },
       );
       const enrollments = enrollmentsResp.data.enrollments;
 
@@ -126,7 +119,6 @@ export class ApiProgressAdapter implements ProgressService {
         enrollments.map((e) =>
           httpClient.get<BackendCourseProgressResponse>(
             `/enrollments/courses/${encodeURIComponent(e.course.id)}/progress`,
-            { headers: authHeaders() },
           ),
         ),
       );

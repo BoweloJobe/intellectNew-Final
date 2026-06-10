@@ -7,6 +7,7 @@ import {
   mapTimeoutError,
 } from "../errors/apiErrors";
 import { logError, logWarn } from "../../utils/logger";
+import { clearStoredAuthSession, readStoredAuthSession } from "../../auth/auth-storage";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -18,6 +19,7 @@ export interface HttpRequestOptions<TBody = unknown> {
   body?: TBody;
   timeoutMs?: number;
   signal?: AbortSignal;
+  auth?: "optional" | "none";
 }
 
 function buildUrl(path: string, query?: Record<string, QueryValue>): string {
@@ -145,6 +147,14 @@ async function request<TResponse, TBody = unknown>(
     ...apiConfig.defaultHeaders,
     ...(options.headers ?? {}),
   };
+  const authMode = options.auth ?? "optional";
+  const storedToken = authMode === "none" ? undefined : readStoredAuthSession()?.tokens?.accessToken;
+  const hasExplicitAuthorizationHeader =
+    "Authorization" in requestHeaders || "authorization" in requestHeaders;
+
+  if (storedToken && !hasExplicitAuthorizationHeader) {
+    requestHeaders.Authorization = `Bearer ${storedToken}`;
+  }
 
   const fetchInit: RequestInit = {
     method,
@@ -189,6 +199,9 @@ async function request<TResponse, TBody = unknown>(
 
     if (!response.ok) {
       const errorPayload = await parseErrorPayload(response);
+      if (response.status === 401 && authMode !== "none" && Boolean(storedToken)) {
+        clearStoredAuthSession();
+      }
       throw mapHttpError(response.status, errorPayload, { method, url });
     }
 

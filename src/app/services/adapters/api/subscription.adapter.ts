@@ -8,7 +8,6 @@ import type {
   VerifySubscriptionReturnResult,
 } from "../../../models/subscription";
 import { httpClient, toApiError } from "../../../api";
-import { readStoredAuthSession } from "../../../auth/auth-storage";
 
 // ─── Backend Response Shapes ──────────────────────────────────────────────────
 
@@ -75,11 +74,6 @@ const STATIC_PLANS: SubscriptionPlan[] = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function authHeaders(): Record<string, string> {
-  const token = readStoredAuthSession()?.tokens?.accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 function mapBackendStateToOverview(state: BackendSubscriptionState): SubscriptionOverview {
   const statusMap: Record<string, SubscriptionOverview["status"]> = {
@@ -148,9 +142,7 @@ export class ApiSubscriptionAdapter implements SubscriptionService {
     _input: { userId: string; currentTier: "free" | "pro" },
   ): Promise<SubscriptionOverview> {
     try {
-      const response = await httpClient.get<BackendSubscriptionStateResponse>("/subscriptions/me", {
-        headers: authHeaders(),
-      });
+      const response = await httpClient.get<BackendSubscriptionStateResponse>("/subscriptions/me");
       return mapBackendStateToOverview(response.data);
     } catch (error) {
       throw toApiError(error, { operation: "subscription.getSubscriptionOverview" });
@@ -172,7 +164,6 @@ export class ApiSubscriptionAdapter implements SubscriptionService {
         { billingCycle: "monthly" | "annual" }
       >("/subscriptions/checkout", {
         body: { billingCycle: input.billingCycle },
-        headers: authHeaders(),
       });
 
       const checkout = response.data;
@@ -219,7 +210,6 @@ export class ApiSubscriptionAdapter implements SubscriptionService {
             subscriptionId: input.checkoutSessionId,
             providerSubscriptionId,
           },
-          headers: authHeaders(),
         },
       );
 
@@ -246,9 +236,7 @@ export class ApiSubscriptionAdapter implements SubscriptionService {
     _input: { userId: string; currentTier: "free" | "pro" },
   ): Promise<SubscriptionOverview> {
     try {
-      const response = await httpClient.get<BackendSubscriptionStateResponse>("/subscriptions/me", {
-        headers: authHeaders(),
-      });
+      const response = await httpClient.get<BackendSubscriptionStateResponse>("/subscriptions/me");
       return mapBackendStateToOverview(response.data);
     } catch (error) {
       throw toApiError(error, { operation: "subscription.getCurrentSubscriptionStatus" });

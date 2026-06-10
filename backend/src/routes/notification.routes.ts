@@ -10,6 +10,12 @@ router.get('/my', requireAuth, NotificationController.getMyNotifications)
 // GET /api/notifications/unread-count
 router.get('/unread-count', requireAuth, NotificationController.getUnreadCount)
 
+// GET /api/notifications/preferences
+router.get('/preferences', requireAuth, NotificationController.getMyPreferences)
+
+// PUT /api/notifications/preferences
+router.put('/preferences', requireAuth, NotificationController.saveMyPreferences)
+
 // POST /api/notifications/read-all
 router.post('/read-all', requireAuth, NotificationController.markAllRead)
 

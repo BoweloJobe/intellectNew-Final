@@ -19,10 +19,6 @@ vi.mock("../../../../api", () => ({
   toApiError: (_err: unknown, _ctx: unknown) => new Error("api-error"),
 }));
 
-vi.mock("../../../../auth/auth-storage", () => ({
-  readStoredAuthSession: () => ({ tokens: { accessToken: "test-token" } }),
-}));
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const mockGet = httpClient.get as MockedFunction<typeof httpClient.get>;

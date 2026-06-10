@@ -13,7 +13,6 @@ import type {
   InstructorManagedCourse,
 } from "../../../models/courses";
 import { httpClient, toApiError } from "../../../api";
-import { readStoredAuthSession } from "../../../auth/auth-storage";
 
 // ─── Backend response shapes ──────────────────────────────────────────────────
 
@@ -79,11 +78,6 @@ interface BackendEnrollment {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function authHeaders(): Record<string, string> {
-  const token = readStoredAuthSession()?.tokens?.accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 function isValidUrl(val: string): boolean {
   if (!val.trim()) return false;
@@ -255,7 +249,6 @@ export class ApiCoursesAdapter implements CoursesService {
     try {
       const response = await httpClient.get<BackendCourseResponse>(
         `/courses/${courseId}`,
-        { headers: authHeaders() },
       );
       return mapToCourseDetails(response.data.course);
     } catch (error) {
@@ -267,7 +260,6 @@ export class ApiCoursesAdapter implements CoursesService {
     try {
       const enrollmentsResponse = await httpClient.get<BackendEnrollmentsResponse>(
         "/enrollments/my",
-        { headers: authHeaders() },
       );
       const enrollments = enrollmentsResponse.data.enrollments;
 
@@ -276,7 +268,6 @@ export class ApiCoursesAdapter implements CoursesService {
         enrollments.map((e) =>
           httpClient.get<BackendCourseProgressResponse>(
             `/enrollments/courses/${encodeURIComponent(e.course.id)}/progress`,
-            { headers: authHeaders() },
           ),
         ),
       );
@@ -323,7 +314,6 @@ export class ApiCoursesAdapter implements CoursesService {
     try {
       const response = await httpClient.get<BackendCoursesResponse>(
         "/courses/mine/list",
-        { headers: authHeaders() },
       );
       return response.data.courses.map(mapToInstructorManagedCourse);
     } catch (error) {
@@ -335,7 +325,6 @@ export class ApiCoursesAdapter implements CoursesService {
     try {
       const response = await httpClient.get<BackendCoursesResponse>(
         "/admin/courses/queue",
-        { headers: authHeaders() },
       );
       return response.data.courses.map(mapToInstructorManagedCourse);
     } catch (error) {
@@ -357,7 +346,7 @@ export class ApiCoursesAdapter implements CoursesService {
       // 1. Create course
       const courseResponse = await httpClient.post<BackendCourseResponse>(
         "/courses",
-        { body: courseBody, headers: authHeaders() },
+        { body: courseBody },
       );
       const courseId = courseResponse.data.course.id;
 
@@ -369,7 +358,7 @@ export class ApiCoursesAdapter implements CoursesService {
 
         const modResponse = await httpClient.post<{ status: string; data: { module: { id: string } } }>(
           `/courses/${courseId}/modules`,
-          { body: { title: mod.title, order: modIdx }, headers: authHeaders() },
+          { body: { title: mod.title, order: modIdx } },
         );
         const moduleId = modResponse.data.module.id;
 
@@ -391,7 +380,7 @@ export class ApiCoursesAdapter implements CoursesService {
 
           const lessonResponse = await httpClient.post<{ status: string; data: { lesson: { id: string } } }>(
             `/courses/${courseId}/modules/${moduleId}/lessons`,
-            { body: lessonBody, headers: authHeaders() },
+            { body: lessonBody },
           );
           const lessonId = lessonResponse.data.lesson.id;
 
@@ -401,7 +390,7 @@ export class ApiCoursesAdapter implements CoursesService {
               const quizTitle = `Quiz: ${lesson.title}`.slice(0, 200);
               const quizRes = await httpClient.post<{ status: string; data: { quiz: { id: string } } }>(
                 `/content/lessons/${encodeURIComponent(lessonId)}/quiz`,
-                { body: { title: quizTitle, passingScore: 70 }, headers: authHeaders() },
+                { body: { title: quizTitle, passingScore: 70 } },
               );
               const quizId = quizRes.data.quiz.id;
 
@@ -423,7 +412,6 @@ export class ApiCoursesAdapter implements CoursesService {
                         { text: q.optionD, isCorrect: q.correctOption === "d", order: 3 },
                       ],
                     },
-                    headers: authHeaders(),
                   },
                 );
               }
@@ -437,7 +425,6 @@ export class ApiCoursesAdapter implements CoursesService {
       // 3. Fetch the full instructor course (includes modules + lessons)
       const fullResponse = await httpClient.get<BackendCourseResponse>(
         `/courses/mine/${courseId}`,
-        { headers: authHeaders() },
       );
       return mapToInstructorManagedCourse(fullResponse.data.course);
     } catch (error) {
@@ -447,7 +434,6 @@ export class ApiCoursesAdapter implements CoursesService {
 
   async editInstructorCourse(input: InstructorCourseEditInput): Promise<InstructorManagedCourse> {
     const courseId = input.courseId;
-    const headers = authHeaders();
     const courseBody = {
       title: input.title,
       category: input.category,
@@ -459,12 +445,11 @@ export class ApiCoursesAdapter implements CoursesService {
     };
     try {
       // 1. Update top-level course metadata
-      await httpClient.put(`/courses/${courseId}`, { body: courseBody, headers });
+      await httpClient.put(`/courses/${courseId}`, { body: courseBody });
 
       // 2. Fetch the current persisted state so we know which module/lesson IDs exist
       const existingResp = await httpClient.get<BackendCourseResponse>(
         `/courses/mine/${courseId}`,
-        { headers },
       );
       const existingModules = existingResp.data.course.modules ?? [];
       const existingModuleIds = new Set(existingModules.map((m) => m.id));
@@ -481,14 +466,14 @@ export class ApiCoursesAdapter implements CoursesService {
           // Existing module — update order/title
           await httpClient.put(
             `/courses/${courseId}/modules/${mod.id}`,
-            { body: { title: mod.title, order: modIdx }, headers },
+            { body: { title: mod.title, order: modIdx } },
           );
           moduleId = mod.id;
         } else {
           // New module — create
           const modResp = await httpClient.post<{ status: string; data: { module: { id: string } } }>(
             `/courses/${courseId}/modules`,
-            { body: { title: mod.title, order: modIdx }, headers },
+            { body: { title: mod.title, order: modIdx } },
           );
           moduleId = modResp.data.module.id;
         }
@@ -519,14 +504,14 @@ export class ApiCoursesAdapter implements CoursesService {
             // Existing lesson — update
             await httpClient.put(
               `/courses/${courseId}/modules/${moduleId}/lessons/${lesson.id}`,
-              { body: lessonBody, headers },
+              { body: lessonBody },
             );
             keepLessonIds.add(lesson.id);
           } else {
             // New lesson — create
             const lessonResp = await httpClient.post<{ status: string; data: { lesson: { id: string } } }>(
               `/courses/${courseId}/modules/${moduleId}/lessons`,
-              { body: lessonBody, headers },
+              { body: lessonBody },
             );
             const newLessonId = lessonResp.data.lesson.id;
             keepLessonIds.add(newLessonId);
@@ -537,7 +522,7 @@ export class ApiCoursesAdapter implements CoursesService {
                 const quizTitle = `Quiz: ${lesson.title}`.slice(0, 200);
                 const quizRes = await httpClient.post<{ status: string; data: { quiz: { id: string } } }>(
                   `/content/lessons/${encodeURIComponent(newLessonId)}/quiz`,
-                  { body: { title: quizTitle, passingScore: 70 }, headers },
+                  { body: { title: quizTitle, passingScore: 70 } },
                 );
                 const quizId = quizRes.data.quiz.id;
                 for (let qIdx = 0; qIdx < lesson.quizQuestions.length; qIdx++) {
@@ -557,7 +542,6 @@ export class ApiCoursesAdapter implements CoursesService {
                           { text: q.optionD, isCorrect: q.correctOption === "d", order: 3 },
                         ],
                       },
-                      headers,
                     },
                   );
                 }
@@ -574,7 +558,6 @@ export class ApiCoursesAdapter implements CoursesService {
             try {
               await httpClient.delete(
                 `/courses/${courseId}/modules/${moduleId}/lessons/${existingLessonId}`,
-                { headers },
               );
             } catch {
               // Silently ignore — server returns 409 if lesson has student progress
@@ -587,7 +570,7 @@ export class ApiCoursesAdapter implements CoursesService {
       for (const existingModuleId of existingModuleIds) {
         if (!keepModuleIds.has(existingModuleId)) {
           try {
-            await httpClient.delete(`/courses/${courseId}/modules/${existingModuleId}`, { headers });
+            await httpClient.delete(`/courses/${courseId}/modules/${existingModuleId}`);
           } catch {
             // Silently ignore — server returns 409 if module has student progress
           }
@@ -597,7 +580,6 @@ export class ApiCoursesAdapter implements CoursesService {
       // 4. Fetch and return updated course
       const fullResponse = await httpClient.get<BackendCourseResponse>(
         `/courses/mine/${courseId}`,
-        { headers },
       );
       return mapToInstructorManagedCourse(fullResponse.data.course);
     } catch (error) {
@@ -609,7 +591,6 @@ export class ApiCoursesAdapter implements CoursesService {
     try {
       const response = await httpClient.post<BackendCourseResponse>(
         `/courses/${courseId}/submit`,
-        { headers: authHeaders() },
       );
       return mapToInstructorManagedCourse(response.data.course);
     } catch (error) {
@@ -628,12 +609,11 @@ export class ApiCoursesAdapter implements CoursesService {
       if (decision === "approved") {
         response = await httpClient.post<BackendCourseResponse>(
           `/admin/courses/${idStr}/approve`,
-          { headers: authHeaders() },
         );
       } else {
         response = await httpClient.post<BackendCourseResponse, { reason: string }>(
           `/admin/courses/${idStr}/reject`,
-          { body: { reason: rejectionReason ?? "" }, headers: authHeaders() },
+          { body: { reason: rejectionReason ?? "" } },
         );
       }
       return mapToInstructorManagedCourse(response.data.course);
@@ -646,7 +626,6 @@ export class ApiCoursesAdapter implements CoursesService {
     try {
       await httpClient.post(
         `/enrollments/courses/${courseId}/enroll`,
-        { headers: authHeaders() },
       );
     } catch (error) {
       throw toApiError(error, { operation: "courses.enrollCourse" });
@@ -657,7 +636,7 @@ export class ApiCoursesAdapter implements CoursesService {
     try {
       await httpClient.post(
         `/enrollments/lessons/${encodeURIComponent(lessonId)}/complete`,
-        { body: { courseId }, headers: authHeaders() },
+        { body: { courseId } },
       );
     } catch (error) {
       throw toApiError(error, { operation: "courses.completeCourseLesson" });

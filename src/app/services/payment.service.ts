@@ -1,5 +1,4 @@
 import { httpClient, toApiError } from "../api";
-import { readStoredAuthSession } from "../auth/auth-storage";
 import type {
   CaptureCoursePaymentInput,
   CoursePaymentCaptureResult,
@@ -15,11 +14,6 @@ type BackendCaptureResponse = {
   data: CoursePaymentCaptureResult;
 };
 
-function authHeaders(): Record<string, string> {
-  const token = readStoredAuthSession()?.tokens?.accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 export async function createCoursePaymentOrder(
   input: CreateCoursePaymentOrderInput,
 ): Promise<CoursePaymentOrder> {
@@ -32,7 +26,6 @@ export async function createCoursePaymentOrder(
         returnUrl: input.returnUrl,
         cancelUrl: input.cancelUrl,
       },
-      headers: authHeaders(),
     });
 
     return response.data;
@@ -50,7 +43,6 @@ export async function captureCoursePayment(
       { orderId: string }
     >(`/payments/courses/${encodeURIComponent(input.courseId)}/capture`, {
       body: { orderId: input.orderId },
-      headers: authHeaders(),
     });
 
     return response.data;

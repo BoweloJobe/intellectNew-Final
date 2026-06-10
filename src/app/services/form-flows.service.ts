@@ -5,6 +5,10 @@ import {
 } from "../utils/form-validation";
 import { getNotesService } from "./factory/service-registry";
 import { updateProfile } from "./auth.service";
+import {
+  getNotificationPreferences,
+  saveNotificationPreferences,
+} from "./notifications.service";
 
 export type DiscussionFormInput = {
   title: string;
@@ -121,8 +125,11 @@ export async function saveProfileSettings(input: ProfileSettingsInput): Promise<
 export async function saveNotificationSettings(
   input: NotificationSettingsInput,
 ): Promise<NotificationSettingsInput> {
-  await withMockDelay(null, 500);
-  return input;
+  return saveNotificationPreferences(input);
+}
+
+export async function loadNotificationSettings(): Promise<NotificationSettingsInput> {
+  return getNotificationPreferences();
 }
 
 export async function saveSecuritySettings(_input: SecuritySettingsInput): Promise<void> {

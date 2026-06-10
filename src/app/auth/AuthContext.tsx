@@ -26,6 +26,7 @@ import {
 import { normalizeAuthSession, normalizeAuthUser, normalizeEmail } from "./auth-normalizers";
 import { getCurrentSubscriptionStatus } from "../services/subscription.service";
 import {
+  AUTH_SESSION_CLEARED_EVENT,
   clearStoredAuthSession,
   readStoredAuthSession,
   writeStoredAuthSession,
@@ -114,6 +115,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [subscriptionOverview, setSubscriptionOverview] = useState<SubscriptionOverview>(
     createSubscriptionOverviewFromTier("free"),
   );
+
+  useEffect(() => {
+    const handleSessionCleared = () => {
+      setUser(null);
+      setSession(null);
+      setStatus("unauthenticated");
+      setSubscriptionOverview(createSubscriptionOverviewFromTier("free"));
+      clearPersistedProductState();
+      invalidateSearchCatalog();
+    };
+
+    window.addEventListener(AUTH_SESSION_CLEARED_EVENT, handleSessionCleared);
+
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CLEARED_EVENT, handleSessionCleared);
+    };
+  }, []);
 
   useEffect(() => {
     const restoreSession = async () => {

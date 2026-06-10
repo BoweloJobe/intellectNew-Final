@@ -1,7 +1,6 @@
 import type { NotesService } from "../../contracts/notes.contract";
 import type { NoteFormInput, NoteSubmissionResult } from "../../form-flows.service";
 import { httpClient, toApiError } from "../../../api";
-import { readStoredAuthSession } from "../../../auth/auth-storage";
 
 type BackendNote = {
   id: number;
@@ -16,11 +15,6 @@ type BackendNote = {
 
 type BackendNotesResponse = { status: string; data: { notes: BackendNote[] } };
 type BackendNoteResponse = { status: string; data: { note: BackendNote } };
-
-function authHeaders(): Record<string, string> {
-  const token = readStoredAuthSession()?.tokens?.accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 function formatNoteDate(value: string): string {
   const date = new Date(value);
@@ -50,9 +44,7 @@ function toNoteSubmissionResult(note: BackendNote): NoteSubmissionResult {
 export class ApiNotesAdapter implements NotesService {
   async getNotesLibrary(): Promise<NoteSubmissionResult[]> {
     try {
-      const response = await httpClient.get<BackendNotesResponse>("/notes", {
-        headers: authHeaders(),
-      });
+      const response = await httpClient.get<BackendNotesResponse>("/notes");
       return response.data.notes.map(toNoteSubmissionResult);
     } catch (error) {
       throw toApiError(error, { operation: "notes.getNotesLibrary" });
@@ -72,11 +64,9 @@ export class ApiNotesAdapter implements NotesService {
       const response = existingId
         ? await httpClient.put<BackendNoteResponse>(`/notes/${encodeURIComponent(String(existingId))}`, {
             body,
-            headers: authHeaders(),
           })
         : await httpClient.post<BackendNoteResponse>("/notes", {
             body,
-            headers: authHeaders(),
           });
 
       return toNoteSubmissionResult(response.data.note);
@@ -87,9 +77,7 @@ export class ApiNotesAdapter implements NotesService {
 
   async deleteNote(id: number): Promise<void> {
     try {
-      await httpClient.delete(`/notes/${encodeURIComponent(String(id))}`, {
-        headers: authHeaders(),
-      });
+      await httpClient.delete(`/notes/${encodeURIComponent(String(id))}`);
     } catch (error) {
       throw toApiError(error, { operation: "notes.deleteNote" });
     }

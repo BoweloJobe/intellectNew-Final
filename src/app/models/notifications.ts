@@ -13,6 +13,15 @@ export interface NotificationCenterPreferences {
   groupMode: NotificationGroupMode;
 }
 
+export interface NotificationPreferences {
+  courseUpdates: boolean;
+  quizReminders: boolean;
+  assignmentDeadlines: boolean;
+  communityActivity: boolean;
+  weeklyProgressReport: boolean;
+  emailNotifications: boolean;
+}
+
 export type NotificationSource =
   | "quiz-reminder"
   | "course-update"

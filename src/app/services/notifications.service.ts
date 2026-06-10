@@ -1,5 +1,10 @@
 import type { ActivityItem } from "../models/activity";
-import type { NotificationCategory, NotificationGroup, NotificationItem } from "../models/notifications";
+import type {
+  NotificationCategory,
+  NotificationGroup,
+  NotificationItem,
+  NotificationPreferences,
+} from "../models/notifications";
 import { getNotificationsService } from "./factory/service-registry";
 
 export async function getNotifications(): Promise<NotificationItem[]> {
@@ -8,6 +13,16 @@ export async function getNotifications(): Promise<NotificationItem[]> {
 
 export async function getActivityFeed(): Promise<ActivityItem[]> {
   return getNotificationsService().getActivityFeed();
+}
+
+export async function getNotificationPreferences(): Promise<NotificationPreferences> {
+  return getNotificationsService().getNotificationPreferences();
+}
+
+export async function saveNotificationPreferences(
+  input: NotificationPreferences,
+): Promise<NotificationPreferences> {
+  return getNotificationsService().saveNotificationPreferences(input);
 }
 
 export async function markNotificationRead(notificationId: string): Promise<void> {

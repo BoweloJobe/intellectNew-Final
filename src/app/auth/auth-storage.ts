@@ -3,6 +3,7 @@ import { isAuthSession, normalizeAuthSession } from "./auth-normalizers";
 import { logWarn } from "../utils/logger";
 
 const AUTH_SESSION_STORAGE_KEY = "intellectx.auth.session";
+export const AUTH_SESSION_CLEARED_EVENT = "intellectx:auth-session-cleared";
 
 function getSafeLocalStorage(): Storage | null {
   if (typeof window === "undefined" || typeof window.localStorage === "undefined") {
@@ -89,6 +90,7 @@ export function clearStoredAuthSession(): void {
 
   try {
     storage.removeItem(AUTH_SESSION_STORAGE_KEY);
+    window.dispatchEvent(new CustomEvent(AUTH_SESSION_CLEARED_EVENT));
   } catch (error) {
     logWarn("Failed to clear auth session from storage", {
       operation: "auth.storage.clear",

@@ -13,12 +13,6 @@ vi.mock("../../../api", () => ({
   toApiError: (error: unknown) => error,
 }));
 
-vi.mock("../../../auth/auth-storage", () => ({
-  readStoredAuthSession: () => ({
-    tokens: { accessToken: "test-token" },
-  }),
-}));
-
 const mockHttpClient = vi.mocked(httpClient);
 
 const backendCourse = {
@@ -77,7 +71,6 @@ describe("ApiCoursesAdapter", () => {
     await new ApiCoursesAdapter().createInstructorCourse(input);
 
     expect(mockHttpClient.post).toHaveBeenCalledWith("/courses", {
-      headers: { Authorization: "Bearer test-token" },
       body: {
         title: "Cell Biology",
         category: "Biology",

@@ -2,7 +2,6 @@ import type { LessonsService, VideoLessonPageData } from "../../contracts/lesson
 import { LessonCourseMismatchError, LessonNotFoundError } from "../../contracts/lessons.contract";
 import type { VideoLesson, VideoLessonNote } from "../../../models/lessons";
 import { ApiError, httpClient, toApiError } from "../../../api";
-import { readStoredAuthSession } from "../../../auth/auth-storage";
 
 // ─── Backend response shapes ──────────────────────────────────────────────────
 
@@ -82,11 +81,6 @@ type BackendLessonPageResponse = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function authHeaders(): Record<string, string> {
-  const token = readStoredAuthSession()?.tokens?.accessToken;
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 function parseRawNotes(raw: string | null): import("../../../models/lessons").VideoLessonNote[] {
   const content = raw?.trim();
@@ -192,7 +186,6 @@ function mapLessonPageResponse(response: BackendLessonPageResponse): VideoLesson
 async function fetchCourseWithModules(courseId: string): Promise<BackendCourseWithModules> {
   const response = await httpClient.get<{ status: string; data: { course: BackendCourseWithModules } }>(
     `/courses/${courseId}`,
-    { headers: authHeaders() },
   );
   return response.data.course;
 }
@@ -239,7 +232,7 @@ export class ApiLessonsAdapter implements LessonsService {
     try {
       await httpClient.post(
         `/enrollments/lessons/${encodeURIComponent(lessonId)}/complete`,
-        { body: { courseId }, headers: authHeaders() },
+        { body: { courseId } },
       );
     } catch (error) {
       throw toApiError(error, { operation: "lessons.completeLessonVideo" });
@@ -254,7 +247,6 @@ export class ApiLessonsAdapter implements LessonsService {
     try {
       const response = await httpClient.get<BackendLessonPageResponse>(
         `/content/lessons/${encodeURIComponent(lessonId)}`,
-        { headers: authHeaders() },
       );
       const pageData = mapLessonPageResponse(response);
 
