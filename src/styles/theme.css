@@ -92,52 +92,67 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  color-scheme: dark;
+  --background: #0b111c;
+  --foreground: #edf4ff;
+  --card: #111827;
+  --card-foreground: #edf4ff;
+  --popover: #111827;
+  --popover-foreground: #edf4ff;
+  --primary: #4a9ff5;
+  --primary-foreground: #f8fbff;
+  --secondary: #182235;
+  --secondary-foreground: #e5edf8;
+  --muted: #1a2436;
+  --muted-foreground: #9aa8bc;
+  --accent: #4a9ff5;
+  --accent-foreground: #f8fbff;
+  --destructive: #f87171;
+  --destructive-foreground: #fff7f7;
+  --border: rgba(148, 163, 184, 0.2);
+  --input: rgba(148, 163, 184, 0.16);
+  --input-background: rgba(15, 23, 42, 0.72);
+  --switch-background: #334155;
+  --ring: #4a9ff5;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --chart-1: #4a9ff5;
+  --chart-2: #74d4ff;
+  --chart-3: #a7f3d0;
+  --chart-4: #c4b5fd;
+  --chart-5: #fda4af;
+  --sidebar: #0f172a;
+  --sidebar-foreground: #edf4ff;
+  --sidebar-primary: #4a9ff5;
+  --sidebar-primary-foreground: #f8fbff;
+  --sidebar-accent: #172033;
+  --sidebar-accent-foreground: #edf4ff;
+  --sidebar-border: rgba(148, 163, 184, 0.18);
+  --sidebar-ring: #4a9ff5;
   
   /* Surface hierarchy (Secondary surfaces) */
-  --surface-overlay-1: oklch(0.20 0 0);
-  --surface-overlay-2: oklch(0.24 0 0);
-  --surface-overlay-border: rgba(255, 255, 255, 0.08);
-  --surface-overlay-shadow: 0 2px 8px rgba(0, 0, 0, 0.24);
+  --surface-overlay-1: rgba(17, 24, 39, 0.78);
+  --surface-overlay-2: rgba(24, 34, 53, 0.82);
+  --surface-overlay-border: rgba(148, 163, 184, 0.18);
+  --surface-overlay-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
   
   /* Typography colors - dark mode */
-  --text-primary: #f5f5f5;
-  --text-secondary: #d1d5db;
-  --text-tertiary: #9ca3af;
-  --text-quaternary: #6b7280;
+  --text-primary: #edf4ff;
+  --text-secondary: #cbd7e8;
+  --text-tertiary: #9aa8bc;
+  --text-quaternary: #718096;
+
+  /* IntellectX DNA-inspired blues */
+  --dna-blue-light: #74d4ff;
+  --dna-blue: #4a9ff5;
+  --dna-blue-medium: #2e8ef7;
+  --dna-blue-dark: #1c7ed6;
+  --dna-blue-deeper: #60a5fa;
+  
+  /* Glass effect variables (Primary surfaces) */
+  --glass-bg: rgba(15, 23, 42, 0.68);
+  --glass-border: rgba(148, 163, 184, 0.2);
+  --glass-shadow: 0 18px 44px rgba(0, 0, 0, 0.3);
 }
 
 @theme inline {
@@ -251,5 +266,58 @@
     font-size: var(--text-base);
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
+  }
+}
+
+@layer utilities {
+  .dark .ix-card-slide-up {
+    background: var(--glass-bg) !important;
+    border-color: var(--glass-border) !important;
+    box-shadow: var(--glass-shadow) !important;
+  }
+
+  .dark :where(.text-gray-900, .text-slate-950, .text-slate-900) {
+    color: var(--text-primary);
+  }
+
+  .dark :where(.text-gray-800, .text-slate-800, .text-gray-700, .text-slate-700) {
+    color: var(--text-secondary);
+  }
+
+  .dark :where(.text-gray-600, .text-slate-600, .text-gray-500, .text-slate-500) {
+    color: var(--text-tertiary);
+  }
+
+  .dark :where(.border-white\/50, .border-white\/60, .border-white\/70) {
+    border-color: var(--surface-overlay-border);
+  }
+
+  .dark [class~="bg-white"],
+  .dark [class~="bg-white/30"],
+  .dark [class~="bg-white/40"],
+  .dark [class~="bg-white/60"],
+  .dark [class~="bg-white/65"],
+  .dark [class~="bg-white/70"],
+  .dark [class~="bg-white/75"],
+  .dark [class~="bg-white/80"],
+  .dark [class~="bg-white/90"],
+  .dark [class~="bg-white/[0.35]"],
+  .dark [class~="bg-white/[0.4]"],
+  .dark [class~="bg-white/[0.45]"],
+  .dark [class~="bg-white/[0.5]"],
+  .dark [class~="bg-white/[0.55]"],
+  .dark [class~="bg-white/[0.65]"],
+  .dark [class~="bg-white/[0.72]"],
+  .dark [class~="bg-[#f9fafb]"],
+  .dark [class~="bg-[#f8fafc]"],
+  .dark [class~="bg-[#f3f4f6]"] {
+    background-color: var(--surface-overlay-1);
+  }
+
+  .dark [class~="hover:bg-white/[0.55]"]:hover,
+  .dark [class~="hover:bg-white/[0.65]"]:hover,
+  .dark [class~="hover:bg-white/[0.72]"]:hover,
+  .dark [class~="hover:bg-[#f3f4f6]"]:hover {
+    background-color: var(--surface-overlay-2);
   }
 }

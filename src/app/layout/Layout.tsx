@@ -7,7 +7,7 @@ export function Layout() {
   const location = useLocation();
 
   return (
-    <div className="relative isolate min-h-screen w-full overflow-x-hidden bg-[#f5f5f5]">
+    <div className="relative isolate min-h-screen w-full overflow-x-hidden bg-background">
       {/*
         Decorative DNA composition layer.
         - Fixed so it does not scroll with the page
@@ -25,7 +25,7 @@ export function Layout() {
             hidden sm:block
             absolute inset-0
             w-full h-full object-cover
-            select-none
+            select-none transition-[opacity,filter] duration-300 ease-out dark:opacity-35 dark:brightness-75 dark:saturate-75
           "
         />
       </div>
