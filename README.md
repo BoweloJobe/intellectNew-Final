@@ -40,7 +40,9 @@ This is a local prototype/development flow for the current SQLite schema. `prism
 
 Current database reality: Prisma is configured for SQLite in `backend/prisma/schema.prisma`, using `DATABASE_URL="file:./dev.db"` from `backend/.env.example`. Local `.db` files are ignored and must not be committed.
 
-Production database target: PostgreSQL. Migration work and production migration commands are planned but not implemented yet. Production should eventually use Prisma migrations and `prisma migrate deploy`, not `prisma db push`.
+The committed SQLite migration chain is replayable for fresh development databases with `npm run db:migrate:deploy --prefix backend`.
+
+Production database target: PostgreSQL. PostgreSQL migration work remains separate future work. Production should eventually use Prisma migrations and `prisma migrate deploy`, not `prisma db push`.
 
 ---
 

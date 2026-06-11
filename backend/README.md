@@ -34,15 +34,17 @@ npm run dev
 | `npm run build` | Compile TypeScript to dist/ |
 | `npm start` | Run compiled production build |
 | `npm run typecheck` | Type-check without emitting |
+| `npm run db:validate` | Validate the Prisma schema |
 | `npm run db:generate` | Generate Prisma Client |
-| `npm run db:migrate` | Run Prisma development migrations once migrations exist |
+| `npm run db:migrate` | Create/apply Prisma development migrations |
+| `npm run db:migrate:deploy` | Apply committed migrations to a fresh or existing SQLite database |
 | `npm run db:studio` | Open Prisma Studio |
 
 ## Database status
 
 Prisma currently uses SQLite via `backend/prisma/schema.prisma`. The local default is `DATABASE_URL="file:./dev.db"`, and local `.db` files are ignored by git and must not be committed.
 
-There are no Prisma migrations yet. Local prototype setup can use Prisma Client generation and the existing local DB flow, but `prisma db push` is not production-safe. Production should move to PostgreSQL with committed migrations and `prisma migrate deploy`.
+The committed SQLite migration chain is replayable for fresh development databases. Local prototype setup can still use Prisma Client generation and the existing local `prisma db push` flow, but `prisma db push` is not production-safe. Production should move to PostgreSQL with committed PostgreSQL migrations and `prisma migrate deploy`.
 
 ## Health endpoint
 
