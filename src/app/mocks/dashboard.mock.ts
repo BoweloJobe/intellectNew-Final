@@ -124,8 +124,8 @@ export const instructorDashboardMock: InstructorDashboardData = {
   stats: [
     { label: "Total Students", value: "234", icon: "users", trend: "+12%" },
     { label: "Active Courses", value: "8", icon: "book-open", trend: "+2" },
-    { label: "Pending Grading", value: "15", icon: "file-check", trend: "" },
-    { label: "Avg. Engagement", value: "87%", icon: "trending-up", trend: "+5%" },
+    { label: "Quiz Attempts", value: "15", icon: "file-check", trend: "" },
+    { label: "Avg. Quiz Score", value: "87%", icon: "trending-up", trend: "+5%" },
   ],
   engagementData: [
     { week: "Week 1", students: 180 },
@@ -142,10 +142,10 @@ export const instructorDashboardMock: InstructorDashboardData = {
     {
       id: "submission-1",
       student: "Emily Chen",
-      assignment: "DNA Replication Essay",
+      assignment: "DNA Replication Quiz",
       course: "Advanced Biology",
       submitted: "2 hours ago",
-      status: "pending",
+      status: "graded",
     },
     {
       id: "submission-2",
@@ -153,7 +153,7 @@ export const instructorDashboardMock: InstructorDashboardData = {
       assignment: "Cell Division Quiz",
       course: "Advanced Biology",
       submitted: "5 hours ago",
-      status: "pending",
+      status: "graded",
     },
     {
       id: "submission-3",

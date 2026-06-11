@@ -490,8 +490,8 @@ export class ApiCoursesAdapter implements CoursesService {
                   },
                 );
               }
-            } catch {
-              // Quiz creation is best-effort — the lesson is saved; quiz can be added later.
+            } catch (error) {
+              throw error;
             }
           }
         }
@@ -638,14 +638,14 @@ export class ApiCoursesAdapter implements CoursesService {
                     },
                   );
                 }
-              } catch {
-                // Quiz creation is best-effort
+              } catch (error) {
+                throw error;
               }
             }
           }
         }
 
-        // Delete lessons removed from the form (best-effort; server guards against progress)
+        // Delete lessons removed from the form; server guards against progress.
         for (const existingLessonId of existingLessonIds) {
           if (!keepLessonIds.has(existingLessonId)) {
             try {
@@ -653,19 +653,19 @@ export class ApiCoursesAdapter implements CoursesService {
                 `/courses/${courseId}/modules/${moduleId}/lessons/${existingLessonId}`,
               );
             } catch {
-              // Silently ignore — server returns 409 if lesson has student progress
+              throw new Error("Course saved, but a lesson could not be deleted because it may have student progress.");
             }
           }
         }
       }
 
-      // Delete modules removed from the form (best-effort)
+      // Delete modules removed from the form; server guards against progress.
       for (const existingModuleId of existingModuleIds) {
         if (!keepModuleIds.has(existingModuleId)) {
           try {
             await httpClient.delete(`/courses/${courseId}/modules/${existingModuleId}`);
           } catch {
-            // Silently ignore — server returns 409 if module has student progress
+            throw new Error("Course saved, but a module could not be deleted because it may have student progress.");
           }
         }
       }

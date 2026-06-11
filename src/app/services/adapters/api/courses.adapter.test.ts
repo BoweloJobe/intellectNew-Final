@@ -141,6 +141,56 @@ describe("ApiCoursesAdapter", () => {
     });
   });
 
+  it("surfaces lesson quiz creation failures instead of returning a successful course save", async () => {
+    const quizFailure = new Error("Quiz creation failed");
+    mockHttpClient.post
+      .mockResolvedValueOnce({ status: "ok", data: { course: { ...backendCourse, id: "course-1" } } })
+      .mockResolvedValueOnce({ status: "ok", data: { module: { id: "module-1" } } })
+      .mockResolvedValueOnce({ status: "ok", data: { lesson: { id: "lesson-1" } } })
+      .mockRejectedValueOnce(quizFailure);
+
+    await expect(new ApiCoursesAdapter().createInstructorCourse({
+      title: "Cell Biology",
+      instructor: "Ada Lovelace",
+      category: "Biology",
+      description: "A practical course about cells.",
+      difficulty: "beginner",
+      totalLessons: 1,
+      initialStatus: "draft",
+      modules: [
+        {
+          title: "Basics",
+          lessons: [
+            {
+              title: "Cells",
+              videoUrl: "https://example.com/video",
+              description: "Cell intro",
+              duration: "10m",
+              estimatedCompletionTimeMinutes: 10,
+              notesContent: "Notes",
+              isFreePreview: false,
+              quizAvailable: true,
+              quizTimeLimitMinutes: 12,
+              quizQuestions: [
+                {
+                  prompt: "Question?",
+                  optionA: "A",
+                  optionB: "B",
+                  optionC: "C",
+                  optionD: "D",
+                  correctOption: "a",
+                  explanation: "Because.",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    })).rejects.toBe(quizFailure);
+
+    expect(mockHttpClient.get).not.toHaveBeenCalledWith("/courses/mine/course-1");
+  });
+
   it("updates existing lesson quiz time limits when editing courses", async () => {
     const courseWithLesson = {
       ...backendCourse,
@@ -194,6 +244,43 @@ describe("ApiCoursesAdapter", () => {
     expect(mockHttpClient.put).toHaveBeenCalledWith("/content/quizzes/quiz-1", {
       body: { timeLimitSeconds: 300 },
     });
+  });
+
+  it("surfaces blocked lesson deletions during course edits", async () => {
+    const courseWithLesson = {
+      ...backendCourse,
+      modules: [
+        {
+          id: "module-1",
+          title: "Basics",
+          order: 0,
+          lessons: [{ id: "lesson-1", title: "Cells", order: 0 }],
+        },
+      ],
+    };
+    mockHttpClient.get.mockResolvedValueOnce({ status: "ok", data: { course: courseWithLesson } });
+    mockHttpClient.put.mockResolvedValue({ status: "ok", data: {} });
+    mockHttpClient.delete.mockRejectedValueOnce(new Error("Lesson has progress"));
+
+    await expect(new ApiCoursesAdapter().editInstructorCourse({
+      courseId: "course-1",
+      title: "Cell Biology",
+      instructor: "Ada Lovelace",
+      category: "Biology",
+      description: "A practical course about cells.",
+      difficulty: "beginner",
+      totalLessons: 0,
+      initialStatus: "draft",
+      modules: [
+        {
+          id: "module-1",
+          title: "Basics",
+          lessons: [],
+        },
+      ],
+    })).rejects.toThrow("lesson could not be deleted");
+
+    expect(mockHttpClient.get).toHaveBeenCalledTimes(1);
   });
 
   it("loads saved course ids from GET /courses/saved", async () => {

@@ -9,6 +9,7 @@ import { ListRowSkeleton } from "../components/skeletons/SectionSkeletons";
 import { Button } from "../components/ui/button";
 import { CourseAuthoringForm } from "../components/instructor/CourseAuthoringForm";
 import { CourseStatusCard } from "../components/instructor/CourseStatusCard";
+import { domainAdapterConfig } from "../api/config/apiConfig";
 import {
   createInstructorCourse,
   editInstructorCourse,
@@ -22,6 +23,7 @@ import { useAuth } from "../auth/AuthContext";
 type ViewMode = "list" | "create" | "edit";
 
 const COURSE_CATEGORIES = ["Biology", "Chemistry", "Physics", "Mathematics", "Other"];
+const isCourseAuthoringAvailable = domainAdapterConfig.courses === "api";
 
 export function InstructorCoursesPage() {
   const navigate = useNavigate();
@@ -192,6 +194,8 @@ export function InstructorCoursesPage() {
           </Button>
           <Button
             className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
+            disabled={!isCourseAuthoringAvailable}
+            title={!isCourseAuthoringAvailable ? "Course authoring requires API-backed courses." : undefined}
             onClick={() => {
               clearStatus();
               setViewMode("create");
@@ -228,10 +232,16 @@ export function InstructorCoursesPage() {
           <EmptyState
             icon={BookOpen}
             title="No courses yet"
-            description="Create your first course draft and submit it for admin approval before it appears to students."
+            description={
+              isCourseAuthoringAvailable
+                ? "Create your first course draft and submit it for admin approval before it appears to students."
+                : "Course authoring is unavailable while courses are running in mock mode."
+            }
             action={(
               <Button
                 className="bg-[#4a9ff5] text-white hover:bg-[#2e8ef7]"
+                disabled={!isCourseAuthoringAvailable}
+                title={!isCourseAuthoringAvailable ? "Course authoring requires API-backed courses." : undefined}
                 onClick={() => {
                   setViewMode("create");
                 }}
@@ -248,13 +258,13 @@ export function InstructorCoursesPage() {
               key={course.id}
               course={course}
               isSubmitting={isSubmitting}
-              onEdit={goToEdit}
-              onAddQuiz={(course) => {
+              onEdit={isCourseAuthoringAvailable ? goToEdit : undefined}
+              onAddQuiz={isCourseAuthoringAvailable ? (course) => {
                 // Open the edit view — the LessonQuizEditor is embedded
                 // inside each lesson in the course authoring form.
                 goToEdit(course);
-              }}
-              onSubmitForApproval={handleSubmitForApproval}
+              } : undefined}
+              onSubmitForApproval={isCourseAuthoringAvailable ? handleSubmitForApproval : undefined}
             />
           ))}
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ActionSuccessState, DataErrorState } from "../components/DataState";
+import { DataErrorState } from "../components/DataState";
 import { EmptyState } from "../components/EmptyState";
 import { GlassCard } from "../components/GlassCard";
 import { useAsyncViewState } from "../hooks/useAsyncViewState";
@@ -21,7 +21,6 @@ export function InstructorDashboard() {
     defaultErrorMessage: "Instructor analytics are unavailable right now. Retry to load student and course activity.",
   });
   const [dashboardData, setDashboardData] = useState<InstructorDashboardData | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const loadDashboard = () => {
     void runLoadDashboard(async () => {
@@ -39,13 +38,6 @@ export function InstructorDashboard() {
   const engagementData = dashboardData?.engagementData ?? [];
   const courses = dashboardData?.courses ?? [];
   const recentSubmissions = dashboardData?.recentSubmissions ?? [];
-
-  const handleGrade = (student: string) => {
-    setSuccessMessage(`${student}'s submission marked as graded.`);
-    window.setTimeout(() => {
-      setSuccessMessage(null);
-    }, 2200);
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 pb-20">
@@ -76,8 +68,6 @@ export function InstructorDashboard() {
           </Button>
         </div>
       </div>
-
-      {successMessage ? <ActionSuccessState message={successMessage} className="mb-6" /> : null}
 
       {isError ? (
         <div className="mb-8">
@@ -240,12 +230,11 @@ export function InstructorDashboard() {
                 {submission.status === "pending" ? (
                   <Button
                     size="sm"
-                    className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
-                    onClick={() => {
-                      handleGrade(submission.student);
-                    }}
+                    variant="outline"
+                    disabled
+                    title="Manual grading is not available yet. Quiz attempts are graded automatically when submitted."
                   >
-                    Grade
+                    Manual grading unavailable
                   </Button>
                 ) : (
                   <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
