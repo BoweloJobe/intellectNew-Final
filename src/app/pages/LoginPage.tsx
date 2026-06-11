@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
 import { GlassCard } from "../components/GlassCard";
@@ -8,7 +8,7 @@ import { Button } from "../components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../components/ui/form";
 import { Input } from "../components/ui/input";
 import { useAuth } from "../auth/AuthContext";
-import { resolveSafeLoginDestination } from "../auth/route-utils";
+import { getDefaultPathForRole, resolveSafeLoginDestination } from "../auth/route-utils";
 import { emailRules, normalizeEmailInput, passwordRules } from "../utils/form-validation";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -20,7 +20,7 @@ type LoginFormValues = {
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn, signInWithProvider } = useAuth();
+  const { signIn, signInWithProvider, isAuthenticated, role } = useAuth();
   const { isSubmitting, submitError, submitSuccess, clearStatus, run } = useAsyncFormSubmission();
   const [showPassword, setShowPassword] = useState(false);
   
@@ -34,6 +34,10 @@ export function LoginPage() {
 
   const redirectPath =
     (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? null;
+
+  if (isAuthenticated) {
+    return <Navigate to={getDefaultPathForRole(role)} replace />;
+  }
 
   const completeLogin = (role: "student" | "instructor" | "admin") => {
     const safeDestination = resolveSafeLoginDestination(redirectPath, role);

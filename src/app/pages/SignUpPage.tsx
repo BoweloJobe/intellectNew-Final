@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
 import { GlassCard } from "../components/GlassCard";
@@ -18,12 +18,9 @@ import {
   trimmedTextRules,
 } from "../utils/form-validation";
 import { Eye, EyeOff } from "lucide-react";
-import type { SignUpRole } from "../services/contracts/auth.contract";
-
 type SignUpFormValues = {
   firstName: string;
   lastName: string;
-  role: SignUpRole;
   email: string;
   password: string;
   confirmPassword: string;
@@ -31,7 +28,7 @@ type SignUpFormValues = {
 
 export function SignUpPage() {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
+  const { signUp, isAuthenticated, role } = useAuth();
   const { isSubmitting, submitError, submitSuccess, clearStatus, run } = useAsyncFormSubmission();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -40,13 +37,16 @@ export function SignUpPage() {
     defaultValues: {
       firstName: "",
       lastName: "",
-      role: "student",
       email: "",
       password: "",
       confirmPassword: "",
     },
     mode: "onBlur",
   });
+
+  if (isAuthenticated) {
+    return <Navigate to={getDefaultPathForRole(role)} replace />;
+  }
 
   const handleSubmit = form.handleSubmit(async (values) => {
     clearStatus();
@@ -57,7 +57,7 @@ export function SignUpPage() {
           lastName: normalizeRequiredTextInput(values.lastName),
           email: normalizeEmailInput(values.email),
           password: values.password,
-          role: values.role,
+          role: "student",
         });
 
         if (!signUpResult.ok) {
@@ -160,32 +160,6 @@ export function SignUpPage() {
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-semibold text-gray-900">I am signing up as</FormLabel>
-                  <FormControl>
-                    <select
-                      className="w-full rounded-md border border-input bg-white/[0.45] px-3 py-2 text-sm shadow-xs"
-                      aria-label="I am signing up as"
-                      value={field.value}
-                      disabled={isSubmitting}
-                      onChange={(event) => {
-                        clearStatus();
-                        field.onChange(event.target.value as SignUpRole);
-                      }}
-                    >
-                      <option value="student">Student</option>
-                      <option value="instructor">Instructor</option>
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}

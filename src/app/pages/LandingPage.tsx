@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import { getDefaultPathForRole } from "../auth/route-utils";
 import { GlassCard } from "../components/GlassCard";
 import { Button } from "../components/ui/button";
 import { Brain, Sparkles, BarChart3, Users, Star } from "lucide-react";
@@ -48,6 +50,9 @@ export function LandingPage() {
     }
   ];
 
+  const { isAuthenticated, role } = useAuth();
+  const getStartedPath = isAuthenticated ? getDefaultPathForRole(role) : "/signup";
+
   return (
     <div className="max-w-7xl mx-auto px-4 pb-20">
       {/* Hero Section */}
@@ -61,7 +66,7 @@ export function LandingPage() {
             and comprehensive progress tracking.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link to="/signup">
+            <Link to={getStartedPath}>
               <Button size="lg" className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white px-8">
                 Start Learning Free
               </Button>
@@ -172,7 +177,7 @@ export function LandingPage() {
           <p className="text-lg text-gray-700 mb-8">
             Join <span style={{fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial'}}>intellectX</span> today and experience the future of education
           </p>
-          <Link to="/signup">
+          <Link to={getStartedPath}>
             <Button size="lg" className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white px-12">
               Get Started Now
             </Button>

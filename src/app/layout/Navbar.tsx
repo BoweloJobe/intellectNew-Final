@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, LogOut, Search, X } from "lucide-react";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
+import { getDefaultPathForRole } from "../auth/route-utils";
 import { EmptyState } from "../components/EmptyState";
 import { GlobalSearchDropdown } from "../components/GlobalSearchDropdown";
 import { useAsyncViewState } from "../hooks/useAsyncViewState";
@@ -61,9 +62,10 @@ export function Navbar() {
   const globalSearchRef = useRef<HTMLDivElement | null>(null);
   const globalSearchInputRef = useRef<HTMLInputElement | null>(null);
   const isAuthenticated = Boolean(user);
+  const homeRoute = isAuthenticated ? getDefaultPathForRole(role) : "/";
   const isPublicPage =
-    location.pathname === "/" ||
-    (!isAuthenticated && ["/login", "/signup", "/forgot-password", "/pricing"].includes(location.pathname));
+    !isAuthenticated &&
+    (location.pathname === "/" || ["/login", "/signup", "/forgot-password", "/pricing"].includes(location.pathname));
   
   const navLinks = role === "instructor"
     ? [
@@ -397,7 +399,7 @@ export function Navbar() {
         <div className="flex items-center justify-between gap-3">
           {/* Brand */}
           <Link
-            to="/"
+            to={homeRoute}
             className="flex h-9 shrink-0 items-center gap-2.5 rounded-2xl px-2.5 transition-colors duration-200 ease-out hover:bg-white/[0.55] focus-visible:outline-1 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:ring-[#4a9ff5]/30"
           >
             <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-[#4a9ff5]/10">
