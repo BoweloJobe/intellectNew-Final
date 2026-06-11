@@ -172,7 +172,6 @@ export class MockAuthAdapter implements AuthService {
     const normalizedEmail = input.email.trim().toLowerCase();
     const normalizedFirstName = input.firstName.trim();
     const normalizedLastName = input.lastName.trim();
-    const normalizedRole = input.role ?? "student";
 
     if (normalizedEmail.endsWith("@example.com")) {
       return {
@@ -197,7 +196,7 @@ export class MockAuthAdapter implements AuthService {
         displayName: normalizedFirstName,
         fullName: `${normalizedFirstName} ${normalizedLastName}`.trim(),
         email: normalizedEmail,
-        role: normalizedRole,
+        role: "student",
         subscriptionTier: "free",
       },
     };

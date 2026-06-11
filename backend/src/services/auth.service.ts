@@ -18,6 +18,7 @@ import type {
 
 const BCRYPT_ROUNDS = 12
 const RESET_TOKEN_EXPIRES_HOURS = 1
+const PUBLIC_SIGNUP_ROLE = 'STUDENT'
 
 function hashResetToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex')
@@ -43,16 +44,13 @@ export async function signup(input: SignupInput): Promise<AuthResponse> {
   if (existing) throw new AppError(409, 'An account with this email already exists')
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS)
-  // Only STUDENT and INSTRUCTOR are self-assignable roles; ADMIN cannot be
-  // self-assigned — any other value (including absence) defaults to STUDENT.
-  const role = input.role === 'INSTRUCTOR' ? 'INSTRUCTOR' : 'STUDENT'
   const user = await prisma.user.create({
     data: {
       email: input.email,
       firstName: input.firstName,
       lastName: input.lastName,
       passwordHash,
-      role,
+      role: PUBLIC_SIGNUP_ROLE,
     },
   })
 

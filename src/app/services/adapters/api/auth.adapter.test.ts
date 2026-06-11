@@ -58,7 +58,7 @@ describe("ApiAuthAdapter", () => {
     });
   });
 
-  it("sends simplified signup payload to POST /auth/signup", async () => {
+  it("sends student-only signup payload to POST /auth/signup", async () => {
     mockHttpClient.post.mockResolvedValue({
       status: "ok",
       data: { token: "token", user: backendUser },
@@ -70,19 +70,22 @@ describe("ApiAuthAdapter", () => {
       email: "student@example.com",
       password: "password123",
       role: "instructor",
-    });
+    } as Parameters<ApiAuthAdapter["signUp"]>[0] & { role: string });
 
-    expect(mockHttpClient.post).toHaveBeenCalledWith("/auth/signup", {
+    const signupRequest = {
       body: {
         email: "student@example.com",
         password: "password123",
         firstName: "Sarah",
         lastName: "Johnson",
-        role: "INSTRUCTOR",
       },
       auth: "none",
-    });
+    } as const;
+
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/auth/signup", signupRequest);
+    expect(signupRequest.body).not.toHaveProperty("role");
     expect(result.ok).toBe(true);
+    expect(result.ok && result.user.role).toBe("student");
   });
 
   it("sends login without requiring an existing bearer token", async () => {

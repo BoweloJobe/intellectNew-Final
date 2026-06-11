@@ -5,9 +5,6 @@ export const signupSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   firstName: z.string().trim().min(1).max(100),
   lastName: z.string().trim().min(1).max(100),
-  // Optional role field — allows the frontend to request INSTRUCTOR on sign-up.
-  // ADMIN role cannot be self-assigned; any attempt is silently downgraded to STUDENT.
-  role: z.enum(['STUDENT', 'INSTRUCTOR']).optional(),
 })
 
 export const loginSchema = z.object({

@@ -15,8 +15,6 @@ export type PasswordResetChannel = "email" | "phone";
 export type AuthRole = "student" | "instructor" | "admin";
 export type SubscriptionTier = "free" | "pro";
 
-export type SignUpRole = Exclude<AuthRole, "admin">;
-
 export type AuthUser = {
   id: string;
   firstName?: string;
@@ -48,7 +46,6 @@ export type SignUpInput = {
   lastName: string;
   email: string;
   password: string;
-  role?: SignUpRole;
 };
 
 export type UpdateProfileInput = {

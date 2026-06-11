@@ -128,14 +128,12 @@ export class ApiAuthAdapter implements AuthService {
         password: string;
         firstName: string;
         lastName: string;
-        role?: "STUDENT" | "INSTRUCTOR";
       }>("/auth/signup", {
         body: {
           email: input.email,
           password: input.password,
           firstName: input.firstName,
           lastName: input.lastName,
-          role: input.role === "instructor" ? "INSTRUCTOR" : "STUDENT",
         },
         auth: "none",
       });

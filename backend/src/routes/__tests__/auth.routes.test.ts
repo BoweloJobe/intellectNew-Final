@@ -115,7 +115,7 @@ describe('auth routes', () => {
     }))
   })
 
-  it('accepts simplified signup payload with role', async () => {
+  it('strips role from public signup payload before service dispatch', async () => {
     mockAuthService.signup.mockResolvedValue({ token: 'token', user: userProfile })
 
     const res = await request(app).post('/auth/signup').send({
@@ -132,7 +132,6 @@ describe('auth routes', () => {
       lastName: 'Johnson',
       email: 'student@example.com',
       password: 'password123',
-      role: 'INSTRUCTOR',
     })
   })
 

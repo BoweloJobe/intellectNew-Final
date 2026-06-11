@@ -6,6 +6,7 @@ import { AppError } from '../../errors/AppError.js'
 const mockPrisma = vi.hoisted(() => ({
   user: {
     findUnique: vi.fn(),
+    create: vi.fn(),
     update: vi.fn(),
   },
   passwordResetToken: {
@@ -18,14 +19,23 @@ const mockPrisma = vi.hoisted(() => ({
 }))
 
 const mockSendMail = vi.hoisted(() => vi.fn())
+const mockSignToken = vi.hoisted(() => vi.fn(() => 'signed-token'))
 
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }))
+vi.mock('../../lib/token.js', () => ({ signToken: mockSignToken }))
+vi.mock('../../config/env.js', () => ({
+  env: {
+    FRONTEND_URL: 'https://app.example.test',
+    JWT_SECRET: 'unit-test-secret',
+    JWT_EXPIRES_IN: '1h',
+  },
+}))
 vi.mock('../../lib/mailer.js', () => ({
   sendMail: mockSendMail,
   passwordResetHtml: (resetUrl: string) => `<a href="${resetUrl}">Reset</a>`,
 }))
 
-import { changePassword, getMe, requestPasswordReset, resetPassword, updateProfile } from '../auth.service.js'
+import { changePassword, getMe, requestPasswordReset, resetPassword, signup, updateProfile } from '../auth.service.js'
 
 function sha256Hex(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex')
@@ -36,6 +46,103 @@ describe('auth password reset service', () => {
     vi.clearAllMocks()
     mockPrisma.$transaction.mockImplementation(async (ops: unknown[]) => ops)
     process.env.NODE_ENV = 'development'
+  })
+
+  it('creates normal public signups as STUDENT', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null)
+    mockPrisma.user.create.mockResolvedValue({
+      id: 'user-1',
+      email: 'student@example.com',
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      role: 'STUDENT',
+      avatarUrl: null,
+      bio: null,
+      institution: null,
+      isVerified: false,
+      createdAt: new Date('2026-06-01T10:00:00.000Z'),
+    })
+
+    const result = await signup({
+      firstName: 'Sarah',
+      lastName: 'Johnson',
+      email: 'student@example.com',
+      password: 'password123',
+    })
+
+    expect(mockPrisma.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: 'student@example.com',
+        firstName: 'Sarah',
+        lastName: 'Johnson',
+        passwordHash: expect.any(String),
+        role: 'STUDENT',
+      }),
+    })
+    expect(mockSignToken).toHaveBeenCalledWith({
+      id: 'user-1',
+      email: 'student@example.com',
+      role: 'STUDENT',
+    })
+    expect(result.user.role).toBe('STUDENT')
+  })
+
+  it('does not let malicious public signup create an INSTRUCTOR', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null)
+    mockPrisma.user.create.mockResolvedValue({
+      id: 'user-1',
+      email: 'instructor-attempt@example.com',
+      firstName: 'Mal',
+      lastName: 'Client',
+      role: 'STUDENT',
+      avatarUrl: null,
+      bio: null,
+      institution: null,
+      isVerified: false,
+      createdAt: new Date('2026-06-01T10:00:00.000Z'),
+    })
+
+    await signup({
+      firstName: 'Mal',
+      lastName: 'Client',
+      email: 'instructor-attempt@example.com',
+      password: 'password123',
+      role: 'INSTRUCTOR',
+    } as Parameters<typeof signup>[0] & { role: string })
+
+    expect(mockPrisma.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ role: 'STUDENT' }),
+    })
+    expect(mockPrisma.user.create.mock.calls[0][0].data.role).not.toBe('INSTRUCTOR')
+  })
+
+  it('does not let malicious public signup create an ADMIN', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null)
+    mockPrisma.user.create.mockResolvedValue({
+      id: 'user-1',
+      email: 'admin-attempt@example.com',
+      firstName: 'Mal',
+      lastName: 'Client',
+      role: 'STUDENT',
+      avatarUrl: null,
+      bio: null,
+      institution: null,
+      isVerified: false,
+      createdAt: new Date('2026-06-01T10:00:00.000Z'),
+    })
+
+    await signup({
+      firstName: 'Mal',
+      lastName: 'Client',
+      email: 'admin-attempt@example.com',
+      password: 'password123',
+      role: 'ADMIN',
+    } as Parameters<typeof signup>[0] & { role: string })
+
+    expect(mockPrisma.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ role: 'STUDENT' }),
+    })
+    expect(mockPrisma.user.create.mock.calls[0][0].data.role).not.toBe('ADMIN')
   })
 
   it('stores only a hash of the raw reset token while sending the raw token', async () => {
