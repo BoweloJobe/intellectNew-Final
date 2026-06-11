@@ -41,6 +41,7 @@ describe("service-registry", () => {
       vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", undefined);
       const module = await loadRegistryModule();
       const { domainAdapterConfig } = module;
+      expect(domainAdapterConfig.admin).toBe("mock");
       expect(domainAdapterConfig.auth).toBe("mock");
       expect(domainAdapterConfig.courses).toBe("mock");
       expect(domainAdapterConfig.lessons).toBe("mock");
@@ -60,6 +61,7 @@ describe("service-registry", () => {
       vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
       const module = await loadRegistryModule();
       expect(module.domainAdapterConfig.auth).toBe("api");
+      expect(module.domainAdapterConfig.admin).toBe("mock");
       expect(module.domainAdapterConfig.courses).toBe("mock");
       expect(module.domainAdapterConfig.lessons).toBe("mock");
     });

@@ -1,4 +1,5 @@
 import type { AuthService } from "../contracts/auth.contract";
+import type { AdminService } from "../contracts/admin.contract";
 import type { CommunityService } from "../contracts/community.contract";
 import type { CoursesService } from "../contracts/courses.contract";
 import type { DashboardService } from "../contracts/dashboard.contract";
@@ -9,6 +10,7 @@ import type { ProgressService } from "../contracts/progress.contract";
 import type { QuizzesService } from "../contracts/quizzes.contract";
 import type { SubscriptionService } from "../contracts/subscription.contract";
 import type { TutorService } from "../contracts/tutor.contract";
+import { ApiAdminAdapter } from "../adapters/api/admin.adapter";
 import { ApiAuthAdapter } from "../adapters/api/auth.adapter";
 import { ApiCommunityAdapter } from "../adapters/api/community.adapter";
 import { ApiCoursesAdapter } from "../adapters/api/courses.adapter";
@@ -20,6 +22,7 @@ import { ApiProgressAdapter } from "../adapters/api/progress.adapter";
 import { ApiQuizzesAdapter } from "../adapters/api/quizzes.adapter";
 import { ApiSubscriptionAdapter } from "../adapters/api/subscription.adapter";
 import { ApiTutorAdapter } from "../adapters/api/tutor.adapter";
+import { MockAdminAdapter } from "../adapters/mock/admin.adapter";
 import { MockAuthAdapter } from "../adapters/mock/auth.adapter";
 import { MockCommunityAdapter } from "../adapters/mock/community.adapter";
 import { MockCoursesAdapter } from "../adapters/mock/courses.adapter";
@@ -37,6 +40,7 @@ import { logInfo } from "../../utils/logger";
 export type ServiceAdapterMode = AdapterMode;
 
 export interface ServiceRegistry {
+  admin: AdminService;
   auth: AuthService;
   dashboard: DashboardService;
   courses: CoursesService;
@@ -52,6 +56,7 @@ export interface ServiceRegistry {
 
 function createServiceRegistry(config: DomainAdapterConfig): ServiceRegistry {
   return {
+    admin: config.admin === "api" ? new ApiAdminAdapter() : new MockAdminAdapter(),
     auth: config.auth === "api" ? new ApiAuthAdapter() : new MockAuthAdapter(),
     dashboard: config.dashboard === "api" ? new ApiDashboardAdapter() : new MockDashboardAdapter(),
     courses: config.courses === "api" ? new ApiCoursesAdapter() : new MockCoursesAdapter(),
@@ -70,12 +75,10 @@ export const serviceAdapterMode: ServiceAdapterMode = adapterMode;
 export { domainAdapterConfig };
 const services = createServiceRegistry(domainAdapterConfig);
 
-// Log per-domain adapter modes for the domains critical to instructor quiz creation.
-// NOTE: globalMode can read "mock" while auth/quizzes individually resolve to "api"
-// because those domains have a hardcoded "api" fallback in domainAdapterConfig that
-// overrides the global VITE_SERVICE_ADAPTER_MODE setting.
+// Log per-domain adapter modes for debugging mixed mock/API setups.
 logInfo("Service registry initialized", {
   globalMode: serviceAdapterMode,
+  admin: domainAdapterConfig.admin,
   auth: domainAdapterConfig.auth,
   quizzes: domainAdapterConfig.quizzes,
   courses: domainAdapterConfig.courses,
@@ -84,6 +87,10 @@ logInfo("Service registry initialized", {
 
 export function getAuthService(): AuthService {
   return services.auth;
+}
+
+export function getAdminService(): AdminService {
+  return services.admin;
 }
 
 export function getDashboardService(): DashboardService {

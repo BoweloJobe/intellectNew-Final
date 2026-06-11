@@ -8,6 +8,8 @@ import * as SubscriptionController from '../controllers/subscription.controller.
 const router = Router()
 const isAdmin = [requireAuth, requireRole('ADMIN')]
 
+router.get('/users', ...isAdmin, AdminController.listUsers)
+router.patch('/users/:id/role', ...isAdmin, AdminController.updateUserRole)
 router.get('/courses/queue', ...isAdmin, AdminController.getQueue)
 router.post('/courses/:id/approve', ...isAdmin, AdminController.approveCourse)
 router.post('/courses/:id/reject', ...isAdmin, AdminController.rejectCourse)

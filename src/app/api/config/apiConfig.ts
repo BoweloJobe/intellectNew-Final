@@ -3,6 +3,7 @@ import { logWarn } from "../../utils/logger";
 export type AdapterMode = "mock" | "api";
 
 export type ServiceDomain =
+  | "admin"
   | "auth"
   | "courses"
   | "lessons"
@@ -84,6 +85,7 @@ export const adapterMode = apiConfig.adapterMode;
 export const isApiMode = adapterMode === "api";
 
 export const domainAdapterConfig: DomainAdapterConfig = {
+  admin: normalizeDomainAdapterMode(import.meta.env.VITE_ADMIN_ADAPTER_MODE, adapterMode),
   auth: normalizeDomainAdapterMode(import.meta.env.VITE_AUTH_ADAPTER_MODE, adapterMode),
   courses: normalizeDomainAdapterMode(import.meta.env.VITE_COURSES_ADAPTER_MODE, adapterMode),
   lessons: normalizeDomainAdapterMode(import.meta.env.VITE_LESSONS_ADAPTER_MODE, adapterMode),

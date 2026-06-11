@@ -54,6 +54,7 @@ describe("apiConfig", () => {
 
       const { domainAdapterConfig } = await loadConfigModule();
 
+      expect(domainAdapterConfig.admin).toBe("mock");
       expect(domainAdapterConfig.auth).toBe("mock");
       expect(domainAdapterConfig.courses).toBe("mock");
       expect(domainAdapterConfig.lessons).toBe("mock");
@@ -73,6 +74,7 @@ describe("apiConfig", () => {
 
       const { domainAdapterConfig } = await loadConfigModule();
 
+      expect(domainAdapterConfig.admin).toBe("api");
       expect(domainAdapterConfig.auth).toBe("api");
       expect(domainAdapterConfig.courses).toBe("api");
     });
@@ -85,6 +87,7 @@ describe("apiConfig", () => {
       const { domainAdapterConfig } = await loadConfigModule();
 
       expect(domainAdapterConfig.auth).toBe("api");
+      expect(domainAdapterConfig.admin).toBe("mock");
       expect(domainAdapterConfig.courses).toBe("mock");
       expect(domainAdapterConfig.lessons).toBe("mock");
     });

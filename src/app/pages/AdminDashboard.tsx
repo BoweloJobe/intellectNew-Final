@@ -8,8 +8,11 @@ import { useAsyncViewState } from "../hooks/useAsyncViewState";
 import { ListControls, LoadMoreFooter, type ListOption } from "../components/ListControls";
 import { DashboardWidgetSkeleton, ListRowSkeleton, SectionPanelSkeleton } from "../components/skeletons/SectionSkeletons";
 import { Button } from "../components/ui/button";
+import { domainAdapterConfig } from "../api/config/apiConfig";
+import { getAdminUsers, updateAdminUserRole } from "../services/admin.service";
 import { getAdminDashboardData } from "../services/dashboard.service";
 import type { AdminActivityItem, AdminDashboardData } from "../models/dashboard";
+import type { AdminUser, AdminUserRole } from "../models/admin";
 import type { InstructorManagedCourse } from "../models/courses";
 import {
   getCourseModerationQueue,
@@ -22,6 +25,8 @@ import { getAuthUserGreetingName } from "../auth/auth-normalizers";
 import { ModerationCourseCard } from "../components/admin/ModerationCourseCard";
 
 type ActivitySort = "newest" | "oldest" | "type";
+const ADMIN_ROLES: AdminUserRole[] = ["STUDENT", "INSTRUCTOR", "ADMIN"];
+const isAdminUserManagementAvailable = domainAdapterConfig.admin === "api";
 
 export function AdminDashboard() {
   const { user } = useAuth();
@@ -32,11 +37,19 @@ export function AdminDashboard() {
     submitSuccess,
     run: runModerationAction,
   } = useAsyncFormSubmission();
+  const {
+    isSubmitting: isRoleSubmitting,
+    submitError: roleSubmitError,
+    submitSuccess: roleSubmitSuccess,
+    run: runRoleAction,
+  } = useAsyncFormSubmission();
   const { errorMessage, isLoading, isError, run: runLoadDashboard } = useAsyncViewState({
     defaultErrorMessage: "Admin analytics could not be loaded. Retry to refresh platform metrics and activity streams.",
   });
   const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
   const [moderationQueue, setModerationQueue] = useState<InstructorManagedCourse[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<Record<string, AdminUserRole>>({});
   const [rejectionNotes, setRejectionNotes] = useState<Record<string, string>>({});
   const [activityQuery, setActivityQuery] = useState("");
   const [activityTypeFilter, setActivityTypeFilter] = useState("all");
@@ -49,6 +62,14 @@ export function AdminDashboard() {
         getAdminDashboardData(),
         getCourseModerationQueue(),
       ]);
+      if (isAdminUserManagementAvailable) {
+        const users = await getAdminUsers();
+        setAdminUsers(users);
+        setSelectedRoles(Object.fromEntries(users.map((adminUser) => [adminUser.id, adminUser.role])));
+      } else {
+        setAdminUsers([]);
+        setSelectedRoles({});
+      }
       setDashboardData(data);
       setModerationQueue(queue);
       return data;
@@ -125,6 +146,36 @@ export function AdminDashboard() {
     setActivitySort("newest");
   };
 
+  const handleRoleUpdate = (adminUser: AdminUser) => {
+    const nextRole = selectedRoles[adminUser.id] ?? adminUser.role;
+    if (nextRole === adminUser.role) {
+      return;
+    }
+
+    if (adminUser.role === "ADMIN" && nextRole !== "ADMIN") {
+      const confirmed = window.confirm(
+        `Change ${adminUser.firstName} ${adminUser.lastName} from ADMIN to ${nextRole}?`,
+      );
+      if (!confirmed) {
+        setSelectedRoles((previous) => ({ ...previous, [adminUser.id]: adminUser.role }));
+        return;
+      }
+    }
+
+    void runRoleAction(
+      async () => updateAdminUserRole(adminUser.id, nextRole),
+      {
+        successMessage: `${adminUser.firstName} ${adminUser.lastName}'s role updated to ${nextRole}.`,
+        onSuccess: (updatedUser) => {
+          setAdminUsers((previous) =>
+            previous.map((userItem) => userItem.id === updatedUser.id ? updatedUser : userItem),
+          );
+          setSelectedRoles((previous) => ({ ...previous, [updatedUser.id]: updatedUser.role }));
+        },
+      },
+    );
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 pb-20">
       <div className="mb-8">
@@ -133,6 +184,7 @@ export function AdminDashboard() {
       </div>
 
       {submitSuccess ? <ActionSuccessState message={submitSuccess} className="mb-6" /> : null}
+      {roleSubmitSuccess ? <ActionSuccessState message={roleSubmitSuccess} className="mb-6" /> : null}
       {submitError ? (
         <div className="mb-6">
           <DataErrorState
@@ -140,6 +192,14 @@ export function AdminDashboard() {
             description={submitError}
             retryLabel="Retry"
             onRetry={loadDashboard}
+          />
+        </div>
+      ) : null}
+      {roleSubmitError ? (
+        <div className="mb-6">
+          <DataErrorState
+            title="Role update failed"
+            description={roleSubmitError}
           />
         </div>
       ) : null}
@@ -211,6 +271,107 @@ export function AdminDashboard() {
                 }}
               />
             ))}
+          </div>
+        )}
+      </GlassCard>
+
+      <GlassCard className="mb-8">
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">User Role Management</h3>
+            <p className="text-sm text-gray-600">Promote instructors and manage admin access for existing users.</p>
+          </div>
+          {isAdminUserManagementAvailable ? (
+            <span className="text-xs font-semibold uppercase text-[#4a9ff5] tracking-wide">
+              {adminUsers.length} users
+            </span>
+          ) : null}
+        </div>
+
+        {!isAdminUserManagementAvailable ? (
+          <EmptyState
+            icon={Users}
+            title="User management requires API mode"
+            description="Role changes are disabled while the admin service is running with mock adapters."
+          />
+        ) : adminUsers.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No users found"
+            description="Users will appear here after they sign up."
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead>
+                <tr className="text-left text-xs font-semibold uppercase text-gray-500">
+                  <th className="px-3 py-2">User</th>
+                  <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Joined</th>
+                  <th className="px-3 py-2">Role</th>
+                  <th className="px-3 py-2 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {adminUsers.map((adminUser) => {
+                  const selectedRole = selectedRoles[adminUser.id] ?? adminUser.role;
+                  const isOwnAdminDemotion = adminUser.id === user?.id && selectedRole !== "ADMIN";
+                  const hasRoleChanged = selectedRole !== adminUser.role;
+
+                  return (
+                    <tr key={adminUser.id} className="align-middle">
+                      <td className="px-3 py-3">
+                        <div className="font-medium text-gray-900">
+                          {adminUser.firstName} {adminUser.lastName}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-gray-700">{adminUser.email}</td>
+                      <td className="px-3 py-3 text-gray-600">
+                        {new Date(adminUser.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-3 py-3">
+                        <select
+                          value={selectedRole}
+                          disabled={isRoleSubmitting}
+                          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                          onChange={(event) => {
+                            setSelectedRoles((previous) => ({
+                              ...previous,
+                              [adminUser.id]: event.target.value as AdminUserRole,
+                            }));
+                          }}
+                        >
+                          {ADMIN_ROLES.map((role) => (
+                            <option
+                              key={role}
+                              value={role}
+                              disabled={adminUser.id === user?.id && role !== "ADMIN"}
+                            >
+                              {role}
+                            </option>
+                          ))}
+                        </select>
+                        {isOwnAdminDemotion ? (
+                          <p className="mt-1 text-xs text-red-700">You cannot remove your own admin access.</p>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <Button
+                          size="sm"
+                          disabled={isRoleSubmitting || !hasRoleChanged || isOwnAdminDemotion}
+                          title={isOwnAdminDemotion ? "You cannot remove your own admin access." : undefined}
+                          onClick={() => {
+                            handleRoleUpdate(adminUser);
+                          }}
+                        >
+                          {isRoleSubmitting ? "Updating..." : "Apply"}
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </GlassCard>

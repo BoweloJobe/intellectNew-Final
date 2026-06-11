@@ -25,6 +25,12 @@ vi.mock('../../middleware/role.middleware.js', () => ({
 
 // ── Controller stubs ────────────────────────────────────────────────────────
 vi.mock('../../controllers/admin.controller.js', () => ({
+  listUsers: vi.fn((_req: Request, res: Response) =>
+    res.json({ handler: 'listUsers' }),
+  ),
+  updateUserRole: vi.fn((_req: Request, res: Response) =>
+    res.json({ handler: 'updateUserRole', id: (_req as any).params.id }),
+  ),
   getQueue: vi.fn((_req: Request, res: Response) =>
     res.json({ handler: 'getQueue' }),
   ),
