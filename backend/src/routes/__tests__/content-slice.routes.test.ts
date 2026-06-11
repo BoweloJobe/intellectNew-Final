@@ -67,6 +67,9 @@ const mockPrisma = vi.hoisted(() => ({
     upsert: vi.fn(),
     findMany: vi.fn(),
   },
+  lessonWatchProgress: {
+    findMany: vi.fn(),
+  },
   enrollment: { findUnique: vi.fn() },
   quiz: { findUnique: vi.fn(), create: vi.fn() },
 }))
@@ -87,6 +90,10 @@ vi.mock('../../lib/storage.js', () => ({
 
 import courseRouter from '../course.routes.js'
 import quizRouter from '../quiz.routes.js'
+
+beforeEach(() => {
+  mockPrisma.lessonWatchProgress.findMany.mockResolvedValue([])
+})
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -281,6 +288,7 @@ describe('GET /content/lessons/:lessonId', () => {
   beforeEach(() => {
     app = makeApp()
     vi.clearAllMocks()
+    mockPrisma.lessonWatchProgress.findMany.mockResolvedValue([])
   })
 
   it('allows an enrolled student to fetch a locked lesson with content', async () => {

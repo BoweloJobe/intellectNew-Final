@@ -32,6 +32,7 @@ function lessonItem(overrides = {}) {
     order: 1,
     isFree: false,
     quizId: "quiz-1",
+    watchProgress: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-02T00:00:00.000Z",
     course: {
@@ -73,6 +74,36 @@ describe("ApiLessonsAdapter", () => {
     expect(data.lesson.videoUrl).toBe("https://video.example/lesson-1");
     expect(data.lesson.quizAvailable).toBe(true);
     expect(data.courseLessons).toHaveLength(2);
+  });
+
+  it("maps saved lesson watch progress from the lesson endpoint", async () => {
+    mockGet.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        lesson: lessonItem({
+          watchProgress: {
+            watchedSeconds: 180,
+            lastPositionSeconds: 90,
+            updatedAt: "2026-01-03T00:00:00.000Z",
+          },
+        }),
+        furtherLessons: [],
+        courseLessons: [
+          lessonItem({
+            watchProgress: {
+              watchedSeconds: 180,
+              lastPositionSeconds: 90,
+              updatedAt: "2026-01-03T00:00:00.000Z",
+            },
+          }),
+        ],
+      },
+    });
+
+    const data = await new ApiLessonsAdapter().getVideoLessonPageData("course-1", "lesson-1");
+
+    expect(data.lesson.watchedDuration).toBe(180);
+    expect(data.lesson.lastPositionSeconds).toBe(90);
   });
 
   it("maps missing lesson responses to LessonNotFoundError", async () => {

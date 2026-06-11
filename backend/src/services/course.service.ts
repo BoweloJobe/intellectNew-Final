@@ -292,6 +292,18 @@ export async function getLessonPageForUser(lessonId: string, user: { id: string;
   })
 
   const canReadAllCourseLessons = isAdmin || isInstructorOwner || isEnrolled
+  const watchProgress = canReadAllCourseLessons
+    ? await prisma.lessonWatchProgress.findMany({
+      where: { userId: user.id, courseId: lesson.courseId },
+      select: {
+        lessonId: true,
+        watchedSeconds: true,
+        lastPositionSeconds: true,
+        updatedAt: true,
+      },
+    })
+    : []
+  const watchProgressByLessonId = new Map(watchProgress.map((item) => [item.lessonId, item]))
   const mapLesson = (
     candidate: {
       id: string
@@ -327,6 +339,7 @@ export async function getLessonPageForUser(lessonId: string, user: { id: string;
       order: candidate.order,
       isFree: candidate.isFree,
       quizId: canReadCandidate ? candidate.quiz?.id ?? null : null,
+      watchProgress: canReadCandidate ? watchProgressByLessonId.get(candidate.id) ?? null : null,
       createdAt: candidate.createdAt,
       updatedAt: candidate.updatedAt,
       course: {

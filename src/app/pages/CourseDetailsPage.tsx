@@ -594,28 +594,46 @@ export function CourseDetailsPage() {
         <TabsContent value="resources">
           <GlassCard>
             <h3 className="text-xl font-semibold mb-6 text-gray-900">Course Resources</h3>
-            <div className="space-y-3">
-              {courseDetails.resources.map((resource) => (
-                <SolidCard key={resource.name} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold text-gray-900">{resource.name}</p>
-                    <p className="text-xs text-gray-500">{resource.size}</p>
-                  </div>
-                  <Button size="sm" variant="outline" className="font-medium">
-                    <Download className="w-4 h-4 mr-2" />
-                    Download
-                  </Button>
-                </SolidCard>
-              ))}
-            </div>
+            {courseDetails.resources.length === 0 ? (
+              <div className="rounded-xl border border-gray-200 bg-white/60 px-4 py-5">
+                <p className="text-sm font-medium text-gray-900">No downloadable resources yet</p>
+                <p className="mt-1 text-sm text-gray-600">
+                  Lesson notes are available inside each lesson. Course-level downloads have not been added for this course.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {courseDetails.resources.map((resource) => (
+                  <SolidCard key={resource.name} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-900">{resource.name}</p>
+                      <p className="text-xs text-gray-500">{resource.size} • Download unavailable</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="font-medium"
+                      disabled
+                      title="Course resources do not include downloadable file links yet."
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Unavailable
+                    </Button>
+                  </SolidCard>
+                ))}
+              </div>
+            )}
           </GlassCard>
         </TabsContent>
 
         <TabsContent value="discussions">
           <GlassCard>
             <div className="text-center py-8">
-              <p className="text-sm text-gray-500">Join the discussion with your classmates</p>
-              <Button className="mt-4 bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white font-semibold">
+              <p className="text-sm font-medium text-gray-900">Course discussions are not available yet</p>
+              <p className="mt-1 text-sm text-gray-500">
+                The community area exists separately, but course-specific discussion threads are not wired for this course.
+              </p>
+              <Button className="mt-4 bg-[#4a9ff5] text-white font-semibold" disabled>
                 Start a Discussion
               </Button>
             </div>
@@ -625,8 +643,11 @@ export function CourseDetailsPage() {
         <TabsContent value="reviews">
           <GlassCard>
             <div className="text-center py-8">
-              <p className="text-gray-600">Be the first to review this course</p>
-              <Button className="mt-4 bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white">
+              <p className="font-medium text-gray-900">Course reviews are not available yet</p>
+              <p className="mt-1 text-sm text-gray-600">
+                Ratings may be displayed when provided by course data, but review submission is not wired.
+              </p>
+              <Button className="mt-4 bg-[#4a9ff5] text-white" disabled>
                 Write a Review
               </Button>
             </div>

@@ -59,6 +59,11 @@ interface BackendLessonPageItem {
   order: number;
   isFree: boolean;
   quizId: string | null;
+  watchProgress?: {
+    watchedSeconds: number;
+    lastPositionSeconds: number;
+    updatedAt: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
   course: {
@@ -161,6 +166,8 @@ function mapLessonPageItem(lesson: BackendLessonPageItem, totalLessonsInModule: 
     quizAvailable: Boolean(lesson.quizId),
     quizId: lesson.quizId ?? undefined,
     isFreePreview: lesson.isFree,
+    watchedDuration: lesson.watchProgress?.watchedSeconds ?? 0,
+    lastPositionSeconds: lesson.watchProgress?.lastPositionSeconds ?? 0,
     createdAt: lesson.createdAt,
     updatedAt: lesson.updatedAt,
   };

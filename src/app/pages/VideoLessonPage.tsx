@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
-import { DataErrorState } from "../components/DataState";
+import { ActionSuccessState, DataErrorState } from "../components/DataState";
 import { GlassCard } from "../components/GlassCard";
 import { Button } from "../components/ui/button";
 import type { VideoLesson } from "../models/lessons";
-import { getVideoLessonPageData, LessonCourseMismatchError, LessonNotFoundError } from "../services/lessons.service";
+import {
+  getVideoLessonPageData,
+  LessonCourseMismatchError,
+  LessonNotFoundError,
+  saveLessonWatchProgress,
+} from "../services/lessons.service";
 import { useCoursesState } from "../state/courses/CoursesStateContext";
 import { useDashboardState } from "../state/dashboard/DashboardStateContext";
 import { getAsyncErrorMessage } from "../utils/async-errors";
@@ -23,6 +28,8 @@ import { LessonSidebar } from "../components/lesson/LessonSidebar";
 import type { SidebarModuleGroup } from "../components/lesson/LessonSidebar";
 
 type ViewState = "loading" | "ready" | "error" | "not-found";
+const WATCH_PROGRESS_SAVE_INTERVAL_MS = 30_000;
+const MIN_WATCH_PROGRESS_SAVE_DELTA_SECONDS = 10;
 
 export function VideoLessonPage() {
   const { courseId, lessonId } = useParams();
@@ -48,7 +55,14 @@ export function VideoLessonPage() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isLessonSwitching, setIsLessonSwitching] = useState(false);
   const [upgradePrompt, setUpgradePrompt] = useState<string | null>(null);
+  const [completionSuccess, setCompletionSuccess] = useState<string | null>(null);
+  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [watchProgressError, setWatchProgressError] = useState<string | null>(null);
+  const [lastWatchProgressSavedAt, setLastWatchProgressSavedAt] = useState<string | null>(null);
   const requestCounterRef = useRef(0);
+  const baseWatchedSecondsRef = useRef(0);
+  const watchSessionStartedAtRef = useRef<number | null>(null);
+  const lastSavedWatchedSecondsRef = useRef(0);
 
   const reloadLessonPage = () => {
     if (!lessonId || !courseId) {
@@ -79,6 +93,10 @@ export function VideoLessonPage() {
         setLesson(data.lesson);
         setFurtherLessons(data.furtherLessons);
         setCourseLessons(data.courseLessons);
+        setCompletionSuccess(null);
+        setCompletionError(null);
+        setWatchProgressError(null);
+        setLastWatchProgressSavedAt(null);
         setViewState("ready");
       })
       .catch((error) => {
@@ -127,6 +145,70 @@ export function VideoLessonPage() {
       window.removeEventListener("beforeunload", beforeUnloadHandler);
     };
   }, [isCompleting]);
+
+  useEffect(() => {
+    if (viewState !== "ready" || !lesson) {
+      return;
+    }
+
+    const initialWatchedSeconds = Math.max(0, Math.floor(lesson.watchedDuration ?? 0));
+    baseWatchedSecondsRef.current = initialWatchedSeconds;
+    lastSavedWatchedSecondsRef.current = initialWatchedSeconds;
+    watchSessionStartedAtRef.current = Date.now();
+
+    const getWatchedSeconds = () => {
+      const startedAt = watchSessionStartedAtRef.current;
+      const sessionSeconds = startedAt ? Math.floor((Date.now() - startedAt) / 1000) : 0;
+      return baseWatchedSecondsRef.current + Math.max(0, sessionSeconds);
+    };
+
+    const saveProgress = (showSavedState: boolean) => {
+      const watchedSeconds = getWatchedSeconds();
+      const lastPositionSeconds = lesson.duration > 0
+        ? Math.min(watchedSeconds, lesson.duration)
+        : watchedSeconds;
+
+      if (watchedSeconds - lastSavedWatchedSecondsRef.current < MIN_WATCH_PROGRESS_SAVE_DELTA_SECONDS) {
+        return;
+      }
+
+      lastSavedWatchedSecondsRef.current = watchedSeconds;
+      void saveLessonWatchProgress(lesson.id, {
+        watchedSeconds,
+        lastPositionSeconds,
+      })
+        .then(() => {
+          setWatchProgressError(null);
+          if (showSavedState) {
+            setLastWatchProgressSavedAt(new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }));
+          }
+        })
+        .catch((error) => {
+          setWatchProgressError(getAsyncErrorMessage(error, "Could not save lesson watch progress."));
+        });
+    };
+
+    const intervalId = window.setInterval(() => {
+      saveProgress(true);
+    }, WATCH_PROGRESS_SAVE_INTERVAL_MS);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        saveProgress(false);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      saveProgress(false);
+    };
+  }, [lesson, viewState]);
 
   const completedLessonIds = courseLessonProgress[parsedCourseId]?.completedLessonIds ?? [];
   const isLessonCompleted = lesson
@@ -322,6 +404,32 @@ export function VideoLessonPage() {
             isLessonSwitching={isLessonSwitching}
           />
 
+          {completionSuccess ? (
+            <ActionSuccessState message={completionSuccess} />
+          ) : null}
+
+          {completionError ? (
+            <DataErrorState
+              title="Lesson completion did not sync"
+              description={completionError}
+            />
+          ) : null}
+
+          {watchProgressError ? (
+            <DataErrorState
+              title="Watch progress did not sync"
+              description={watchProgressError}
+            />
+          ) : lastWatchProgressSavedAt ? (
+            <p className="px-1 text-xs text-gray-500" role="status" aria-live="polite">
+              Watch progress saved at {lastWatchProgressSavedAt}.
+            </p>
+          ) : lesson.watchedDuration && lesson.watchedDuration > 0 ? (
+            <p className="px-1 text-xs text-gray-500">
+              Resumed with {Math.floor(lesson.watchedDuration / 60)} min of saved watch progress.
+            </p>
+          ) : null}
+
           <LessonHeader
             lesson={lesson}
             parsedCourseId={parsedCourseId}
@@ -338,29 +446,39 @@ export function VideoLessonPage() {
             subscription={subscription}
             onMarkComplete={() => {
               setIsCompleting(true);
-              addRecentActivity("lesson-completed", `Finished ${lesson.title} in ${lesson.courseName}`);
-              pushNotification(
-                createProductNotification({
-                  title: "Lesson completed",
-                  detail:
-                    learnerName !== "there"
-                      ? `${learnerName}, ${lesson.title} is complete. Next step is ready.`
-                      : `${lesson.title} is complete. Next step is ready.`,
-                  category: "course",
-                  source: "course-update",
-                  actionLabel: lesson.quizAvailable ? "Start quiz" : "Continue lesson",
-                }),
-              );
+              setCompletionSuccess(null);
+              setCompletionError(null);
               void completeCourseLesson({
                 courseId: parsedCourseId,
                 lessonId: lesson.id,
                 totalLessons: orderedCourseLessons.length || lesson.totalLessonsInModule,
                 nextLessonId,
               }).then((result) => {
-                // applyLessonCompletion updates liveDeltas.streakDays (streak annotation),
-                // dashboardGoals, and the completed-courses delta in DashboardState.
-                applyLessonCompletion(result.completedDelta);
-                if (!result.syncOk) {
+                if (result.syncOk) {
+                  addRecentActivity("lesson-completed", `Finished ${lesson.title} in ${lesson.courseName}`);
+                  pushNotification(
+                    createProductNotification({
+                      title: "Lesson completed",
+                      detail:
+                        learnerName !== "there"
+                          ? `${learnerName}, ${lesson.title} is complete. Next step is ready.`
+                          : `${lesson.title} is complete. Next step is ready.`,
+                      category: "course",
+                      source: "course-update",
+                      actionLabel: lesson.quizAvailable ? "Start quiz" : "Continue lesson",
+                    }),
+                  );
+                  applyLessonCompletion(result.completedDelta);
+                  setCompletionSuccess(`Completed "${lesson.title}".`);
+                  void saveLessonWatchProgress(lesson.id, {
+                    watchedSeconds: Math.max(lesson.duration, lesson.watchedDuration ?? 0),
+                    lastPositionSeconds: lesson.duration,
+                    completed: true,
+                  }).catch(() => {
+                    // The completion endpoint already synced; watch progress can retry on the next interval.
+                  });
+                } else {
+                  setCompletionError(`Could not sync completion for ${lesson.title}. Your local progress is kept, but the server did not confirm it.`);
                   pushNotification(
                     createProductNotification({
                       title: "Sync issue",
@@ -370,8 +488,11 @@ export function VideoLessonPage() {
                     }),
                   );
                 }
+              }).catch((error) => {
+                setCompletionError(getAsyncErrorMessage(error, "Could not complete this lesson."));
+              }).finally(() => {
+                setIsCompleting(false);
               });
-              window.setTimeout(() => { setIsCompleting(false); }, 450);
             }}
             onToggleBookmark={() => { toggleBookmark(parsedCourseId); }}
             onSetUpgradePrompt={setUpgradePrompt}

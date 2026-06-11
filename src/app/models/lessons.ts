@@ -68,6 +68,7 @@ export interface VideoLesson {
   // Progress tracking
   isCompleted?: boolean;
   watchedDuration?: number; // in seconds
+  lastPositionSeconds?: number;
 }
 
 export interface LessonWithModule extends VideoLesson {
