@@ -37,6 +37,24 @@ Instructor lesson video upload uses Supabase Storage signed upload URLs. Configu
 
 When storage is not configured, upload endpoints return a clear "Video upload is not configured yet" error instead of returning fake upload URLs.
 
+Frontend course authoring must also be API-backed for upload testing. Set
+`VITE_COURSES_ADAPTER_MODE=api` or `VITE_SERVICE_ADAPTER_MODE=api` with
+`VITE_API_BASE_URL` pointing at this backend.
+
+## Production Environment
+
+Before production startup, configure:
+
+- `NODE_ENV=production`
+- `DATABASE_URL`
+- `JWT_SECRET` with at least 32 characters
+- `FRONTEND_URL` set to the deployed frontend origin
+- SMTP variables for password reset email delivery
+- Supabase/storage variables before instructor video uploads are enabled
+- PayPal variables only when payments are enabled
+
+The repository root `DEPLOYMENT_READINESS.md` has the full readiness checklist.
+
 ## Password Reset Email
 
 Password reset links are delivered through SMTP. Configure these variables before production launch:

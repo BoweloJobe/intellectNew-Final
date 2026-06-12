@@ -91,6 +91,17 @@ VITE_ALLOW_MOCK_IN_PRODUCTION=true
 
 Use that override only for intentional demo/mock deployments.
 
+For instructor course creation and lesson video upload testing, courses must be
+API-backed. Use the global API mode above, or enable only the courses domain:
+
+```
+VITE_COURSES_ADAPTER_MODE=api
+VITE_API_BASE_URL=http://localhost:4000/api
+```
+
+Mock mode can create local in-memory drafts for UI testing, but real
+persistence and lesson video uploads require API mode.
+
 ---
 
 ## Type-checking
@@ -141,6 +152,13 @@ Minimum required in `backend/.env`:
 | `NODE_ENV` | | `development` | |
 
 See `backend/.env.example` for the full list (SMTP, PayPal, storage, etc.).
+
+---
+
+## Deployment readiness
+
+See `DEPLOYMENT_READINESS.md` for the production env checklist, build/test
+gates, and course/video testing readiness notes.
 
 ---
 

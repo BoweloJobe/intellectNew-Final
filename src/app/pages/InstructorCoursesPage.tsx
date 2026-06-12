@@ -24,7 +24,25 @@ import { useAuth } from "../auth/AuthContext";
 type ViewMode = "list" | "create" | "edit";
 
 const COURSE_CATEGORIES = ["Biology", "Chemistry", "Physics", "Mathematics", "Other"];
-const isCourseAuthoringAvailable = domainAdapterConfig.courses === "api";
+
+export function getCourseAuthoringReadiness(coursesAdapterMode: "mock" | "api") {
+  if (coursesAdapterMode === "api") {
+    return {
+      isAvailable: true,
+      isApiBacked: true,
+      message: "",
+    };
+  }
+
+  return {
+    isAvailable: true,
+    isApiBacked: false,
+    message:
+      "Mock mode creates local in-memory drafts only. Use API-backed courses with configured storage for real persistence and lesson video-upload testing.",
+  };
+}
+
+const courseAuthoringReadiness = getCourseAuthoringReadiness(domainAdapterConfig.courses);
 
 export function InstructorCoursesPage() {
   const navigate = useNavigate();
@@ -197,8 +215,6 @@ export function InstructorCoursesPage() {
           </Button>
           <Button
             className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
-            disabled={!isCourseAuthoringAvailable}
-            title={!isCourseAuthoringAvailable ? "Course authoring requires API-backed courses." : undefined}
             onClick={() => {
               clearStatus();
               setViewMode("create");
@@ -211,6 +227,12 @@ export function InstructorCoursesPage() {
       </div>
 
       {submitSuccess ? <ActionSuccessState message={submitSuccess} className="mb-6" /> : null}
+
+      {!courseAuthoringReadiness.isApiBacked ? (
+        <div className="mb-6">
+          <DataErrorState title="Local mock course drafts" description={courseAuthoringReadiness.message} />
+        </div>
+      ) : null}
 
       {submitError ? (
         <div className="mb-6">
@@ -236,15 +258,13 @@ export function InstructorCoursesPage() {
             icon={BookOpen}
             title="No courses yet"
             description={
-              isCourseAuthoringAvailable
+              courseAuthoringReadiness.isAvailable
                 ? "Create your first course draft and submit it for admin approval before it appears to students."
-                : "Course authoring is unavailable while courses are running in mock mode."
+                : courseAuthoringReadiness.message
             }
             action={(
               <Button
                 className="bg-[#4a9ff5] text-white hover:bg-[#2e8ef7]"
-                disabled={!isCourseAuthoringAvailable}
-                title={!isCourseAuthoringAvailable ? "Course authoring requires API-backed courses." : undefined}
                 onClick={() => {
                   setViewMode("create");
                 }}
@@ -261,13 +281,13 @@ export function InstructorCoursesPage() {
               key={course.id}
               course={course}
               isSubmitting={isSubmitting}
-              onEdit={isCourseAuthoringAvailable ? goToEdit : undefined}
-              onAddQuiz={isCourseAuthoringAvailable ? (course) => {
+              onEdit={courseAuthoringReadiness.isAvailable ? goToEdit : undefined}
+              onAddQuiz={courseAuthoringReadiness.isAvailable ? (course) => {
                 // Open the edit view — the LessonQuizEditor is embedded
                 // inside each lesson in the course authoring form.
                 goToEdit(course);
               } : undefined}
-              onSubmitForApproval={isCourseAuthoringAvailable ? handleSubmitForApproval : undefined}
+              onSubmitForApproval={courseAuthoringReadiness.isAvailable ? handleSubmitForApproval : undefined}
             />
           ))}
         </div>

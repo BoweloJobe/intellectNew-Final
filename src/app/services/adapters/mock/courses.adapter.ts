@@ -5,6 +5,7 @@ import type {
   LessonVideoUploadInput,
   LessonVideoUploadResult,
   InstructorManagedCourse,
+  CourseModule,
 } from "../../../models/courses";
 import type { CoursesService } from "../../contracts/courses.contract";
 import { withMockDelay } from "../../mock-utils";
@@ -16,6 +17,11 @@ import { withMockDelay } from "../../mock-utils";
 
 const MOCK_MANAGED_COURSES: InstructorManagedCourse[] = [];
 const MOCK_SAVED_COURSE_IDS = new Set<string>();
+let mockCourseSequence = 1;
+
+function createMockId(prefix: string): string {
+  return `mock-${prefix}-${mockCourseSequence++}`;
+}
 
 export function getAllMockManagedCourses(): InstructorManagedCourse[] {
   return MOCK_MANAGED_COURSES;
@@ -33,6 +39,62 @@ async function mockCourseMutation(): Promise<void> {
 
 function notImplementedCourse(method: string): never {
   throw new Error(`MockCoursesAdapter.${method} is not implemented in mock mode.`);
+}
+
+function mapDraftModules(input: InstructorCourseDraftInput | InstructorCourseEditInput): CourseModule[] {
+  return (input.modules ?? []).map((module) => ({
+    id: module.id ?? createMockId("module"),
+    title: module.title,
+    lessons: module.lessons.map((lesson) => ({
+      id: lesson.id ?? createMockId("lesson"),
+      title: lesson.title,
+      videoUrl: lesson.videoUrl || undefined,
+      videoProvider: lesson.videoProvider,
+      videoUploadStatus: lesson.videoUploadStatus,
+      description: lesson.description || undefined,
+      duration: lesson.duration,
+      estimatedCompletionTimeMinutes: lesson.estimatedCompletionTimeMinutes,
+      notesContent: lesson.notesContent || undefined,
+      isFreePreview: lesson.isFreePreview,
+      quizAvailable: lesson.quizAvailable,
+      quizId: lesson.quizId,
+      quizTimeLimitSeconds: lesson.quizTimeLimitMinutes ? Math.round(lesson.quizTimeLimitMinutes * 60) : undefined,
+    })),
+  }));
+}
+
+function createMockManagedCourse(input: InstructorCourseDraftInput): InstructorManagedCourse {
+  const now = new Date().toISOString();
+  const modules = mapDraftModules(input);
+  const totalLessons = modules.reduce((total, module) => total + module.lessons.length, 0);
+
+  return {
+    id: createMockId("course"),
+    title: input.title,
+    instructor: input.instructor,
+    progress: 0,
+    totalLessons,
+    completedLessons: 0,
+    duration: input.estimatedHours ? `${input.estimatedHours}h` : "0h",
+    rating: 0,
+    category: input.category,
+    image: input.coverImageUrl ?? "",
+    difficulty: input.difficulty,
+    description: input.description,
+    estimatedHours: input.estimatedHours ?? 0,
+    coverImageUrl: input.coverImageUrl,
+    price: input.price ?? 0,
+    learningOutcomes: [],
+    topics: input.topics ?? [],
+    modules,
+    publicationStatus: input.initialStatus === "pending-approval" ? "pending-approval" : "draft",
+    createdAt: now,
+    updatedAt: now,
+    submittedAt: input.initialStatus === "pending-approval" ? now : null,
+    approvedAt: null,
+    rejectionReason: null,
+    isCustom: true,
+  };
 }
 
 // ─── Adapter ──────────────────────────────────────────────────────────────────
@@ -66,27 +128,70 @@ export class MockCoursesAdapter implements CoursesService {
   }
 
   async getInstructorManagedCourses(): Promise<InstructorManagedCourse[]> {
-    return withMockDelay([]);
+    return withMockDelay([...MOCK_MANAGED_COURSES]);
   }
 
   async getCourseModerationQueue(): Promise<InstructorManagedCourse[]> {
     return withMockDelay([]);
   }
 
-  async createInstructorCourse(_input: InstructorCourseDraftInput): Promise<InstructorManagedCourse> {
-    notImplementedCourse("createInstructorCourse");
+  async createInstructorCourse(input: InstructorCourseDraftInput): Promise<InstructorManagedCourse> {
+    const course = createMockManagedCourse(input);
+    MOCK_MANAGED_COURSES.unshift(course);
+    return withMockDelay(course);
   }
 
-  async editInstructorCourse(_input: InstructorCourseEditInput): Promise<InstructorManagedCourse> {
-    notImplementedCourse("editInstructorCourse");
+  async editInstructorCourse(input: InstructorCourseEditInput): Promise<InstructorManagedCourse> {
+    const index = MOCK_MANAGED_COURSES.findIndex((course) => course.id === input.courseId);
+    if (index < 0) {
+      throw new Error("Mock course draft not found.");
+    }
+
+    const current = MOCK_MANAGED_COURSES[index];
+    const modules = mapDraftModules(input);
+    const totalLessons = modules.reduce((total, module) => total + module.lessons.length, 0);
+    const updated = {
+      ...current,
+      title: input.title,
+      instructor: input.instructor,
+      category: input.category,
+      description: input.description,
+      difficulty: input.difficulty,
+      estimatedHours: input.estimatedHours ?? 0,
+      coverImageUrl: input.coverImageUrl,
+      image: input.coverImageUrl ?? "",
+      price: input.price ?? 0,
+      topics: input.topics ?? [],
+      modules,
+      totalLessons,
+      duration: input.estimatedHours ? `${input.estimatedHours}h` : "0h",
+      updatedAt: new Date().toISOString(),
+    };
+
+    MOCK_MANAGED_COURSES[index] = updated;
+    return withMockDelay(updated);
   }
 
   async uploadLessonVideo(_input: LessonVideoUploadInput): Promise<LessonVideoUploadResult> {
     throw new Error("Video upload requires API mode with configured storage.");
   }
 
-  async submitCourseForApproval(_courseId: string): Promise<InstructorManagedCourse> {
-    notImplementedCourse("submitCourseForApproval");
+  async submitCourseForApproval(courseId: string): Promise<InstructorManagedCourse> {
+    const index = MOCK_MANAGED_COURSES.findIndex((course) => course.id === courseId);
+    if (index < 0) {
+      throw new Error("Mock course draft not found.");
+    }
+
+    const now = new Date().toISOString();
+    const updated = {
+      ...MOCK_MANAGED_COURSES[index],
+      publicationStatus: "pending-approval" as const,
+      submittedAt: now,
+      updatedAt: now,
+    };
+
+    MOCK_MANAGED_COURSES[index] = updated;
+    return withMockDelay(updated);
   }
 
   async reviewCoursePublication(
