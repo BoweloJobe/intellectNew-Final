@@ -2,6 +2,7 @@ import { PageTransitionOutlet } from "../components/PageTransitionOutlet";
 import { AppErrorBoundary } from "../components/error/AppErrorBoundary";
 import { Link, useLocation } from "react-router-dom";
 import { Navbar } from "./Navbar";
+import { RouteScrollRestoration } from "./RouteScrollRestoration";
 
 export function Layout() {
   const location = useLocation();
@@ -38,6 +39,7 @@ export function Layout() {
         ✓ PageTransitionOutlet ensures smooth transitions without background visibility
       */}
       <div className="relative z-10 flex min-h-screen w-full min-w-0 flex-col">
+        <RouteScrollRestoration />
         <Navbar />
         <main className="relative w-full min-w-0 flex-1 overflow-x-clip pt-28">
           <AppErrorBoundary area="page content" className="py-16" resetKeys={[location.key]}>

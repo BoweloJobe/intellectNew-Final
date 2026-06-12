@@ -324,13 +324,13 @@ describe('auth password reset service', () => {
     })
   })
 
-  it('returns profile fields from getMe', async () => {
+  it('returns profile fields and the current database role from getMe', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({
       id: 'user-1',
       email: 'student@example.com',
       firstName: 'Sarah',
       lastName: 'Johnson',
-      role: 'STUDENT',
+      role: 'INSTRUCTOR',
       avatarUrl: null,
       bio: 'Biology student',
       institution: 'Example University',
@@ -344,6 +344,7 @@ describe('auth password reset service', () => {
     expect(result).toEqual(expect.objectContaining({
       bio: 'Biology student',
       institution: 'Example University',
+      role: 'INSTRUCTOR',
     }))
   })
 
