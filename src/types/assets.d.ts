@@ -16,6 +16,7 @@ interface ImportMetaEnv {
   readonly VITE_TUTOR_ADAPTER_MODE?: string;
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_API_TIMEOUT?: string;
+  readonly VITE_ALLOW_MOCK_IN_PRODUCTION?: string;
 }
 
 interface ImportMeta {

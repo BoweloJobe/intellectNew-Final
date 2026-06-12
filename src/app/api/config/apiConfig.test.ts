@@ -11,6 +11,7 @@ describe("apiConfig", () => {
   });
 
   it("uses safe defaults when env is missing", async () => {
+    vi.stubEnv("PROD", false);
     vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", undefined);
     vi.stubEnv("VITE_API_BASE_URL", undefined);
     vi.stubEnv("VITE_API_TIMEOUT", undefined);
@@ -22,6 +23,16 @@ describe("apiConfig", () => {
     expect(apiConfig.timeoutMs).toBe(10000);
     expect(adapterMode).toBe("mock");
     expect(isApiMode).toBe(false);
+  });
+
+  it("allows development to use mock adapters", async () => {
+    vi.stubEnv("PROD", false);
+    vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "mock");
+
+    const { apiConfig, domainAdapterConfig } = await loadConfigModule();
+
+    expect(apiConfig.adapterMode).toBe("mock");
+    expect(domainAdapterConfig.courses).toBe("mock");
   });
 
   it("parses and normalizes explicit env values", async () => {
@@ -39,6 +50,7 @@ describe("apiConfig", () => {
   });
 
   it("falls back from invalid mode/timeout values", async () => {
+    vi.stubEnv("PROD", false);
     vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "other");
     vi.stubEnv("VITE_API_TIMEOUT", "-1");
 
@@ -46,6 +58,39 @@ describe("apiConfig", () => {
 
     expect(apiConfig.adapterMode).toBe("mock");
     expect(apiConfig.timeoutMs).toBe(10000);
+  });
+
+  it("allows production when all domains use api mode", async () => {
+    vi.stubEnv("PROD", true);
+    vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "api");
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
+
+    const { apiConfig, domainAdapterConfig } = await loadConfigModule();
+
+    expect(apiConfig.adapterMode).toBe("api");
+    expect(domainAdapterConfig.auth).toBe("api");
+    expect(domainAdapterConfig.courses).toBe("api");
+  });
+
+  it("fails production when mock adapters are configured without explicit override", async () => {
+    vi.stubEnv("PROD", true);
+    vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "mock");
+    vi.stubEnv("VITE_ALLOW_MOCK_IN_PRODUCTION", undefined);
+
+    await expect(loadConfigModule()).rejects.toThrow(
+      "Production cannot use mock service adapters unless explicitly allowed",
+    );
+  });
+
+  it("allows production mock adapters with explicit override", async () => {
+    vi.stubEnv("PROD", true);
+    vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "mock");
+    vi.stubEnv("VITE_ALLOW_MOCK_IN_PRODUCTION", "true");
+
+    const { apiConfig, domainAdapterConfig } = await loadConfigModule();
+
+    expect(apiConfig.adapterMode).toBe("mock");
+    expect(domainAdapterConfig.dashboard).toBe("mock");
   });
 
   describe("domainAdapterConfig", () => {

@@ -82,6 +82,15 @@ VITE_API_BASE_URL=http://localhost:4000/api
 
 You can also enable individual domains independently (see `.env.example` for per-domain options).
 
+Production builds must not silently use mock adapters. In production, every
+service domain must resolve to `api`, or the build/runtime must explicitly set:
+
+```
+VITE_ALLOW_MOCK_IN_PRODUCTION=true
+```
+
+Use that override only for intentional demo/mock deployments.
+
 ---
 
 ## Type-checking

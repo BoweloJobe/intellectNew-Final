@@ -1,5 +1,3 @@
-import { logWarn } from "../../utils/logger";
-
 export type AdapterMode = "mock" | "api";
 
 export type ServiceDomain =
@@ -27,6 +25,7 @@ export interface ApiConfig {
 
 const DEFAULT_ADAPTER_MODE: AdapterMode = "mock";
 const DEFAULT_TIMEOUT_MS = 10000;
+const ALLOW_MOCK_IN_PRODUCTION_VALUE = "true";
 
 function normalizeAdapterMode(value: string | undefined): AdapterMode {
   if (typeof value !== "string") {
@@ -72,6 +71,10 @@ function normalizeBaseUrl(value: string | undefined): string {
   return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
 }
 
+function isExplicitProductionMockAllowed(value: string | undefined): boolean {
+  return value?.trim().toLowerCase() === ALLOW_MOCK_IN_PRODUCTION_VALUE;
+}
+
 export const apiConfig: ApiConfig = {
   adapterMode: normalizeAdapterMode(import.meta.env.VITE_SERVICE_ADAPTER_MODE),
   baseUrl: normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL),
@@ -106,7 +109,14 @@ function getApiDomainNames(config: DomainAdapterConfig): Array<keyof DomainAdapt
 }
 
 const apiDomains = getApiDomainNames(domainAdapterConfig);
+const mockDomains = (Object.keys(domainAdapterConfig) as Array<keyof DomainAdapterConfig>).filter(
+  (domain) => domainAdapterConfig[domain] === "mock",
+);
 const apiAdapterRequired = apiConfig.adapterMode === "api" || apiDomains.length > 0;
+const mockAdapterUsed = mockDomains.length > 0;
+const mockAllowedInProduction = isExplicitProductionMockAllowed(
+  import.meta.env.VITE_ALLOW_MOCK_IN_PRODUCTION,
+);
 
 if (apiAdapterRequired && apiConfig.baseUrl === "") {
   const neededFor = apiConfig.adapterMode === "api" ? "global VITE_SERVICE_ADAPTER_MODE=api" : "a domain override to api";
@@ -116,10 +126,11 @@ if (apiAdapterRequired && apiConfig.baseUrl === "") {
   );
 }
 
-if (import.meta.env.PROD && apiConfig.adapterMode === "mock" && apiDomains.length === 0) {
-  logWarn("Production build defaulting to mock service adapters", {
-    adapterMode: import.meta.env.VITE_SERVICE_ADAPTER_MODE ?? "<unset>",
-    apiBaseUrl: apiConfig.baseUrl || "<unset>",
-    guidance: "Set VITE_SERVICE_ADAPTER_MODE=api and VITE_API_BASE_URL=... to enable real backend services.",
-  });
+if (import.meta.env.PROD && mockAdapterUsed && !mockAllowedInProduction) {
+  throw new Error(
+    "Production cannot use mock service adapters unless explicitly allowed. " +
+      "Set VITE_SERVICE_ADAPTER_MODE=api and VITE_API_BASE_URL to the backend API URL, " +
+      "or set VITE_ALLOW_MOCK_IN_PRODUCTION=true for an intentional demo/mock production build. " +
+      `Mock domains: ${mockDomains.join(", ")}.`,
+  );
 }
