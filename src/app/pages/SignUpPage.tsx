@@ -300,6 +300,18 @@ export function SignUpPage() {
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
 
+            <p className="text-center text-xs leading-5 text-gray-600">
+              By creating an account, you agree to the{" "}
+              <Link to="/terms" className="font-semibold text-[#4a9ff5] hover:text-[#2e8ef7]">
+                Terms
+              </Link>{" "}
+              and acknowledge the{" "}
+              <Link to="/privacy" className="font-semibold text-[#4a9ff5] hover:text-[#2e8ef7]">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-300"></div>

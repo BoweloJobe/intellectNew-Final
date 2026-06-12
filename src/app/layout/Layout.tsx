@@ -1,6 +1,6 @@
 import { PageTransitionOutlet } from "../components/PageTransitionOutlet";
 import { AppErrorBoundary } from "../components/error/AppErrorBoundary";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Navbar } from "./Navbar";
 
 export function Layout() {
@@ -44,6 +44,19 @@ export function Layout() {
             <PageTransitionOutlet />
           </AppErrorBoundary>
         </main>
+        <footer className="border-t border-border/50 bg-background/75 px-4 py-6 text-sm text-muted-foreground backdrop-blur">
+          <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p>(c) 2026 IntellectX. Draft legal documents pending review.</p>
+            <nav className="flex gap-4" aria-label="Legal">
+              <Link to="/terms" className="font-medium text-foreground hover:text-[#4a9ff5]">
+                Terms
+              </Link>
+              <Link to="/privacy" className="font-medium text-foreground hover:text-[#4a9ff5]">
+                Privacy
+              </Link>
+            </nav>
+          </div>
+        </footer>
       </div>
     </div>
   );

@@ -18,6 +18,8 @@ import { InstructorCoursesPage } from "./pages/InstructorCoursesPage";
 import { InstructorQuizAuthoringPage } from "./pages/InstructorQuizAuthoringPage";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { PricingPage } from "./pages/PricingPage";
+import { TermsPage } from "./pages/TermsPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { CheckoutSuccessPage } from "./pages/CheckoutSuccessPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -52,6 +54,8 @@ export const router = createBrowserRouter([
       { path: "reset-password", Component: ResetPasswordPage },
       { path: "signup", Component: SignUpPage },
       { path: "pricing", Component: PricingPage },
+      { path: "terms", Component: TermsPage },
+      { path: "privacy", Component: PrivacyPage },
       { path: "unauthorized", Component: UnauthorizedPage },
       {
         Component: ProtectedRoute,

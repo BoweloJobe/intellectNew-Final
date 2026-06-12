@@ -261,6 +261,17 @@ export function LoginPage() {
             Sign up
           </Link>
         </p>
+        <p className="mt-3 text-center text-xs text-gray-600">
+          Review our{" "}
+          <Link to="/terms" className="font-semibold text-[#4a9ff5] hover:text-[#2e8ef7]">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="font-semibold text-[#4a9ff5] hover:text-[#2e8ef7]">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </GlassCard>
     </div>
   );

@@ -300,6 +300,17 @@ export function CheckoutPage() {
           <p className="text-xs text-gray-500">
             Final payment execution and subscription activation remain backend responsibilities.
           </p>
+          <p className="text-xs leading-5 text-gray-500">
+            By continuing, you agree to the{" "}
+            <Link to="/terms" className="font-semibold text-[#4a9ff5] hover:text-[#2e8ef7]">
+              Terms
+            </Link>{" "}
+            and acknowledge the{" "}
+            <Link to="/privacy" className="font-semibold text-[#4a9ff5] hover:text-[#2e8ef7]">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </GlassCard>
       </div>
     </div>
