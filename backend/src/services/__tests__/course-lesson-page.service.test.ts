@@ -110,4 +110,85 @@ describe('course lesson page service', () => {
       updatedAt: new Date('2026-06-02T10:00:00.000Z'),
     })
   })
+
+  it('rejects paid lesson access for users without enrollment', async () => {
+    mockPrisma.lesson.findUnique.mockResolvedValue({
+      ...lesson,
+      isFree: false,
+      module: {
+        id: 'module-1',
+        title: 'Basics',
+        order: 0,
+        course: {
+          id: 'course-1',
+          title: 'Biology',
+          category: 'Biology',
+          difficulty: 'BEGINNER',
+          thumbnailUrl: null,
+          status: 'APPROVED',
+          instructorId: 'instructor-1',
+          instructor,
+        },
+      },
+    })
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+
+    await expect(getLessonPageForUser('lesson-1', { id: 'student-1', role: 'STUDENT' }))
+      .rejects.toMatchObject({ statusCode: 403, message: 'Lesson is locked' })
+    expect(mockPrisma.courseModule.findMany).not.toHaveBeenCalled()
+  })
+
+  it('allows free preview lessons while redacting locked paid lesson content for unenrolled users', async () => {
+    const paidLesson = {
+      ...lesson,
+      id: 'lesson-2',
+      title: 'Paid Cells',
+      isFree: false,
+      videoUrl: 'https://example.com/paid-video',
+      notes: 'Paid notes',
+      quiz: { id: 'quiz-2' },
+    }
+    mockPrisma.lesson.findUnique.mockResolvedValue({
+      ...lesson,
+      isFree: true,
+      module: {
+        id: 'module-1',
+        title: 'Basics',
+        order: 0,
+        course: {
+          id: 'course-1',
+          title: 'Biology',
+          category: 'Biology',
+          difficulty: 'BEGINNER',
+          thumbnailUrl: null,
+          status: 'APPROVED',
+          instructorId: 'instructor-1',
+          instructor,
+        },
+      },
+    })
+    mockPrisma.enrollment.findUnique.mockResolvedValue(null)
+    mockPrisma.courseModule.findMany.mockResolvedValue([
+      {
+        id: 'module-1',
+        title: 'Basics',
+        order: 0,
+        lessons: [{ ...lesson, isFree: true }, paidLesson],
+      },
+    ])
+
+    const result = await getLessonPageForUser('lesson-1', { id: 'student-1', role: 'STUDENT' })
+
+    expect(result.lesson?.videoUrl).toBe('https://example.com/video')
+    expect(result.lesson?.notes).toBe('Notes')
+    expect(result.courseLessons).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'lesson-2',
+        videoUrl: null,
+        notes: null,
+        quizId: null,
+      }),
+    ]))
+    expect(mockPrisma.lessonWatchProgress.findMany).not.toHaveBeenCalled()
+  })
 })

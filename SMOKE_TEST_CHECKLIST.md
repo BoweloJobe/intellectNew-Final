@@ -22,10 +22,22 @@ Use this checklist for a practical manual pass before launch or demo builds.
 - Log in as an instructor or admin.
 - Open Instructor Courses.
 - Create a new course draft.
-- Confirm the success message appears and the draft shows in the course list.
+- In mock mode, confirm the success message explains the draft is local/in-memory and the draft shows in the course list.
+- In API mode, confirm the success message appears and the backend-backed draft shows in the course list.
 - Edit the draft and add a module.
 - Add a lesson with title, description, duration, notes, and estimated completion time.
 - Save and confirm the module/lesson appears when editing the draft again.
+
+## Payment And Enrollment
+
+- Open an approved free course and enroll directly.
+- Confirm free enrollment succeeds without checkout.
+- Open an approved paid course and click enroll/buy.
+- Confirm the app starts provider checkout instead of enrolling immediately.
+- Cancel or return without provider order data and confirm enrollment is not completed.
+- Complete a provider-approved payment and confirm enrollment unlocks only after backend capture succeeds.
+- As an unenrolled student, confirm paid lessons remain locked while free-preview lessons still open.
+- Confirm `backend/.env.example` payment variables are set for payment-enabled environments.
 
 ## Instructor Quiz Authoring
 
@@ -59,6 +71,8 @@ Use this checklist for a practical manual pass before launch or demo builds.
 
 ## Video Upload
 
-- Without storage configured, attempt lesson video upload and confirm the app shows a clear storage-not-configured failure.
-- With storage configured, create or edit a course lesson, upload a supported video file, and confirm the lesson moves to a ready/uploaded state.
+- In mock mode, create a local draft course, add a module, add a lesson, and confirm the video upload UI is reachable.
+- In mock mode, attempt lesson video upload and confirm the app says API mode and configured storage are required.
+- In API mode without storage configured, attempt lesson video upload and confirm the app shows a clear storage-not-configured failure.
+- In API mode with storage configured, create or edit a course lesson, upload a supported video file, and confirm the signed upload flow moves the lesson to a ready/uploaded state.
 - Confirm manual video URL entry remains a fallback and is not required for the signed upload flow.

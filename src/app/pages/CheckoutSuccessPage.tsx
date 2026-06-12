@@ -8,6 +8,34 @@ import { getCurrentSubscriptionStatus, verifySubscriptionReturn } from "../servi
 
 type VerificationViewState = "verifying" | "success" | "failed";
 
+export function getCheckoutSuccessDisplay(viewState: VerificationViewState, hasProAccess: boolean) {
+  if (viewState === "verifying") {
+    return {
+      title: "Verifying Subscription",
+      primaryActionLabel: "Return",
+    };
+  }
+
+  if (viewState === "success" && hasProAccess) {
+    return {
+      title: "Subscription Activated",
+      primaryActionLabel: "Return to Premium Content",
+    };
+  }
+
+  if (viewState === "success") {
+    return {
+      title: "Subscription Verified",
+      primaryActionLabel: "Return",
+    };
+  }
+
+  return {
+    title: "Verification Failed",
+    primaryActionLabel: "Return",
+  };
+}
+
 function formatStatusLabel(status: string): string {
   return status
     .split("-")
@@ -116,6 +144,7 @@ export function CheckoutSuccessPage() {
       : viewState === "success"
         ? "bg-green-100 text-green-700"
         : "bg-amber-100 text-amber-700";
+  const display = getCheckoutSuccessDisplay(viewState, subscription.hasProAccess);
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-20">
@@ -125,7 +154,7 @@ export function CheckoutSuccessPage() {
         </div>
 
         <h1 className="text-3xl font-semibold text-gray-900 mb-2">
-          {viewState === "verifying" ? "Verifying Subscription" : viewState === "success" ? "Subscription Activated" : "Verification Failed"}
+          {display.title}
         </h1>
         <p className="text-gray-700 mb-6">{statusMessage}</p>
 
@@ -163,7 +192,7 @@ export function CheckoutSuccessPage() {
               navigate(returnTo);
             }}
           >
-            {viewState === "success" ? "Return to Premium Content" : "Return"}
+            {display.primaryActionLabel}
           </Button>
           <Link to="/settings">
             <Button variant="outline" className="bg-white/[0.45]">View Billing Settings</Button>
