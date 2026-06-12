@@ -19,18 +19,22 @@ const mockPrisma = vi.hoisted(() => ({
 }))
 
 const mockSendMail = vi.hoisted(() => vi.fn())
+const mockIsEmailDeliveryConfigured = vi.hoisted(() => vi.fn(() => true))
 const mockSignToken = vi.hoisted(() => vi.fn(() => 'signed-token'))
+const mockEnv = vi.hoisted(() => ({
+  NODE_ENV: 'development' as 'development' | 'test' | 'production',
+  FRONTEND_URL: 'https://app.example.test',
+  JWT_SECRET: 'unit-test-secret',
+  JWT_EXPIRES_IN: '1h',
+}))
 
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }))
 vi.mock('../../lib/token.js', () => ({ signToken: mockSignToken }))
 vi.mock('../../config/env.js', () => ({
-  env: {
-    FRONTEND_URL: 'https://app.example.test',
-    JWT_SECRET: 'unit-test-secret',
-    JWT_EXPIRES_IN: '1h',
-  },
+  env: mockEnv,
 }))
 vi.mock('../../lib/mailer.js', () => ({
+  isEmailDeliveryConfigured: mockIsEmailDeliveryConfigured,
   sendMail: mockSendMail,
   passwordResetHtml: (resetUrl: string) => `<a href="${resetUrl}">Reset</a>`,
 }))
@@ -45,7 +49,8 @@ describe('auth password reset service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPrisma.$transaction.mockImplementation(async (ops: unknown[]) => ops)
-    process.env.NODE_ENV = 'development'
+    mockEnv.NODE_ENV = 'development'
+    mockIsEmailDeliveryConfigured.mockReturnValue(true)
   })
 
   it('creates normal public signups as STUDENT', async () => {
@@ -145,7 +150,7 @@ describe('auth password reset service', () => {
     expect(mockPrisma.user.create.mock.calls[0][0].data.role).not.toBe('ADMIN')
   })
 
-  it('stores only a hash of the raw reset token while sending the raw token', async () => {
+  it('stores only a hash of the raw reset token while sending the raw token through the mailer', async () => {
     mockPrisma.user.findUnique.mockResolvedValue({
       id: 'user-1',
       email: 'student@example.com',
@@ -154,7 +159,16 @@ describe('auth password reset service', () => {
     mockPrisma.passwordResetToken.create.mockResolvedValue({})
 
     const result = await requestPasswordReset({ email: 'student@example.com' })
-    const rawToken = result.resetToken
+    expect(result).toEqual({
+      message: 'If an account with that email exists, a reset link has been sent.',
+    })
+    expect(result).not.toHaveProperty('resetToken')
+
+    const sentText = mockSendMail.mock.calls[0][0].text as string
+    const rawToken = new URL(sentText.match(/https:\/\/\S+/)![0]).searchParams.get('token')
+    if (!rawToken) {
+      throw new Error('Expected reset URL to include token')
+    }
 
     expect(rawToken).toEqual(expect.any(String))
     expect(rawToken).toHaveLength(64)
@@ -169,9 +183,36 @@ describe('auth password reset service', () => {
     expect(mockSendMail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'student@example.com',
-        text: expect.stringContaining(rawToken!),
+        text: expect.stringContaining(rawToken),
       }),
     )
+  })
+
+  it('fails closed in production without email delivery before creating or returning a token', async () => {
+    mockEnv.NODE_ENV = 'production'
+    mockIsEmailDeliveryConfigured.mockReturnValue(false)
+    const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    await expect(requestPasswordReset({ email: 'student@example.com' })).rejects.toMatchObject(
+      new AppError(503, 'Password reset email delivery is not configured'),
+    )
+
+    expect(mockPrisma.user.findUnique).not.toHaveBeenCalled()
+    expect(mockPrisma.passwordResetToken.create).not.toHaveBeenCalled()
+    expect(mockSendMail).not.toHaveBeenCalled()
+    expect(consoleLogSpy).not.toHaveBeenCalled()
+    expect(consoleWarnSpy).not.toHaveBeenCalled()
+  })
+
+  it('keeps unknown-email reset requests user-safe', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue(null)
+
+    await expect(requestPasswordReset({ email: 'missing@example.com' })).resolves.toEqual({
+      message: 'If an account with that email exists, a reset link has been sent.',
+    })
+    expect(mockPrisma.passwordResetToken.create).not.toHaveBeenCalled()
+    expect(mockSendMail).not.toHaveBeenCalled()
   })
 
   it('resets the password when the raw submitted token matches the stored token hash', async () => {

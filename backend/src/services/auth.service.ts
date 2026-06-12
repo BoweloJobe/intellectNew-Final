@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import type { User } from '@prisma/client'
 import { prisma } from '../lib/prisma.js'
 import { signToken } from '../lib/token.js'
-import { sendMail, passwordResetHtml } from '../lib/mailer.js'
+import { isEmailDeliveryConfigured, sendMail, passwordResetHtml } from '../lib/mailer.js'
 import { AppError } from '../errors/AppError.js'
 import { env } from '../config/env.js'
 import type { UserProfile, AuthResponse } from '../types/auth.types.js'
@@ -133,7 +133,11 @@ export async function changePassword(userId: string, input: ChangePasswordInput)
 
 export async function requestPasswordReset(
   input: RequestResetInput,
-): Promise<{ message: string; resetToken?: string }> {
+): Promise<{ message: string }> {
+  if (env.NODE_ENV === 'production' && !isEmailDeliveryConfigured()) {
+    throw new AppError(503, 'Password reset email delivery is not configured')
+  }
+
   const user = await prisma.user.findUnique({ where: { email: input.email } })
 
   // Always return the same message to prevent email enumeration
@@ -162,10 +166,8 @@ export async function requestPasswordReset(
     text: `Reset your password here: ${resetUrl} (expires in 1 hour)`,
   })
 
-  const isDev = process.env.NODE_ENV === 'development'
   return {
     message: 'If an account with that email exists, a reset link has been sent.',
-    ...(isDev && { resetToken: token }),
   }
 }
 

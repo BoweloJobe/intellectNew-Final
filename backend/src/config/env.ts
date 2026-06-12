@@ -38,6 +38,7 @@ export const env = {
   SMTP_USER: optionalRaw('SMTP_USER'),
   SMTP_PASS: optionalRaw('SMTP_PASS'),
   SMTP_FROM: optional('SMTP_FROM', 'noreply@intellectx.app'),
+  ALLOW_DEV_RESET_LINK_LOGGING: optionalRaw('ALLOW_DEV_RESET_LINK_LOGGING') === 'true',
   // PayPal — optional; mock mode used when absent in development
   PAYPAL_CLIENT_ID: optionalRaw('PAYPAL_CLIENT_ID'),
   PAYPAL_CLIENT_SECRET: optionalRaw('PAYPAL_CLIENT_SECRET'),

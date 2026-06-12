@@ -37,6 +37,18 @@ Instructor lesson video upload uses Supabase Storage signed upload URLs. Configu
 
 When storage is not configured, upload endpoints return a clear "Video upload is not configured yet" error instead of returning fake upload URLs.
 
+## Password Reset Email
+
+Password reset links are delivered through SMTP. Configure these variables before production launch:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
+
+If SMTP is missing in production, password reset requests fail closed and reset links are not logged or returned in API responses. Local development can opt into console reset-link logging only with `ALLOW_DEV_RESET_LINK_LOGGING=true`; never enable that flag in production.
+
 ## Scripts
 
 | Script | Description |

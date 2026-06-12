@@ -1,8 +1,17 @@
 import nodemailer from 'nodemailer'
 import { env } from '../config/env.js'
+import { AppError } from '../errors/AppError.js'
+
+export function isEmailDeliveryConfigured(): boolean {
+  return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS)
+}
+
+export function canLogDevResetLinks(): boolean {
+  return env.NODE_ENV !== 'production' && env.ALLOW_DEV_RESET_LINK_LOGGING
+}
 
 function createTransport(): nodemailer.Transporter {
-  if (env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS) {
+  if (isEmailDeliveryConfigured()) {
     return nodemailer.createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
@@ -11,7 +20,8 @@ function createTransport(): nodemailer.Transporter {
     })
   }
 
-  // Dev fallback — prints email to stdout instead of sending
+  // Non-production fallback for tests/local development. It never logs message
+  // contents unless ALLOW_DEV_RESET_LINK_LOGGING=true and NODE_ENV is not production.
   return nodemailer.createTransport({ jsonTransport: true })
 }
 
@@ -33,12 +43,16 @@ export async function sendMail(options: SendMailOptions): Promise<void> {
     text: options.text,
   }
 
-  if (!env.SMTP_HOST || !env.SMTP_USER) {
-    // No real SMTP configured — log to console in development
-    console.log('[Mailer] SMTP not configured — email suppressed')
-    console.log('[Mailer] To:', message.to)
-    console.log('[Mailer] Subject:', message.subject)
-    console.log('[Mailer] Body:', message.text ?? message.html)
+  if (!isEmailDeliveryConfigured()) {
+    if (env.NODE_ENV === 'production') {
+      throw new AppError(503, 'Email delivery is not configured')
+    }
+    console.warn('[Mailer] SMTP not configured; email suppressed.')
+    console.warn('[Mailer] To:', message.to)
+    console.warn('[Mailer] Subject:', message.subject)
+    if (canLogDevResetLinks()) {
+      console.warn('[Mailer][development-only] Body:', message.text ?? message.html)
+    }
     return
   }
 
