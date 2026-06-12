@@ -8,6 +8,7 @@ import {
   updateModuleSchema,
   createLessonSchema,
   updateLessonSchema,
+  requestLessonVideoUploadSchema,
   attachLessonVideoSchema,
 } from '../validation/course.validation.js'
 
@@ -134,7 +135,14 @@ export async function deleteCourse(req: Request, res: Response, next: NextFuncti
 // Returns a signed upload intent; marks the lesson upload as PENDING
 export async function requestVideoUpload(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const intent = await CourseService.requestLessonVideoUpload(req.params.lessonId, req.user!.id)
+    const input = validate(requestLessonVideoUploadSchema, req.body)
+    const intent = await CourseService.requestLessonVideoUpload(
+      req.params.courseId,
+      req.params.moduleId,
+      req.params.lessonId,
+      req.user!,
+      input,
+    )
     res.status(201).json({ status: 'ok', data: intent })
   } catch (err) { next(err) }
 }
@@ -144,7 +152,13 @@ export async function requestVideoUpload(req: Request, res: Response, next: Next
 export async function attachLessonVideo(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const input = validate(attachLessonVideoSchema, req.body)
-    const lesson = await CourseService.attachLessonVideo(req.params.lessonId, req.user!.id, input)
+    const lesson = await CourseService.attachLessonVideo(
+      req.params.courseId,
+      req.params.moduleId,
+      req.params.lessonId,
+      req.user!,
+      input,
+    )
     res.json({ status: 'ok', data: { lesson } })
   } catch (err) { next(err) }
 }

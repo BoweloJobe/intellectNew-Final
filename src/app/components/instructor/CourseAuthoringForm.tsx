@@ -8,6 +8,8 @@ import type {
   InstructorDraftLessonInput,
   InstructorDraftModuleInput,
   InstructorDraftQuizQuestionInput,
+  LessonVideoUploadInput,
+  LessonVideoUploadResult,
   InstructorManagedCourse,
 } from "../../models/courses";
 import type { QuizQuestion } from "../../models/quizzes";
@@ -56,6 +58,7 @@ interface CourseAuthoringFormProps {
   availableCategories: string[];
   instructorName: string;
   onSubmit: (input: InstructorCourseDraftInput) => void;
+  onUploadLessonVideo?: (input: LessonVideoUploadInput) => Promise<LessonVideoUploadResult>;
 }
 
 function createEmptyLesson(): InstructorDraftLessonInput {
@@ -87,6 +90,7 @@ export function CourseAuthoringForm({
   availableCategories,
   instructorName,
   onSubmit,
+  onUploadLessonVideo,
 }: CourseAuthoringFormProps) {
   const [title, setTitle] = useState(editingCourse?.title ?? "");
   const [category, setCategory] = useState(editingCourse?.category ?? "Biology");
@@ -110,6 +114,8 @@ export function CourseAuthoringForm({
           id: lesson.id,      // preserve backend ID
           title: lesson.title,
           videoUrl: lesson.videoUrl || "",
+          videoProvider: lesson.videoProvider,
+          videoUploadStatus: lesson.videoUploadStatus,
           description: lesson.description || "",
           duration: lesson.duration,
           estimatedCompletionTimeMinutes: lesson.estimatedCompletionTimeMinutes || 20,
@@ -142,6 +148,8 @@ export function CourseAuthoringForm({
             id: lesson.id,
             title: lesson.title.trim(),
             videoUrl: lesson.videoUrl.trim(),
+            videoProvider: lesson.videoProvider,
+            videoUploadStatus: lesson.videoUploadStatus,
             description: lesson.description.trim(),
             duration: lesson.duration.trim(),
             estimatedCompletionTimeMinutes: Number(lesson.estimatedCompletionTimeMinutes),
@@ -394,6 +402,8 @@ export function CourseAuthoringForm({
                   isExpanded={expandedModules.has(moduleIndex)}
                   courseName={title}
                   instructorName={instructorName}
+                  courseId={editingCourse?.id}
+                  onUploadLessonVideo={onUploadLessonVideo}
                   onToggleExpand={(expanded) => toggleModuleExpanded(moduleIndex, expanded)}
                   onUpdate={(updated) => handleUpdateModule(moduleIndex, updated)}
                   onDelete={() => handleDeleteModule(moduleIndex)}

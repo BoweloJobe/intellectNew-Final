@@ -2,6 +2,8 @@ import { courseDetailsMockById, coursesPageMock } from "../../../mocks/courses.m
 import type {
   InstructorCourseDraftInput,
   InstructorCourseEditInput,
+  LessonVideoUploadInput,
+  LessonVideoUploadResult,
   InstructorManagedCourse,
 } from "../../../models/courses";
 import type { CoursesService } from "../../contracts/courses.contract";
@@ -77,6 +79,10 @@ export class MockCoursesAdapter implements CoursesService {
 
   async editInstructorCourse(_input: InstructorCourseEditInput): Promise<InstructorManagedCourse> {
     notImplementedCourse("editInstructorCourse");
+  }
+
+  async uploadLessonVideo(_input: LessonVideoUploadInput): Promise<LessonVideoUploadResult> {
+    throw new Error("Video upload requires API mode with configured storage.");
   }
 
   async submitCourseForApproval(_courseId: string): Promise<InstructorManagedCourse> {

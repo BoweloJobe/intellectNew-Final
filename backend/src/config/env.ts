@@ -48,10 +48,10 @@ export const env = {
   // Subscription pricing (display + checkout reference)
   SUBSCRIPTION_MONTHLY_PRICE: optional('SUBSCRIPTION_MONTHLY_PRICE', '9.99'),
   SUBSCRIPTION_ANNUAL_PRICE: optional('SUBSCRIPTION_ANNUAL_PRICE', '99.99'),
-  // Storage — optional; LOCAL placeholder used when absent in development
-  // Set STORAGE_PROVIDER to 'SUPABASE' or 'S3' and wire provider SDK in src/lib/storage.ts
+  // Storage — optional at boot, but video upload endpoints fail closed unless configured.
   STORAGE_PROVIDER: rawStorageProvider as 'SUPABASE' | 'S3' | 'LOCAL' | undefined,
   STORAGE_BASE_URL: optionalRaw('STORAGE_BASE_URL'),   // e.g. https://xxx.supabase.co  OR  https://s3.amazonaws.com
   STORAGE_BUCKET: optionalRaw('STORAGE_BUCKET'),       // bucket / storage-bucket name
+  SUPABASE_URL: optionalRaw('SUPABASE_URL'),
+  SUPABASE_SERVICE_ROLE_KEY: optionalRaw('SUPABASE_SERVICE_ROLE_KEY'),
 } as const
-

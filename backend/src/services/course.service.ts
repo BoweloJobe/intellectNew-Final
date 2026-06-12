@@ -1,7 +1,12 @@
 import { prisma } from '../lib/prisma.js'
 import { AppError } from '../errors/AppError.js'
 import { fireNotification } from './notification.service.js'
-import { generateUploadIntent } from '../lib/storage.js'
+import {
+  assertLessonVideoStorageKey,
+  buildPublicVideoUrl,
+  generateUploadIntent,
+  verifyStoredVideoExists,
+} from '../lib/storage.js'
 import type {
   CreateCourseInput,
   UpdateCourseInput,
@@ -9,6 +14,7 @@ import type {
   UpdateModuleInput,
   CreateLessonInput,
   UpdateLessonInput,
+  RequestLessonVideoUploadInput,
   AttachLessonVideoInput,
 } from '../validation/course.validation.js'
 
@@ -208,9 +214,24 @@ export async function deleteCourse(courseId: string, instructorId: string) {
   await prisma.course.delete({ where: { id: courseId } })
 }
 
-export async function requestLessonVideoUpload(lessonId: string, instructorId: string) {
-  await assertLessonOwnership(lessonId, instructorId)
-  const intent = generateUploadIntent(lessonId)
+type CourseAuthoringUser = { id: string; role: string }
+
+export async function requestLessonVideoUpload(
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  user: CourseAuthoringUser,
+  input: RequestLessonVideoUploadInput,
+) {
+  await assertLessonAuthoringAccess(courseId, moduleId, lessonId, user)
+  const intent = await generateUploadIntent({
+    courseId,
+    moduleId,
+    lessonId,
+    filename: input.filename,
+    mimeType: input.mimeType,
+    fileSizeBytes: input.fileSizeBytes,
+  })
   // Mark the lesson as having a pending upload so the UI can reflect state
   await prisma.lesson.update({
     where: { id: lessonId },
@@ -224,16 +245,25 @@ export async function requestLessonVideoUpload(lessonId: string, instructorId: s
 }
 
 export async function attachLessonVideo(
+  courseId: string,
+  moduleId: string,
   lessonId: string,
-  instructorId: string,
+  user: CourseAuthoringUser,
   input: AttachLessonVideoInput,
 ) {
-  await assertLessonOwnership(lessonId, instructorId)
+  await assertLessonAuthoringAccess(courseId, moduleId, lessonId, user)
+  assertLessonVideoStorageKey(input.videoStorageKey, { courseId, moduleId, lessonId })
+  await verifyStoredVideoExists(input.videoStorageKey)
+  const videoUrl = buildPublicVideoUrl(input.videoStorageKey)
+
   return prisma.lesson.update({
     where: { id: lessonId },
     data: {
-      ...input,
-      videoUploadStatus: input.videoUploadStatus ?? 'READY',
+      videoStorageKey: input.videoStorageKey,
+      videoProvider: 'SUPABASE',
+      videoUrl,
+      videoDurationSecs: input.videoDurationSecs,
+      videoUploadStatus: 'READY',
     },
     select: instructorLessonSelect,
   })
@@ -647,6 +677,26 @@ async function assertLessonOwnership(lessonId: string, instructorId: string) {
   })
   if (!lesson) throw new AppError(404, 'Lesson not found')
   if (lesson.module.course.instructorId !== instructorId) throw new AppError(403, 'Access denied')
+  return lesson
+}
+
+async function assertLessonAuthoringAccess(
+  courseId: string,
+  moduleId: string,
+  lessonId: string,
+  user: CourseAuthoringUser,
+) {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { module: { include: { course: { select: { instructorId: true } } } } },
+  })
+  if (!lesson) throw new AppError(404, 'Lesson not found')
+  if (lesson.courseId !== courseId || lesson.moduleId !== moduleId) {
+    throw new AppError(404, 'Lesson not found in this course module')
+  }
+  if (user.role !== 'ADMIN' && lesson.module.course.instructorId !== user.id) {
+    throw new AppError(403, 'Access denied')
+  }
   return lesson
 }
 

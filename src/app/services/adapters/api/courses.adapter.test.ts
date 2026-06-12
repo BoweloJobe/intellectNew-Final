@@ -40,6 +40,7 @@ const backendCourse = {
 describe("ApiCoursesAdapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("creates courses with supported payload fields only", async () => {
@@ -344,6 +345,73 @@ describe("ApiCoursesAdapter", () => {
     })).rejects.toThrow("lesson could not be deleted");
 
     expect(mockHttpClient.get).toHaveBeenCalledTimes(1);
+  });
+
+  it("uploads and attaches lesson videos through signed provider details", async () => {
+    const file = new File(["video-bytes"], "intro.mp4", { type: "video/mp4" });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    mockHttpClient.post.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        storageKey: "courses/course-1/modules/module-1/lessons/lesson-1/video.mp4",
+        uploadUrl: "https://storage.example/upload",
+        uploadMethod: "PUT",
+        uploadHeaders: { "content-type": "video/mp4" },
+        provider: "SUPABASE",
+        expiresAt: "2026-06-12T10:00:00.000Z",
+      },
+    });
+    mockHttpClient.put.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        lesson: {
+          id: "lesson-1",
+          title: "Cells",
+          description: "Cell intro",
+          notes: "Notes",
+          videoUrl: "https://storage.example/public/video.mp4",
+          videoProvider: "SUPABASE",
+          videoUploadStatus: "READY",
+          videoDurationSecs: null,
+          estimatedMinutes: 10,
+          order: 0,
+          isFree: false,
+        },
+      },
+    });
+
+    const result = await new ApiCoursesAdapter().uploadLessonVideo({
+      courseId: "course-1",
+      moduleId: "module-1",
+      lessonId: "lesson-1",
+      file,
+    });
+
+    expect(mockHttpClient.post).toHaveBeenCalledWith(
+      "/courses/course-1/modules/module-1/lessons/lesson-1/video-upload",
+      {
+        body: {
+          filename: "intro.mp4",
+          mimeType: "video/mp4",
+          fileSizeBytes: file.size,
+        },
+      },
+    );
+    expect(fetchMock).toHaveBeenCalledWith("https://storage.example/upload", {
+      method: "PUT",
+      headers: { "content-type": "video/mp4" },
+      body: file,
+    });
+    expect(mockHttpClient.put).toHaveBeenCalledWith(
+      "/courses/course-1/modules/module-1/lessons/lesson-1/video",
+      { body: { videoStorageKey: "courses/course-1/modules/module-1/lessons/lesson-1/video.mp4" } },
+    );
+    expect(result).toEqual({
+      videoUrl: "https://storage.example/public/video.mp4",
+      videoProvider: "SUPABASE",
+      videoUploadStatus: "READY",
+    });
   });
 
   it("loads saved course ids from GET /courses/saved", async () => {

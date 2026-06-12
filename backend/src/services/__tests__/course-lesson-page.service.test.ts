@@ -17,7 +17,12 @@ const mockPrisma = vi.hoisted(() => ({
 
 vi.mock('../../lib/prisma.js', () => ({ prisma: mockPrisma }))
 vi.mock('../notification.service.js', () => ({ fireNotification: vi.fn() }))
-vi.mock('../../lib/storage.js', () => ({ generateUploadIntent: vi.fn() }))
+vi.mock('../../lib/storage.js', () => ({
+  assertLessonVideoStorageKey: vi.fn(),
+  buildPublicVideoUrl: vi.fn(),
+  generateUploadIntent: vi.fn(),
+  verifyStoredVideoExists: vi.fn(),
+}))
 
 import { getLessonPageForUser } from '../course.service.js'
 

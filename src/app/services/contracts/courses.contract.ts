@@ -4,6 +4,8 @@ import type {
   EnrolledCourseProgress,
   InstructorCourseDraftInput,
   InstructorCourseEditInput,
+  LessonVideoUploadInput,
+  LessonVideoUploadResult,
   InstructorManagedCourse,
 } from "../../models/courses";
 
@@ -18,6 +20,7 @@ export interface CoursesService {
   getCourseModerationQueue(): Promise<InstructorManagedCourse[]>;
   createInstructorCourse(input: InstructorCourseDraftInput): Promise<InstructorManagedCourse>;
   editInstructorCourse(input: InstructorCourseEditInput): Promise<InstructorManagedCourse>;
+  uploadLessonVideo(input: LessonVideoUploadInput): Promise<LessonVideoUploadResult>;
   submitCourseForApproval(courseId: string): Promise<InstructorManagedCourse>;
   reviewCoursePublication(
     courseId: string,

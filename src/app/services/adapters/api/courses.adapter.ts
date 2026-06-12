@@ -11,6 +11,8 @@ import type {
   InstructorCourseDraftInput,
   InstructorCourseEditInput,
   InstructorDraftQuizQuestionInput,
+  LessonVideoUploadInput,
+  LessonVideoUploadResult,
   InstructorManagedCourse,
 } from "../../../models/courses";
 import { httpClient, toApiError } from "../../../api";
@@ -30,6 +32,8 @@ interface BackendLesson {
   description: string | null;
   notes: string | null;
   videoUrl: string | null;
+  videoProvider?: string | null;
+  videoUploadStatus?: string | null;
   videoDurationSecs: number | null;
   estimatedMinutes: number | null;
   order: number;
@@ -155,6 +159,8 @@ function mapCourseLesson(lesson: BackendLesson): CourseLesson {
     duration,
     description: lesson.description ?? undefined,
     videoUrl: lesson.videoUrl ?? undefined,
+    videoProvider: lesson.videoProvider ?? undefined,
+    videoUploadStatus: lesson.videoUploadStatus ?? undefined,
     estimatedCompletionTimeMinutes: lesson.estimatedMinutes ?? undefined,
     notesContent: lesson.notes ?? undefined,
     isFreePreview: lesson.isFree,
@@ -296,6 +302,18 @@ function mapToCourseDetails(course: BackendCourse): CourseDetails {
 type BackendCourseResponse = { status: string; data: { course: BackendCourse } };
 type BackendCoursesResponse = { status: string; data: { courses: BackendCourse[] } };
 type BackendEnrollmentsResponse = { status: string; data: { enrollments: BackendEnrollment[] } };
+type BackendLessonResponse = { status: string; data: { lesson: BackendLesson } };
+type BackendVideoUploadIntentResponse = {
+  status: string;
+  data: {
+    storageKey: string;
+    uploadUrl: string;
+    uploadMethod: "PUT";
+    uploadHeaders?: Record<string, string>;
+    provider: string;
+    expiresAt: string;
+  };
+};
 
 interface BackendCourseProgressData {
   courseId: string;
@@ -708,6 +726,46 @@ export class ApiCoursesAdapter implements CoursesService {
       return mapToInstructorManagedCourse(fullResponse.data.course);
     } catch (error) {
       throw toApiError(error, { operation: "courses.editInstructorCourse" });
+    }
+  }
+
+  async uploadLessonVideo(input: LessonVideoUploadInput): Promise<LessonVideoUploadResult> {
+    try {
+      const basePath = `/courses/${encodeURIComponent(input.courseId)}/modules/${encodeURIComponent(input.moduleId)}/lessons/${encodeURIComponent(input.lessonId)}`;
+      const intentResponse = await httpClient.post<BackendVideoUploadIntentResponse>(
+        `${basePath}/video-upload`,
+        {
+          body: {
+            filename: input.file.name,
+            mimeType: input.file.type,
+            fileSizeBytes: input.file.size,
+          },
+        },
+      );
+      const intent = intentResponse.data;
+
+      const uploadResponse = await fetch(intent.uploadUrl, {
+        method: intent.uploadMethod,
+        headers: intent.uploadHeaders ?? { "content-type": input.file.type },
+        body: input.file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Video upload failed before it could be attached. Please try again.");
+      }
+
+      const attachResponse = await httpClient.put<BackendLessonResponse>(
+        `${basePath}/video`,
+        { body: { videoStorageKey: intent.storageKey } },
+      );
+
+      return {
+        videoUrl: attachResponse.data.lesson.videoUrl ?? "",
+        videoProvider: attachResponse.data.lesson.videoProvider ?? intent.provider,
+        videoUploadStatus: attachResponse.data.lesson.videoUploadStatus ?? "READY",
+      };
+    } catch (error) {
+      throw toApiError(error, { operation: "courses.uploadLessonVideo" });
     }
   }
 

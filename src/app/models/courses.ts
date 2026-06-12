@@ -72,6 +72,8 @@ export interface CourseLesson {
   duration: string;
   description?: string;
   videoUrl?: string;
+  videoProvider?: "SUPABASE" | "EXTERNAL" | string;
+  videoUploadStatus?: "PENDING" | "READY" | "FAILED" | string | null;
   estimatedCompletionTimeMinutes?: number;
   notesContent?: string;
   isFreePreview?: boolean;
@@ -106,6 +108,8 @@ export interface InstructorDraftLessonInput {
   id?: string;
   title: string;
   videoUrl: string;
+  videoProvider?: string;
+  videoUploadStatus?: string | null;
   description: string;
   duration: string;
   estimatedCompletionTimeMinutes: number;
@@ -118,6 +122,19 @@ export interface InstructorDraftLessonInput {
   quizQuestions?: InstructorDraftQuizQuestionInput[];
   /** Manual quiz ID to link to an existing static quiz template (used when no quizQuestions). */
   quizId?: string;
+}
+
+export interface LessonVideoUploadInput {
+  courseId: string;
+  moduleId: string;
+  lessonId: string;
+  file: File;
+}
+
+export interface LessonVideoUploadResult {
+  videoUrl: string;
+  videoProvider?: string;
+  videoUploadStatus?: string | null;
 }
 
 export interface InstructorDraftModuleInput {

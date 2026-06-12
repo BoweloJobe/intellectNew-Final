@@ -1,17 +1,27 @@
 import { useState } from "react";
-import { Copy, Eye, EyeOff, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, Trash2, Upload } from "lucide-react";
 import { Button } from "../ui/button";
-import type { InstructorDraftLessonInput } from "../../models/courses";
+import type {
+  InstructorDraftLessonInput,
+  LessonVideoUploadInput,
+  LessonVideoUploadResult,
+} from "../../models/courses";
 import { LessonQuizEditor } from "./LessonQuizEditor";
 import { LessonPreview } from "./LessonPreview";
+
+const STORAGE_NOT_CONFIGURED_MESSAGE =
+  "Video upload is not configured yet. Add a valid external video URL or configure storage.";
 
 interface LessonEditorProps {
   lesson: InstructorDraftLessonInput;
   lessonIndex: number;
+  courseId?: string;
+  moduleId?: string;
   moduleTitle: string;
   courseName?: string;
   instructorName?: string;
   isOnlyLesson: boolean;
+  onUploadVideo?: (input: LessonVideoUploadInput) => Promise<LessonVideoUploadResult>;
   onUpdate: (updated: InstructorDraftLessonInput) => void;
   onDuplicate?: () => void;
   onDelete: () => void;
@@ -20,15 +30,22 @@ interface LessonEditorProps {
 export function LessonEditor({
   lesson,
   lessonIndex,
+  courseId,
+  moduleId,
   moduleTitle,
   courseName = "",
   instructorName = "",
   isOnlyLesson,
+  onUploadVideo,
   onUpdate,
   onDuplicate,
   onDelete,
 }: LessonEditorProps) {
   const [showPreview, setShowPreview] = useState(false);
+  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const updateField = <K extends keyof InstructorDraftLessonInput>(
     field: K,
@@ -40,6 +57,42 @@ export function LessonEditor({
   const canEmbedVideo = (url: string): boolean => {
     if (!url.trim()) return false;
     return /^(https?:)?\/\//i.test(url);
+  };
+
+  const canUploadVideo = Boolean(courseId && moduleId && lesson.id && onUploadVideo);
+
+  const handleUploadVideo = async () => {
+    if (!selectedVideoFile || !courseId || !moduleId || !lesson.id || !onUploadVideo) {
+      return;
+    }
+
+    setIsUploadingVideo(true);
+    setUploadError(null);
+    setUploadMessage(null);
+    try {
+      const result = await onUploadVideo({
+        courseId,
+        moduleId,
+        lessonId: lesson.id,
+        file: selectedVideoFile,
+      });
+      onUpdate({
+        ...lesson,
+        videoUrl: result.videoUrl,
+        videoProvider: result.videoProvider,
+        videoUploadStatus: result.videoUploadStatus,
+      });
+      setUploadMessage("Video uploaded and attached.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Video upload failed. Please try again.";
+      setUploadError(
+        message.toLowerCase().includes("not configured")
+          ? STORAGE_NOT_CONFIGURED_MESSAGE
+          : message,
+      );
+    } finally {
+      setIsUploadingVideo(false);
+    }
   };
 
   return (
@@ -143,8 +196,45 @@ export function LessonEditor({
           </label>
 
           {/* Video Source */}
+          <div className="space-y-2 rounded-lg border border-gray-100 bg-gray-50/70 p-3">
+            <span className="text-xs font-medium text-gray-600 uppercase">Upload lesson video</span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
+                disabled={!canUploadVideo || isUploadingVideo}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  setSelectedVideoFile(file);
+                  setUploadError(null);
+                  setUploadMessage(null);
+                }}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!canUploadVideo || !selectedVideoFile || isUploadingVideo}
+                onClick={handleUploadVideo}
+                className="shrink-0"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                {isUploadingVideo ? "Uploading" : "Upload"}
+              </Button>
+            </div>
+            {selectedVideoFile ? (
+              <p className="text-xs text-gray-600">Selected: {selectedVideoFile.name}</p>
+            ) : null}
+            {!canUploadVideo ? (
+              <p className="text-xs text-amber-700">
+                Video upload requires API mode and a saved lesson. Use the external URL field for now.
+              </p>
+            ) : null}
+            {uploadMessage ? <p className="text-xs text-emerald-700">{uploadMessage}</p> : null}
+            {uploadError ? <p className="text-xs text-red-700">{uploadError}</p> : null}
+          </div>
           <label className="space-y-1">
-            <span className="text-xs font-medium text-gray-600 uppercase">Video URL *</span>
+            <span className="text-xs font-medium text-gray-600 uppercase">External video URL / manual fallback *</span>
             <input
               value={lesson.videoUrl}
               onChange={(e) => updateField("videoUrl", e.target.value)}

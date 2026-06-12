@@ -81,11 +81,17 @@ vi.mock('../../services/notification.service.js', () => ({
 }))
 
 vi.mock('../../lib/storage.js', () => ({
-  generateUploadIntent: vi.fn(() => ({
-    storageKey: 'key',
-    provider: 'LOCAL',
+  assertLessonVideoStorageKey: vi.fn(),
+  buildPublicVideoUrl: vi.fn(() => 'https://storage.example/public/video.mp4'),
+  generateUploadIntent: vi.fn(async () => ({
+    storageKey: 'courses/course-1/modules/module-1/lessons/lesson-1/video.mp4',
+    provider: 'SUPABASE',
     uploadUrl: 'http://localhost',
+    uploadMethod: 'PUT',
+    uploadHeaders: {},
+    expiresAt: '2026-06-12T10:00:00.000Z',
   })),
+  verifyStoredVideoExists: vi.fn(),
 }))
 
 import courseRouter from '../course.routes.js'

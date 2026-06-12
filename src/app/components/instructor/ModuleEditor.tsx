@@ -1,15 +1,22 @@
 import { ChevronDown, ChevronUp, Trash2, Plus } from "lucide-react";
 import { Button } from "../ui/button";
 import { LessonEditor } from "./LessonEditor";
-import type { InstructorDraftLessonInput, InstructorDraftModuleInput } from "../../models/courses";
+import type {
+  InstructorDraftLessonInput,
+  InstructorDraftModuleInput,
+  LessonVideoUploadInput,
+  LessonVideoUploadResult,
+} from "../../models/courses";
 
 interface ModuleEditorProps {
   module: InstructorDraftModuleInput;
   moduleIndex: number;
   isOnlyModule: boolean;
   isExpanded: boolean;
+  courseId?: string;
   courseName?: string;
   instructorName?: string;
+  onUploadLessonVideo?: (input: LessonVideoUploadInput) => Promise<LessonVideoUploadResult>;
   onToggleExpand: (expanded: boolean) => void;
   onUpdate: (updated: InstructorDraftModuleInput) => void;
   onDelete: () => void;
@@ -35,8 +42,10 @@ export function ModuleEditor({
   moduleIndex,
   isOnlyModule,
   isExpanded,
+  courseId,
   courseName = "",
   instructorName = "",
+  onUploadLessonVideo,
   onToggleExpand,
   onUpdate,
   onDelete,
@@ -121,10 +130,13 @@ export function ModuleEditor({
               key={`lesson-${lessonIndex}`}
               lesson={lesson}
               lessonIndex={lessonIndex}
+              courseId={courseId}
+              moduleId={module.id}
               moduleTitle={module.title || `Module ${moduleIndex + 1}`}
               courseName={courseName}
               instructorName={instructorName}
               isOnlyLesson={module.lessons.length === 1}
+              onUploadVideo={onUploadLessonVideo}
               onUpdate={(updated) => updateLesson(lessonIndex, updated)}
               onDuplicate={() => duplicateLesson(lessonIndex)}
               onDelete={() => deleteLesson(lessonIndex)}

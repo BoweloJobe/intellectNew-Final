@@ -4,6 +4,8 @@ import type {
   EnrolledCourseProgress,
   InstructorCourseDraftInput,
   InstructorCourseEditInput,
+  LessonVideoUploadInput,
+  LessonVideoUploadResult,
   InstructorManagedCourse,
 } from "../models/courses";
 import { getCoursesService } from "./factory/service-registry";
@@ -46,6 +48,10 @@ export async function createInstructorCourse(input: InstructorCourseDraftInput):
 
 export async function editInstructorCourse(input: InstructorCourseEditInput): Promise<InstructorManagedCourse> {
   return getCoursesService().editInstructorCourse(input);
+}
+
+export async function uploadLessonVideo(input: LessonVideoUploadInput): Promise<LessonVideoUploadResult> {
+  return getCoursesService().uploadLessonVideo(input);
 }
 
 export async function submitCourseForApproval(courseId: string): Promise<InstructorManagedCourse> {

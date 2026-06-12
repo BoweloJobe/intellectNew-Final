@@ -15,6 +15,7 @@ import {
   editInstructorCourse,
   getInstructorManagedCourses,
   submitCourseForApproval,
+  uploadLessonVideo,
 } from "../services/courses.service";
 import type { InstructorCourseDraftInput, InstructorManagedCourse } from "../models/courses";
 import { BookOpen, Plus, ArrowLeft } from "lucide-react";
@@ -137,6 +138,7 @@ export function InstructorCoursesPage() {
             isSubmitting={isSubmitting}
             instructorName={instructorName}
             availableCategories={COURSE_CATEGORIES}
+            onUploadLessonVideo={uploadLessonVideo}
             onSubmit={handleCreate}
           />
         </GlassCard>
@@ -168,6 +170,7 @@ export function InstructorCoursesPage() {
             editingCourse={editingCourse}
             instructorName={instructorName}
             availableCategories={COURSE_CATEGORIES}
+            onUploadLessonVideo={uploadLessonVideo}
             onSubmit={handleEdit}
           />
         </GlassCard>

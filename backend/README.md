@@ -26,6 +26,17 @@ npm run db:generate
 npm run dev
 ```
 
+## Lesson Video Uploads
+
+Instructor lesson video upload uses Supabase Storage signed upload URLs. Configure these backend environment variables to enable uploads:
+
+- `STORAGE_PROVIDER=SUPABASE`
+- `STORAGE_BUCKET=lesson-videos`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+When storage is not configured, upload endpoints return a clear "Video upload is not configured yet" error instead of returning fake upload URLs.
+
 ## Scripts
 
 | Script | Description |
