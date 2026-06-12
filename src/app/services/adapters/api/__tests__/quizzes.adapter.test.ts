@@ -88,7 +88,9 @@ describe("ApiQuizzesAdapter", () => {
     const result = await new ApiQuizzesAdapter().submitQuizAttempt({
       quizId: "quiz-1",
       attemptId: "attempt-1",
-      answersByQuestionId: { "question-1": "option-1" },
+      answersByQuestionId: {
+        "question-1": { questionType: "MCQ", selectedOptionId: "option-1" },
+      },
       elapsedSeconds: 30,
     });
 
@@ -117,12 +119,75 @@ describe("ApiQuizzesAdapter", () => {
       new ApiQuizzesAdapter().submitQuizAttempt({
         quizId: "quiz-1",
         attemptId: "attempt-1",
-        answersByQuestionId: { "question-1": "option-1" },
+        answersByQuestionId: {
+          "question-1": { questionType: "MCQ", selectedOptionId: "option-1" },
+        },
         elapsedSeconds: 61,
       }),
     ).rejects.toMatchObject({
       status: 409,
       message: "Quiz attempt expired",
+    });
+  });
+
+  it("submits short-answer responses with textAnswer", async () => {
+    mockHttpClient.post.mockResolvedValue({
+      status: "ok",
+      data: {
+        result: {
+          id: "attempt-1",
+          score: 100,
+          passed: true,
+          submittedAt: "2026-06-10T12:05:00.000Z",
+          answers: [
+            {
+              questionId: "question-1",
+              questionType: "SHORT_ANSWER",
+              selectedOptionId: null,
+              textAnswer: "Photosynthesis uses chlorophyll",
+              isCorrect: true,
+              marksAwarded: 2,
+              maxMarks: 2,
+              matchedKeywords: ["photosynthesis", "chlorophyll"],
+              correctOptionId: "",
+              explanation: "Good keyword coverage.",
+            },
+          ],
+          totalQuestions: 1,
+          marksEarned: 2,
+          marksTotal: 2,
+          passingScore: 70,
+        },
+      },
+    });
+
+    const result = await new ApiQuizzesAdapter().submitQuizAttempt({
+      quizId: "quiz-1",
+      attemptId: "attempt-1",
+      answersByQuestionId: {
+        "question-1": {
+          questionType: "SHORT_ANSWER",
+          textAnswer: "Photosynthesis uses chlorophyll",
+        },
+      },
+      elapsedSeconds: 30,
+    });
+
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/content/quizzes/quiz-1/attempt", {
+      body: {
+        attemptId: "attempt-1",
+        answers: [
+          {
+            questionId: "question-1",
+            textAnswer: "Photosynthesis uses chlorophyll",
+          },
+        ],
+      },
+    });
+    expect(result.questionResults[0]).toMatchObject({
+      questionType: "SHORT_ANSWER",
+      textAnswer: "Photosynthesis uses chlorophyll",
+      marksAwarded: 2,
     });
   });
 });

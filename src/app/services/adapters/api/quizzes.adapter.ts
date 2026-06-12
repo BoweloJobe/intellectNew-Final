@@ -312,16 +312,19 @@ export class ApiQuizzesAdapter implements QuizzesService {
   }
 
   async submitQuizAttempt(input: QuizSubmissionInput): Promise<QuizAttemptResult> {
-    // Convert frontend map { [questionId]: selectedOptionId } → backend array.
-    // The backend requires every question to have an answer entry; unanswered
-    // questions (undefined value) are sent with an empty string so the backend
-    // can grade them as incorrect rather than rejecting the submission.
-    const answers = Object.entries(input.answersByQuestionId).map(
-      ([questionId, selectedOptionId]) => ({
+    const answers = Object.entries(input.answersByQuestionId).map(([questionId, answer]) => {
+      if (answer?.questionType === "SHORT_ANSWER") {
+        return {
+          questionId,
+          textAnswer: answer.textAnswer,
+        };
+      }
+
+      return {
         questionId,
-        selectedOptionId: selectedOptionId ?? "",
-      }),
-    );
+        selectedOptionId: answer?.questionType === "MCQ" ? answer.selectedOptionId : "",
+      };
+    });
 
     try {
       requireAuthToken("quizzes.submitQuizAttempt");

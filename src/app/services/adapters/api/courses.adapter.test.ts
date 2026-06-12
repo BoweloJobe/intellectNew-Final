@@ -141,6 +141,69 @@ describe("ApiCoursesAdapter", () => {
     });
   });
 
+  it("creates lesson-bound short-answer questions without MCQ options", async () => {
+    mockHttpClient.post
+      .mockResolvedValueOnce({ status: "ok", data: { course: { ...backendCourse, id: "course-1" } } })
+      .mockResolvedValueOnce({ status: "ok", data: { module: { id: "module-1" } } })
+      .mockResolvedValueOnce({ status: "ok", data: { lesson: { id: "lesson-1" } } })
+      .mockResolvedValueOnce({ status: "ok", data: { quiz: { id: "quiz-1" } } })
+      .mockResolvedValue({ status: "ok", data: { question: { id: "question-1" } } });
+    mockHttpClient.get.mockResolvedValueOnce({
+      status: "ok",
+      data: { course: backendCourse },
+    });
+
+    await new ApiCoursesAdapter().createInstructorCourse({
+      title: "Cell Biology",
+      instructor: "Ada Lovelace",
+      category: "Biology",
+      description: "A practical course about cells.",
+      difficulty: "beginner",
+      totalLessons: 1,
+      initialStatus: "draft",
+      modules: [
+        {
+          title: "Basics",
+          lessons: [
+            {
+              title: "Cells",
+              videoUrl: "https://example.com/video",
+              description: "Cell intro",
+              duration: "10m",
+              estimatedCompletionTimeMinutes: 10,
+              notesContent: "Notes",
+              isFreePreview: false,
+              quizAvailable: true,
+              quizQuestions: [
+                {
+                  questionType: "SHORT_ANSWER",
+                  prompt: "Explain chlorophyll.",
+                  optionA: "",
+                  optionB: "",
+                  optionC: "",
+                  optionD: "",
+                  correctOption: "a",
+                  explanation: "Chlorophyll absorbs light.",
+                  answerKey: "chlorophyll, light",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/content/quizzes/quiz-1/questions", {
+      body: {
+        text: "Explain chlorophyll.",
+        explanation: "Chlorophyll absorbs light.",
+        order: 0,
+        questionType: "SHORT_ANSWER",
+        answerKey: "chlorophyll, light",
+      },
+    });
+  });
+
   it("surfaces lesson quiz creation failures instead of returning a successful course save", async () => {
     const quizFailure = new Error("Quiz creation failed");
     mockHttpClient.post

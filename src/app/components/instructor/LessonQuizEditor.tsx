@@ -10,6 +10,7 @@ interface LessonQuizEditorProps {
 
 function createEmptyQuestion(): InstructorDraftQuizQuestionInput {
   return {
+    questionType: "MCQ",
     prompt: "",
     optionA: "",
     optionB: "",
@@ -17,6 +18,20 @@ function createEmptyQuestion(): InstructorDraftQuizQuestionInput {
     optionD: "",
     correctOption: "a",
     explanation: "",
+  };
+}
+
+function createEmptyShortAnswerQuestion(): InstructorDraftQuizQuestionInput {
+  return {
+    questionType: "SHORT_ANSWER",
+    prompt: "",
+    optionA: "",
+    optionB: "",
+    optionC: "",
+    optionD: "",
+    correctOption: "a",
+    explanation: "",
+    answerKey: "",
   };
 }
 
@@ -53,6 +68,16 @@ function QuestionEditor({
   const headerPreview = question.prompt.trim()
     ? question.prompt.trim().slice(0, 60) + (question.prompt.trim().length > 60 ? "…" : "")
     : `Question ${questionIndex + 1}`;
+  const questionType = question.questionType ?? "MCQ";
+
+  const setQuestionType = (type: NonNullable<InstructorDraftQuizQuestionInput["questionType"]>) => {
+    if (type === "SHORT_ANSWER") {
+      onChange({ ...question, questionType: "SHORT_ANSWER", answerKey: question.answerKey ?? "" });
+      return;
+    }
+
+    onChange({ ...question, questionType: "MCQ", answerKey: undefined });
+  };
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white">
@@ -83,6 +108,31 @@ function QuestionEditor({
 
       {isExpanded && (
         <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setQuestionType("MCQ")}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                questionType === "MCQ"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Multiple Choice
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuestionType("SHORT_ANSWER")}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+                questionType === "SHORT_ANSWER"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Short Answer
+            </button>
+          </div>
+
           {/* Prompt */}
           <label className="space-y-1 block">
             <span className="text-xs font-medium text-gray-600 uppercase">Question</span>
@@ -95,35 +145,50 @@ function QuestionEditor({
             />
           </label>
 
-          {/* Options */}
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-gray-600 uppercase">Answer Options</span>
-            {OPTION_FIELDS.map((field, index) => (
-              <div key={field} className="flex items-center gap-2">
-                <label className="flex items-center gap-2 shrink-0">
+          {questionType === "MCQ" ? (
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-gray-600 uppercase">Answer Options</span>
+              {OPTION_FIELDS.map((field, index) => (
+                <div key={field} className="flex items-center gap-2">
+                  <label className="flex items-center gap-2 shrink-0">
+                    <input
+                      type="radio"
+                      name={`correct-${questionIndex}`}
+                      checked={question.correctOption === OPTION_VALUES[index]}
+                      onChange={() => updateField("correctOption", OPTION_VALUES[index])}
+                      className="accent-[#4a9ff5]"
+                    />
+                    <span className="w-5 text-xs font-bold text-gray-600">{OPTION_LABELS[index]}</span>
+                  </label>
                   <input
-                    type="radio"
-                    name={`correct-${questionIndex}`}
-                    checked={question.correctOption === OPTION_VALUES[index]}
-                    onChange={() => updateField("correctOption", OPTION_VALUES[index])}
-                    className="accent-[#4a9ff5]"
+                    value={question[field] as string}
+                    onChange={(e) => updateField(field, e.target.value)}
+                    placeholder={`Option ${OPTION_LABELS[index]}`}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
+                      question.correctOption === OPTION_VALUES[index]
+                        ? "border-[#4a9ff5] bg-[#4a9ff5]/5"
+                        : "border-gray-200 bg-white"
+                    }`}
                   />
-                  <span className="w-5 text-xs font-bold text-gray-600">{OPTION_LABELS[index]}</span>
-                </label>
-                <input
-                  value={question[field] as string}
-                  onChange={(e) => updateField(field, e.target.value)}
-                  placeholder={`Option ${OPTION_LABELS[index]}`}
-                  className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-                    question.correctOption === OPTION_VALUES[index]
-                      ? "border-[#4a9ff5] bg-[#4a9ff5]/5"
-                      : "border-gray-200 bg-white"
-                  }`}
-                />
-              </div>
-            ))}
-            <p className="text-xs text-gray-500">Select the radio button next to the correct option.</p>
-          </div>
+                </div>
+              ))}
+              <p className="text-xs text-gray-500">Select the radio button next to the correct option.</p>
+            </div>
+          ) : (
+            <label className="space-y-1 block">
+              <span className="text-xs font-medium text-gray-600 uppercase">Grading Keywords</span>
+              <textarea
+                value={question.answerKey ?? ""}
+                onChange={(e) => updateField("answerKey", e.target.value)}
+                rows={2}
+                placeholder="e.g. photosynthesis, chlorophyll, light energy"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+              />
+              <p className="text-xs text-gray-500">
+                Comma-separated keywords. Each keyword = 1 mark. Not shown to students.
+              </p>
+            </label>
+          )}
 
           {/* Explanation */}
           <label className="space-y-1 block">
@@ -157,9 +222,9 @@ export function LessonQuizEditor({ questions, onChange }: LessonQuizEditorProps)
     });
   };
 
-  const addQuestion = () => {
+  const addQuestion = (type: NonNullable<InstructorDraftQuizQuestionInput["questionType"]> = "MCQ") => {
     const newIndex = questions.length;
-    onChange([...questions, createEmptyQuestion()]);
+    onChange([...questions, type === "SHORT_ANSWER" ? createEmptyShortAnswerQuestion() : createEmptyQuestion()]);
     setExpandedIndexes((prev) => new Set([...prev, newIndex]));
   };
 
@@ -197,10 +262,16 @@ export function LessonQuizEditor({ questions, onChange }: LessonQuizEditorProps)
             {questions.length} question{questions.length !== 1 ? "s" : ""} · auto-graded · students see results after submission
           </div>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={addQuestion}>
-          <Plus className="w-4 h-4 mr-1" />
-          Add Question
-        </Button>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => addQuestion("MCQ")}>
+            <Plus className="w-4 h-4 mr-1" />
+            MCQ
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => addQuestion("SHORT_ANSWER")}>
+            <Plus className="w-4 h-4 mr-1" />
+            Short Answer
+          </Button>
+        </div>
       </div>
 
       {questions.length === 0 ? (

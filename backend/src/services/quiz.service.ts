@@ -191,24 +191,33 @@ export async function addQuestion(
 ) {
   await assertQuizOwnership(quizId, instructorId)
 
-  const { options, ...questionData } = input
+  const questionType = input.questionType ?? 'MCQ'
+  const options = input.options ?? []
   return prisma.quizQuestion.create({
     data: {
       quizId,
-      text: questionData.text,
-      explanation: questionData.explanation,
-      order: questionData.order,
-      options: {
-        createMany: {
-          data: options.map((o) => ({ text: o.text, isCorrect: o.isCorrect, order: o.order })),
-        },
-      },
+      text: input.text,
+      explanation: input.explanation,
+      order: input.order,
+      questionType,
+      answerKey: questionType === 'SHORT_ANSWER' ? input.answerKey : undefined,
+      ...(questionType === 'MCQ'
+        ? {
+            options: {
+              createMany: {
+                data: options.map((o) => ({ text: o.text, isCorrect: o.isCorrect, order: o.order })),
+              },
+            },
+          }
+        : {}),
     },
     select: {
       id: true,
       text: true,
       explanation: true,
       order: true,
+      questionType: true,
+      answerKey: true,
       options: { orderBy: { order: 'asc' }, select: { id: true, text: true, isCorrect: true, order: true } },
     },
   })
@@ -488,11 +497,19 @@ export async function submitAttempt(
     const question = questionMap.get(answer.questionId)!
 
     if (question.questionType === 'SHORT_ANSWER') {
+      if (!Object.prototype.hasOwnProperty.call(answer, 'textAnswer')) {
+        throw new AppError(400, `Question ${answer.questionId} requires textAnswer`)
+      }
+      if (answer.selectedOptionId !== undefined) {
+        throw new AppError(400, `Question ${answer.questionId} is short-answer and must not use selectedOptionId`)
+      }
+
+      const textAnswer = answer.textAnswer ?? ''
       const keywords = parseKeywords(question.answerKey)
       // If no keywords defined the question is worth 1 mark but is always ungraded (0 earned)
       const maxMarks = keywords.length > 0 ? keywords.length : 1
       const earned = keywords.length > 0
-        ? gradeKeywords(answer.selectedOptionId, keywords).marksAwarded
+        ? gradeKeywords(textAnswer, keywords).marksAwarded
         : 0
 
       totalMarksEarned += earned
@@ -501,13 +518,21 @@ export async function submitAttempt(
       gradedAnswers.push({
         questionId: answer.questionId,
         selectedOptionId: null,
-        textAnswer: answer.selectedOptionId, // frontend sends text in this field
+        textAnswer,
         isCorrect: earned > 0,
         marksAwarded: earned,
       })
     } else {
+      if (!Object.prototype.hasOwnProperty.call(answer, 'selectedOptionId')) {
+        throw new AppError(400, `Question ${answer.questionId} requires selectedOptionId`)
+      }
+      if (answer.textAnswer !== undefined) {
+        throw new AppError(400, `Question ${answer.questionId} is multiple-choice and must not use textAnswer`)
+      }
+
       // MCQ
-      const isCorrect = correctMap.get(answer.questionId) === answer.selectedOptionId
+      const selectedOptionId = answer.selectedOptionId ?? ''
+      const isCorrect = Boolean(selectedOptionId) && correctMap.get(answer.questionId) === selectedOptionId
       const earned = isCorrect ? 1 : 0
 
       totalMarksEarned += earned
@@ -515,7 +540,7 @@ export async function submitAttempt(
 
       gradedAnswers.push({
         questionId: answer.questionId,
-        selectedOptionId: answer.selectedOptionId,
+        selectedOptionId: selectedOptionId || null,
         textAnswer: null,
         isCorrect,
         marksAwarded: earned,

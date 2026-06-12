@@ -53,9 +53,13 @@ export interface GetQuizTemplateInput {
 export interface QuizSubmissionInput {
   quizId: string;
   attemptId?: string;
-  answersByQuestionId: Record<string, string | undefined>;
+  answersByQuestionId: Record<string, QuizAnswerSubmission | undefined>;
   elapsedSeconds: number;
 }
+
+export type QuizAnswerSubmission =
+  | { questionType: "MCQ"; selectedOptionId: string }
+  | { questionType: "SHORT_ANSWER"; textAnswer: string };
 
 export interface QuizAttemptStartResult {
   attemptId: string;

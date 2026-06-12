@@ -37,6 +37,7 @@ export function resolveCoursePrice(isFree: boolean, rawPrice: string): CoursePri
 function quizQuestionToInput(q: QuizQuestion): InstructorDraftQuizQuestionInput {
   const findOption = (id: string) => q.options.find((o) => o.id === id)?.text ?? "";
   return {
+    questionType: q.questionType,
     prompt: q.prompt,
     optionA: findOption("a"),
     optionB: findOption("b"),
@@ -44,6 +45,7 @@ function quizQuestionToInput(q: QuizQuestion): InstructorDraftQuizQuestionInput 
     optionD: findOption("d"),
     correctOption: q.correctOptionId as "a" | "b" | "c" | "d",
     explanation: q.explanation,
+    answerKey: q.answerKey,
   };
 }
 

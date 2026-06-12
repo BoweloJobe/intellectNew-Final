@@ -14,6 +14,7 @@ import type {
   QuizTemplate,
   PastQuiz,
   PracticeQuiz,
+  QuizAnswerSubmission,
 } from "../models/quizzes";
 import { getQuizTemplate, getQuizzesPageData, startQuizAttempt, submitQuizAttempt } from "../services/quizzes.service";
 import {
@@ -34,7 +35,7 @@ interface ActiveQuizAttempt {
   template: QuizTemplate;
   attemptId: string;
   expiresAt?: string | null;
-  answersByQuestionId: Record<string, string | undefined>;
+  answersByQuestionId: Record<string, QuizAnswerSubmission | undefined>;
   currentQuestionIndex: number;
   startedAt: number;
   contextLabel: string;
@@ -258,11 +259,20 @@ export function QuizPage() {
       // Unanswered questions get undefined so the API adapter can forward them
       // as empty strings; the backend counts them as incorrect rather than
       // rejecting the submission.
-      const fullAnswerMap: Record<string, string | undefined> = Object.fromEntries(
-        activeAttempt.template.questions.map((q) => [
-          q.id,
-          activeAttempt.answersByQuestionId[q.id],
-        ]),
+      const fullAnswerMap: Record<string, QuizAnswerSubmission | undefined> = Object.fromEntries(
+        activeAttempt.template.questions.map((q) => {
+          const answer = activeAttempt.answersByQuestionId[q.id];
+          if (answer) {
+            return [q.id, answer];
+          }
+
+          return [
+            q.id,
+            q.questionType === "SHORT_ANSWER"
+              ? { questionType: "SHORT_ANSWER", textAnswer: "" }
+              : { questionType: "MCQ", selectedOptionId: "" },
+          ];
+        }),
       );
       const result = await submitQuizAttempt({
         quizId: activeAttempt.template.id,
@@ -394,11 +404,17 @@ export function QuizPage() {
   }, [activeAttempt]);
 
   if (activeAttempt && currentQuestion) {
-    const answeredQuestions = activeAttempt.template.questions.filter(
-      (question) => activeAttempt.answersByQuestionId[question.id],
-    ).length;
+    const answeredQuestions = activeAttempt.template.questions.filter((question) => {
+      const answer = activeAttempt.answersByQuestionId[question.id];
+      if (!answer) return false;
+      return answer.questionType === "SHORT_ANSWER"
+        ? answer.textAnswer.trim().length > 0
+        : answer.selectedOptionId.trim().length > 0;
+    }).length;
     const progress = Math.round(((activeAttempt.currentQuestionIndex + 1) / activeAttempt.template.questions.length) * 100);
-    const selectedOptionId = activeAttempt.answersByQuestionId[currentQuestion.id];
+    const currentAnswer = activeAttempt.answersByQuestionId[currentQuestion.id];
+    const selectedOptionId = currentAnswer?.questionType === "MCQ" ? currentAnswer.selectedOptionId : undefined;
+    const textAnswer = currentAnswer?.questionType === "SHORT_ANSWER" ? currentAnswer.textAnswer : "";
 
     return (
       <div className="max-w-5xl mx-auto px-4 pb-20 space-y-6">
@@ -453,7 +469,7 @@ export function QuizPage() {
             {currentQuestion.questionType === "SHORT_ANSWER" ? (
               <textarea
                 rows={4}
-                value={(selectedOptionId as string | undefined) ?? ""}
+                value={textAnswer}
                 onChange={(e) => {
                   const answer = e.target.value;
                   setActiveAttempt((previous) => {
@@ -462,7 +478,10 @@ export function QuizPage() {
                       ...previous,
                       answersByQuestionId: {
                         ...previous.answersByQuestionId,
-                        [currentQuestion.id]: answer,
+                        [currentQuestion.id]: {
+                          questionType: "SHORT_ANSWER",
+                          textAnswer: answer,
+                        },
                       },
                     };
                   });
@@ -493,7 +512,10 @@ export function QuizPage() {
                           ...previous,
                           answersByQuestionId: {
                             ...previous.answersByQuestionId,
-                            [currentQuestion.id]: option.id,
+                            [currentQuestion.id]: {
+                              questionType: "MCQ",
+                              selectedOptionId: option.id,
+                            },
                           },
                         };
                       });

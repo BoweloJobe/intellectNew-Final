@@ -1,4 +1,4 @@
-import type { QuizQuestion } from "./quizzes";
+import type { QuizQuestion, QuizQuestionType } from "./quizzes";
 
 export interface Course {
   id: string;
@@ -90,6 +90,7 @@ export interface CourseModule {
 }
 
 export interface InstructorDraftQuizQuestionInput {
+  questionType?: QuizQuestionType;
   prompt: string;
   optionA: string;
   optionB: string;
@@ -97,6 +98,7 @@ export interface InstructorDraftQuizQuestionInput {
   optionD: string;
   correctOption: "a" | "b" | "c" | "d";
   explanation: string;
+  answerKey?: string;
 }
 
 export interface InstructorDraftLessonInput {

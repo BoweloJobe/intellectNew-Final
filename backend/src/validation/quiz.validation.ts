@@ -13,26 +13,57 @@ export const updateQuizSchema = createQuizSchema.partial()
 
 const questionTypeSchema = z.enum(['MCQ', 'SHORT_ANSWER']).default('MCQ')
 
-export const createQuestionSchema = z.object({
+const quizOptionSchema = z.object({
+  text: z.string().min(1).max(500).trim(),
+  isCorrect: z.boolean(),
+  order: z.number().int().min(0),
+})
+
+export const createQuestionSchema = z
+  .object({
   text: z.string().min(3).max(1000).trim(),
   explanation: z.string().max(2000).trim().optional(),
   order: z.number().int().min(0),
   questionType: questionTypeSchema.optional(),
   answerKey: z.string().max(2000).trim().optional(),
-  options: z
-    .array(
-      z.object({
-        text: z.string().min(1).max(500).trim(),
-        isCorrect: z.boolean(),
-        order: z.number().int().min(0),
-      }),
-    )
-    .min(2, 'At least 2 options required')
-    .max(6, 'Maximum 6 options')
-    .refine((opts) => opts.filter((o) => o.isCorrect).length === 1, {
-      message: 'Exactly one option must be marked correct',
-    }),
-})
+    options: z.array(quizOptionSchema).default([]),
+  })
+  .superRefine((question, ctx) => {
+    const questionType = question.questionType ?? 'MCQ'
+    if (questionType === 'SHORT_ANSWER') return
+
+    if (question.options.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_small,
+        minimum: 2,
+        type: 'array',
+        inclusive: true,
+        message: 'MCQ questions require at least 2 options',
+        path: ['options'],
+      })
+      return
+    }
+
+    if (question.options.length > 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.too_big,
+        maximum: 6,
+        type: 'array',
+        inclusive: true,
+        message: 'Maximum 6 options',
+        path: ['options'],
+      })
+      return
+    }
+
+    if (question.options.filter((option) => option.isCorrect).length !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Exactly one option must be marked correct',
+        path: ['options'],
+      })
+    }
+  })
 
 export const updateQuestionSchema = z.object({
   text: z.string().min(3).max(1000).trim().optional(),
@@ -51,12 +82,7 @@ const standaloneQuestionSchema = z.object({
   text: z.string().min(3).max(1000).trim(),
   explanation: z.string().max(2000).trim().optional(),
   answerKey: z.string().max(2000).trim().optional(),
-  options: z.array(
-    z.object({
-      text: z.string().min(1).max(500).trim(),
-      isCorrect: z.boolean(),
-    }),
-  ),
+  options: z.array(quizOptionSchema.omit({ order: true })).default([]),
 })
 
 export const createStandaloneQuizSchema = z
@@ -109,8 +135,8 @@ export const submitAttemptSchema = z.object({
     .array(
       z.object({
         questionId: z.string().cuid(),
-        // selectedOptionId is empty string for unanswered MCQ or SHORT_ANSWER text
-        selectedOptionId: z.string(),
+        selectedOptionId: z.string().optional(),
+        textAnswer: z.string().optional(),
       }),
     )
     .min(1, 'At least one answer is required'),

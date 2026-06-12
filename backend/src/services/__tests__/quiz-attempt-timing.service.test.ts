@@ -44,6 +44,24 @@ const quizWithOneQuestion = {
   ],
 }
 
+const quizWithShortAnswerQuestion = {
+  id: 'quiz-1',
+  lessonId: null,
+  timeLimitSeconds: 60,
+  isPremium: false,
+  lesson: null,
+  passingScore: 70,
+  questions: [
+    {
+      id: 'question-1',
+      questionType: 'SHORT_ANSWER',
+      answerKey: 'photosynthesis, chlorophyll',
+      explanation: 'Photosynthesis depends on chlorophyll.',
+      options: [],
+    },
+  ],
+}
+
 describe('quiz attempt timing service', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -186,6 +204,68 @@ describe('quiz attempt timing service', () => {
         passed: true,
         status: 'SUBMITTED',
         submittedAt: now,
+      }),
+    }))
+  })
+
+  it('grades short-answer attempts from textAnswer, not selectedOptionId', async () => {
+    mockPrisma.quiz.findUnique.mockResolvedValue(quizWithShortAnswerQuestion)
+    mockPrisma.quizAttempt.findUnique.mockResolvedValue({
+      id: 'attempt-1',
+      quizId: 'quiz-1',
+      userId: 'user-1',
+      status: 'IN_PROGRESS',
+      expiresAt: new Date('2026-06-10T12:01:00.000Z'),
+    })
+    mockPrisma.quizAttempt.update.mockResolvedValue({
+      id: 'attempt-1',
+      score: 100,
+      passed: true,
+      status: 'SUBMITTED',
+      startedAt: now,
+      expiresAt: new Date('2026-06-10T12:01:00.000Z'),
+      submittedAt: now,
+      answers: [
+        {
+          questionId: 'question-1',
+          selectedOptionId: null,
+          textAnswer: 'Photosynthesis uses chlorophyll',
+          isCorrect: true,
+          marksAwarded: 2,
+        },
+      ],
+    })
+
+    const result = await submitAttempt('quiz-1', 'user-1', {
+      attemptId: 'attempt-1',
+      answers: [{ questionId: 'question-1', textAnswer: 'Photosynthesis uses chlorophyll' }],
+    })
+
+    expect(result.score).toBe(100)
+    expect(result.marksEarned).toBe(2)
+    expect(result.answers[0]).toMatchObject({
+      questionType: 'SHORT_ANSWER',
+      selectedOptionId: null,
+      textAnswer: 'Photosynthesis uses chlorophyll',
+      marksAwarded: 2,
+      maxMarks: 2,
+      matchedKeywords: ['photosynthesis', 'chlorophyll'],
+    })
+    expect(mockPrisma.quizAttempt.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        answers: {
+          createMany: {
+            data: [
+              {
+                questionId: 'question-1',
+                selectedOptionId: null,
+                textAnswer: 'Photosynthesis uses chlorophyll',
+                isCorrect: true,
+                marksAwarded: 2,
+              },
+            ],
+          },
+        },
       }),
     }))
   })

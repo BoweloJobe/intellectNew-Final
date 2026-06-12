@@ -305,12 +305,12 @@ function gradeAttempt(
   let totalMarksAvailable = 0;
 
   const questionResults = template.questions.map((question) => {
-    const value = input.answersByQuestionId[question.id];
+    const answer = input.answersByQuestionId[question.id];
 
     if (question.questionType === "SHORT_ANSWER") {
       const keywords = parseKeywords(question.answerKey);
       const maxMarks = keywords.length > 0 ? keywords.length : 1;
-      const studentText = value ?? "";
+      const studentText = answer?.questionType === "SHORT_ANSWER" ? answer.textAnswer : "";
       const { marksAwarded, matchedKeywords } =
         keywords.length > 0
           ? gradeKeywords(studentText, keywords)
@@ -332,14 +332,15 @@ function gradeAttempt(
     }
 
     // MCQ
-    const isCorrect = Boolean(value) && value === question.correctOptionId;
+    const selectedOptionId = answer?.questionType === "MCQ" ? answer.selectedOptionId : "";
+    const isCorrect = Boolean(selectedOptionId) && selectedOptionId === question.correctOptionId;
     totalMarksEarned += isCorrect ? 1 : 0;
     totalMarksAvailable += 1;
 
     return {
       questionId: question.id,
       questionType: "MCQ" as const,
-      selectedOptionId: value ?? "",
+      selectedOptionId,
       correctOptionId: question.correctOptionId,
       isCorrect,
       explanation: question.explanation,

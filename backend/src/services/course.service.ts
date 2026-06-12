@@ -62,6 +62,7 @@ const instructorLessonSelect = {
           explanation: true,
           order: true,
           questionType: true,
+          answerKey: true,
           options: {
             orderBy: { order: 'asc' as const },
             select: { id: true, text: true, isCorrect: true, order: true },

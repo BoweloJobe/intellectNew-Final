@@ -1,7 +1,10 @@
-import { ZodSchema } from 'zod'
+import { z } from 'zod'
 import { AppError } from '../errors/AppError.js'
 
-export function validate<T>(schema: ZodSchema<T>, data: unknown): T {
+export function validate<TSchema extends z.ZodTypeAny>(
+  schema: TSchema,
+  data: unknown,
+): z.output<TSchema> {
   const result = schema.safeParse(data)
   if (!result.success) {
     const message = result.error.errors

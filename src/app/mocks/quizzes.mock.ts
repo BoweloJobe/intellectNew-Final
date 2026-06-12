@@ -104,7 +104,8 @@ export function submitQuizAttemptMock(input: QuizSubmissionInput): QuizAttemptRe
   const total = Math.max(questionIds.length, 1);
 
   const questionResults: QuizQuestionResult[] = questionIds.map((questionId) => {
-    const selectedOptionId = input.answersByQuestionId[questionId];
+    const answer = input.answersByQuestionId[questionId];
+    const selectedOptionId = answer?.questionType === "MCQ" ? answer.selectedOptionId : "";
     return {
       questionId,
       selectedOptionId: selectedOptionId ?? "",

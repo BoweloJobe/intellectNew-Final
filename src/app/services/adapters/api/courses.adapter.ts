@@ -10,6 +10,7 @@ import type {
   EnrolledCourseProgress,
   InstructorCourseDraftInput,
   InstructorCourseEditInput,
+  InstructorDraftQuizQuestionInput,
   InstructorManagedCourse,
 } from "../../../models/courses";
 import { httpClient, toApiError } from "../../../api";
@@ -42,6 +43,7 @@ interface BackendLesson {
       explanation: string | null;
       order: number;
       questionType: string;
+      answerKey?: string | null;
       options: Array<{
         id: string;
         text: string;
@@ -172,8 +174,34 @@ function mapCourseLesson(lesson: BackendLesson): CourseLesson {
         })),
         correctOptionId: optionIds[Math.max(0, correctIndex)] ?? "a",
         explanation: q.explanation ?? "",
+        answerKey: q.answerKey ?? undefined,
       };
     }),
+  };
+}
+
+function buildQuizQuestionBody(question: InstructorDraftQuizQuestionInput, order: number) {
+  if ((question.questionType ?? "MCQ") === "SHORT_ANSWER") {
+    return {
+      text: question.prompt,
+      explanation: question.explanation || undefined,
+      order,
+      questionType: "SHORT_ANSWER",
+      answerKey: question.answerKey || undefined,
+    };
+  }
+
+  return {
+    text: question.prompt,
+    explanation: question.explanation || undefined,
+    order,
+    questionType: "MCQ",
+    options: [
+      { text: question.optionA, isCorrect: question.correctOption === "a", order: 0 },
+      { text: question.optionB, isCorrect: question.correctOption === "b", order: 1 },
+      { text: question.optionC, isCorrect: question.correctOption === "c", order: 2 },
+      { text: question.optionD, isCorrect: question.correctOption === "d", order: 3 },
+    ],
   };
 }
 
@@ -499,17 +527,7 @@ export class ApiCoursesAdapter implements CoursesService {
                 await httpClient.post(
                   `/content/quizzes/${encodeURIComponent(quizId)}/questions`,
                   {
-                    body: {
-                      text: q.prompt,
-                      explanation: q.explanation || undefined,
-                      order: qIdx,
-                      options: [
-                        { text: q.optionA, isCorrect: q.correctOption === "a", order: 0 },
-                        { text: q.optionB, isCorrect: q.correctOption === "b", order: 1 },
-                        { text: q.optionC, isCorrect: q.correctOption === "c", order: 2 },
-                        { text: q.optionD, isCorrect: q.correctOption === "d", order: 3 },
-                      ],
-                    },
+                    body: buildQuizQuestionBody(q, qIdx),
                   },
                 );
               }
@@ -647,17 +665,7 @@ export class ApiCoursesAdapter implements CoursesService {
                   await httpClient.post(
                     `/content/quizzes/${encodeURIComponent(quizId)}/questions`,
                     {
-                      body: {
-                        text: q.prompt,
-                        explanation: q.explanation || undefined,
-                        order: qIdx,
-                        options: [
-                          { text: q.optionA, isCorrect: q.correctOption === "a", order: 0 },
-                          { text: q.optionB, isCorrect: q.correctOption === "b", order: 1 },
-                          { text: q.optionC, isCorrect: q.correctOption === "c", order: 2 },
-                          { text: q.optionD, isCorrect: q.correctOption === "d", order: 3 },
-                        ],
-                      },
+                      body: buildQuizQuestionBody(q, qIdx),
                     },
                   );
                 }
