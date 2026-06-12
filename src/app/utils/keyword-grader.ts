@@ -9,6 +9,16 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizeForKeywordMatch(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
 /**
  * Parse the instructor's answerKey into a normalised, deduplicated keyword list.
  * Returns an empty array for null/empty answerKey.
@@ -17,8 +27,8 @@ export function parseKeywords(answerKey: string | null | undefined): string[] {
   if (!answerKey || !answerKey.trim()) return [];
 
   return answerKey
-    .split(",")
-    .map((k) => k.trim().toLowerCase())
+    .split(/[,\n;]/)
+    .map((k) => normalizeForKeywordMatch(k))
     .filter((k) => k.length > 0)
     .filter((k, i, arr) => arr.indexOf(k) === i);
 }
@@ -40,16 +50,15 @@ export function gradeKeywords(
     return { marksAwarded: 0, matchedKeywords: [] };
   }
 
-  const normalised = studentAnswer.toLowerCase();
+  const normalised = normalizeForKeywordMatch(studentAnswer);
   const matchedKeywords: string[] = [];
 
   for (const keyword of keywords) {
-    const matched = keyword.includes(" ")
-      ? normalised.includes(keyword)
-      : new RegExp(`\\b${escapeRegex(keyword)}\\b`).test(normalised);
+    const normalisedKeyword = normalizeForKeywordMatch(keyword);
+    const matched = new RegExp(`(^|\\s)${escapeRegex(normalisedKeyword)}(\\s|$)`, "u").test(normalised);
 
     if (matched) {
-      matchedKeywords.push(keyword);
+      matchedKeywords.push(normalisedKeyword);
     }
   }
 

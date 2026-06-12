@@ -167,4 +167,30 @@ describe("QuizPage timed attempt behavior", () => {
     expect(mockStartQuizAttempt).toHaveBeenCalledWith("quiz-1");
     expect(container.textContent).toContain("0:01");
   });
+
+  it("renders a clear untimed label for untimed attempts", async () => {
+    mockGetQuizTemplate.mockResolvedValue({
+      ...quizTemplate,
+      timeLimitSeconds: undefined,
+    });
+    mockStartQuizAttempt.mockResolvedValue({
+      attemptId: "attempt-1",
+      quizId: "quiz-1",
+      status: "IN_PROGRESS",
+      startedAt: "2026-06-10T12:00:00.000Z",
+      expiresAt: null,
+      serverTime: "2026-06-10T12:00:00.000Z",
+      timeLimitSeconds: null,
+    });
+
+    await act(async () => {
+      root.render(<QuizPage />);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("Untimed quiz");
+  });
 });

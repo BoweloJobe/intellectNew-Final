@@ -30,7 +30,16 @@ export const createQuestionSchema = z
   })
   .superRefine((question, ctx) => {
     const questionType = question.questionType ?? 'MCQ'
-    if (questionType === 'SHORT_ANSWER') return
+    if (questionType === 'SHORT_ANSWER') {
+      if (!question.answerKey?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Short-answer questions require grading keywords',
+          path: ['answerKey'],
+        })
+      }
+      return
+    }
 
     if (question.options.length < 2) {
       ctx.addIssue({
@@ -98,7 +107,16 @@ export const createStandaloneQuizSchema = z
   })
   .superRefine((data, ctx) => {
     data.questions.forEach((q, idx) => {
-      if (q.questionType !== 'MCQ') return
+      if (q.questionType === 'SHORT_ANSWER') {
+        if (!q.answerKey?.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Short-answer questions require grading keywords',
+            path: ['questions', idx, 'answerKey'],
+          })
+        }
+        return
+      }
       if (q.options.length < 2) {
         ctx.addIssue({
           code: z.ZodIssueCode.too_small,

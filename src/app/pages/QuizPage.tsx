@@ -432,7 +432,7 @@ export function QuizPage() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {timeLeft !== null && (
+              {timeLeft !== null ? (
                 <span
                   className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${
                     timeLeft <= 60
@@ -443,7 +443,12 @@ export function QuizPage() {
                   }`}
                 >
                   <Clock className="w-3 h-3" />
-                  {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+                  Time left {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-700">
+                  <Clock className="w-3 h-3" />
+                  Untimed quiz
                 </span>
               )}
               <span

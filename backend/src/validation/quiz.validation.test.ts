@@ -49,6 +49,34 @@ describe('quiz validation', () => {
     expect(result.success).toBe(true)
   })
 
+  it('rejects standalone short-answer questions without grading keywords', () => {
+    const result = createStandaloneQuizSchema.safeParse({
+      title: 'Biology keywords',
+      category: 'Biology',
+      questions: [
+        {
+          questionType: 'SHORT_ANSWER',
+          text: 'Explain chlorophyll',
+          answerKey: '',
+          options: [],
+        },
+      ],
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects lesson-bound short-answer questions without grading keywords', () => {
+    const result = createQuestionSchema.safeParse({
+      text: 'Explain photosynthesis',
+      questionType: 'SHORT_ANSWER',
+      answerKey: '',
+      order: 0,
+    })
+
+    expect(result.success).toBe(false)
+  })
+
   it('accepts explicit MCQ and short-answer submission fields', () => {
     const result = submitAttemptSchema.safeParse({
       answers: [

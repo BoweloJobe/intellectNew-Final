@@ -66,6 +66,49 @@ function createEmptyShortAnswerQuestion(): StandaloneQuizQuestionInput {
 
 // ─── Question editor ──────────────────────────────────────────────────────────
 
+export function getStandaloneQuizValidationError(input: {
+  title: string;
+  category: string;
+  questions: StandaloneQuizQuestionInput[];
+}): { message: string; questionIndex?: number } | null {
+  if (input.title.trim().length < 3) {
+    return { message: "Quiz title must be at least 3 characters." };
+  }
+  if (!input.category) {
+    return { message: "Please select a category." };
+  }
+  if (input.questions.length === 0) {
+    return { message: "Add at least one question." };
+  }
+
+  for (let i = 0; i < input.questions.length; i++) {
+    const q = input.questions[i];
+    if (q.text.trim().length < 3) {
+      return { message: `Question ${i + 1}: question text is too short.`, questionIndex: i };
+    }
+    if (q.questionType === "SHORT_ANSWER") {
+      if (!q.answerKey?.trim()) {
+        return {
+          message: `Question ${i + 1}: add grading keywords for the short-answer question.`,
+          questionIndex: i,
+        };
+      }
+      continue;
+    }
+    if (q.options.length < 2) {
+      return { message: `Question ${i + 1}: add at least 2 options.`, questionIndex: i };
+    }
+    if (q.options.some((o) => o.text.trim() === "")) {
+      return { message: `Question ${i + 1}: all options must have text.`, questionIndex: i };
+    }
+    if (q.options.filter((o) => o.isCorrect).length !== 1) {
+      return { message: `Question ${i + 1}: mark exactly one option as the correct answer.`, questionIndex: i };
+    }
+  }
+
+  return null;
+}
+
 interface QuestionEditorProps {
   question: StandaloneQuizQuestionInput;
   index: number;
@@ -316,26 +359,9 @@ export function InstructorQuizAuthoringPage() {
     createEmptyMCQQuestion(),
   ]);
   const [expandedIndex, setExpandedIndex] = useState<number>(0);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // ── Validation helpers ──────────────────────────────────────────────────────
-  function validateForm(): string | null {
-    if (title.trim().length < 3) return "Quiz title must be at least 3 characters.";
-    if (!category) return "Please select a category.";
-    if (questions.length === 0) return "Add at least one question.";
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      if (q.text.trim().length < 3) return `Question ${i + 1}: question text is too short.`;
-      if (q.questionType === "MCQ") {
-        if (q.options.length < 2) return `Question ${i + 1}: add at least 2 options.`;
-        if (q.options.some((o) => o.text.trim() === ""))
-          return `Question ${i + 1}: all options must have text.`;
-        if (!q.options.some((o) => o.isCorrect))
-          return `Question ${i + 1}: mark one option as the correct answer.`;
-      }
-    }
-    return null;
-  }
-
   // ── Handlers ────────────────────────────────────────────────────────────────
   const addQuestion = (type: QuizQuestionType) => {
     const newQ = type === "SHORT_ANSWER" ? createEmptyShortAnswerQuestion() : createEmptyMCQQuestion();
@@ -354,15 +380,15 @@ export function InstructorQuizAuthoringPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const validationError = validateForm();
-    if (validationError) {
-      // Surface as a submit error without actually running the async flow
-      void runSubmit(
-        async () => { throw new Error(validationError); },
-        { successMessage: "" },
-      );
+    const validationResult = getStandaloneQuizValidationError({ title, category, questions });
+    if (validationResult) {
+      setValidationError(validationResult.message);
+      if (validationResult.questionIndex !== undefined) {
+        setExpandedIndex(validationResult.questionIndex);
+      }
       return;
     }
+    setValidationError(null);
 
     const input: StandaloneQuizInput = {
       title: title.trim(),
@@ -372,7 +398,17 @@ export function InstructorQuizAuthoringPage() {
       passingScore,
       timeLimitSeconds: hasTimed ? timeLimitMinutes * 60 : undefined,
       isPremium,
-      questions,
+      questions: questions.map((question) => ({
+        ...question,
+        text: question.text.trim(),
+        explanation: question.explanation?.trim() || undefined,
+        answerKey: question.questionType === "SHORT_ANSWER"
+          ? question.answerKey?.trim()
+          : undefined,
+        options: question.questionType === "MCQ"
+          ? question.options.map((option) => ({ ...option, text: option.text.trim() }))
+          : [],
+      })),
     };
 
     void runSubmit(
@@ -429,8 +465,8 @@ export function InstructorQuizAuthoringPage() {
         </div>
       ) : null}
 
-      {submitError ? (
-        <DataErrorState description={submitError ?? ""} className="mb-6" />
+      {validationError || submitError ? (
+        <DataErrorState description={validationError ?? submitError ?? ""} className="mb-6" />
       ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-6">

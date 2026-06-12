@@ -208,6 +208,50 @@ describe('quiz attempt timing service', () => {
     }))
   })
 
+  it('scores wrong MCQ answers as incorrect', async () => {
+    mockPrisma.quiz.findUnique.mockResolvedValue(quizWithOneQuestion)
+    mockPrisma.quizAttempt.findUnique.mockResolvedValue({
+      id: 'attempt-1',
+      quizId: 'quiz-1',
+      userId: 'user-1',
+      status: 'IN_PROGRESS',
+      expiresAt: new Date('2026-06-10T12:01:00.000Z'),
+    })
+    mockPrisma.quizAttempt.update.mockResolvedValue({
+      id: 'attempt-1',
+      score: 0,
+      passed: false,
+      status: 'SUBMITTED',
+      startedAt: now,
+      expiresAt: new Date('2026-06-10T12:01:00.000Z'),
+      submittedAt: now,
+      answers: [
+        {
+          questionId: 'question-1',
+          selectedOptionId: 'option-2',
+          textAnswer: null,
+          isCorrect: false,
+          marksAwarded: 0,
+        },
+      ],
+    })
+
+    const result = await submitAttempt('quiz-1', 'user-1', {
+      attemptId: 'attempt-1',
+      answers: [{ questionId: 'question-1', selectedOptionId: 'option-2' }],
+    })
+
+    expect(result.score).toBe(0)
+    expect(result.answers[0]).toMatchObject({
+      questionType: 'MCQ',
+      selectedOptionId: 'option-2',
+      correctOptionId: 'option-1',
+      isCorrect: false,
+      marksAwarded: 0,
+      maxMarks: 1,
+    })
+  })
+
   it('grades short-answer attempts from textAnswer, not selectedOptionId', async () => {
     mockPrisma.quiz.findUnique.mockResolvedValue(quizWithShortAnswerQuestion)
     mockPrisma.quizAttempt.findUnique.mockResolvedValue({
@@ -268,6 +312,50 @@ describe('quiz attempt timing service', () => {
         },
       }),
     }))
+  })
+
+  it('scores unrelated short-answer attempts as incorrect', async () => {
+    mockPrisma.quiz.findUnique.mockResolvedValue(quizWithShortAnswerQuestion)
+    mockPrisma.quizAttempt.findUnique.mockResolvedValue({
+      id: 'attempt-1',
+      quizId: 'quiz-1',
+      userId: 'user-1',
+      status: 'IN_PROGRESS',
+      expiresAt: new Date('2026-06-10T12:01:00.000Z'),
+    })
+    mockPrisma.quizAttempt.update.mockResolvedValue({
+      id: 'attempt-1',
+      score: 0,
+      passed: false,
+      status: 'SUBMITTED',
+      startedAt: now,
+      expiresAt: new Date('2026-06-10T12:01:00.000Z'),
+      submittedAt: now,
+      answers: [
+        {
+          questionId: 'question-1',
+          selectedOptionId: null,
+          textAnswer: 'Respiration uses mitochondria',
+          isCorrect: false,
+          marksAwarded: 0,
+        },
+      ],
+    })
+
+    const result = await submitAttempt('quiz-1', 'user-1', {
+      attemptId: 'attempt-1',
+      answers: [{ questionId: 'question-1', textAnswer: 'Respiration uses mitochondria' }],
+    })
+
+    expect(result.score).toBe(0)
+    expect(result.answers[0]).toMatchObject({
+      questionType: 'SHORT_ANSWER',
+      textAnswer: 'Respiration uses mitochondria',
+      isCorrect: false,
+      marksAwarded: 0,
+      maxMarks: 2,
+      matchedKeywords: [],
+    })
   })
 
   it('marks late timed submissions expired and rejects grading', async () => {
