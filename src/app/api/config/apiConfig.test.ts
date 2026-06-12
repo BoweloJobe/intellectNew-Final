@@ -93,6 +93,16 @@ describe("apiConfig", () => {
     expect(domainAdapterConfig.dashboard).toBe("mock");
   });
 
+  it("blocks a production tutor mock override unless explicitly allowed", async () => {
+    vi.stubEnv("PROD", true);
+    vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", "api");
+    vi.stubEnv("VITE_TUTOR_ADAPTER_MODE", "mock");
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
+    vi.stubEnv("VITE_ALLOW_MOCK_IN_PRODUCTION", undefined);
+
+    await expect(loadConfigModule()).rejects.toThrow("Mock domains: tutor");
+  });
+
   describe("domainAdapterConfig", () => {
     it("all domains default to mock when no domain env is set", async () => {
       vi.stubEnv("VITE_SERVICE_ADAPTER_MODE", undefined);

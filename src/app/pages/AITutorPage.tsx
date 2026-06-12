@@ -14,6 +14,7 @@ import {
 import { useTutorState } from "../state/tutor/TutorStateContext";
 import { getAsyncErrorMessage } from "../utils/async-errors";
 import { normalizeRequiredTextInput } from "../utils/form-validation";
+import { domainAdapterConfig } from "../services/factory/service-registry";
 import { Archive, BookOpen, FileText, HelpCircle, Pin, Send, Sparkles, Tag, Trash2 } from "lucide-react";
 
 const MIN_TUTOR_PROMPT_LENGTH = 6;
@@ -25,6 +26,13 @@ const promptIconMap = {
   help: HelpCircle,
   sparkles: Sparkles,
 } as const;
+
+export function getTutorSubmitErrorMessage(error: unknown): string {
+  return getAsyncErrorMessage(
+    error,
+    "AI Tutor is unavailable. Production AI is not configured for this environment.",
+  );
+}
 
 function sessionStatusBadgeClass(status: TutorSessionStatus): string {
   if (status === "pinned") {
@@ -121,6 +129,7 @@ export function AITutorPage() {
   const effectiveSession = activeSession;
   const isLoading = tutorViewState === "loading";
   const isError = tutorViewState === "error";
+  const isTutorDemoMode = domainAdapterConfig.tutor === "mock";
 
   useEffect(() => {
     if (effectiveSession?.id && activeTutorSessionId !== effectiveSession.id) {
@@ -233,16 +242,17 @@ export function AITutorPage() {
       window.setTimeout(() => {
         setSuccessMessage(null);
       }, 1700);
-    } catch {
+    } catch (error) {
+      const message = getTutorSubmitErrorMessage(error);
       pushNotification(
         createProductNotification({
           title: "Tutor unavailable",
-          detail: "Message could not be sent. Please try again.",
+          detail: message,
           category: "ai",
           source: "ai-tutor-recommendation",
         }),
       );
-      setSubmitError("Message could not be sent. Please try again.");
+      setSubmitError(message);
     } finally {
       setIsSending(false);
     }
@@ -305,6 +315,15 @@ export function AITutorPage() {
       </div>
 
       {successMessage ? <ActionSuccessState message={successMessage} className="mb-6" /> : null}
+
+      {isTutorDemoMode ? (
+        <div className="mb-6 rounded-xl border border-amber-200/70 bg-amber-50/75 px-5 py-4">
+          <p className="text-sm font-semibold text-amber-900">Demo AI Tutor</p>
+          <p className="text-sm text-amber-800/90">
+            This environment is using local mock tutor responses. Production AI requires the API tutor backend to be configured.
+          </p>
+        </div>
+      ) : null}
 
       {isError ? (
         <div className="mb-6">

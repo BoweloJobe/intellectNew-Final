@@ -141,60 +141,20 @@ export function TutorProvider({ children }: { children: ReactNode }) {
           createdAt: new Date().toISOString(),
         };
 
+        const assistantReply = await generateTutorReply({ sessionId, prompt, tags });
+
         setState((previous) => ({
           ...previous,
           tutorSessions: previous.tutorSessions.map((session) =>
             session.id === sessionId
               ? {
                   ...session,
-                  messages: [...session.messages, userMessage],
-                  updatedAt: userMessage.createdAt,
+                  messages: [...session.messages, userMessage, assistantReply],
+                  updatedAt: assistantReply.createdAt,
                 }
               : session,
           ),
         }));
-
-        try {
-          const assistantReply = await generateTutorReply({ sessionId, prompt, tags });
-
-          setState((previous) => ({
-            ...previous,
-            tutorSessions: previous.tutorSessions.map((session) =>
-              session.id === sessionId
-                ? {
-                    ...session,
-                    messages: [...session.messages, assistantReply],
-                    updatedAt: assistantReply.createdAt,
-                  }
-                : session,
-            ),
-          }));
-        } catch (error) {
-          const fallbackMessage = error instanceof Error
-            ? error.message
-            : "Tutor response failed. Please try again.";
-
-          setState((previous) => ({
-            ...previous,
-            tutorSessions: previous.tutorSessions.map((session) =>
-              session.id === sessionId
-                ? {
-                    ...session,
-                    messages: [
-                      ...session.messages,
-                      {
-                        id: `msg-${Date.now()}-fallback`,
-                        role: "assistant",
-                        content: fallbackMessage,
-                        createdAt: new Date().toISOString(),
-                      },
-                    ],
-                    updatedAt: new Date().toISOString(),
-                  }
-                : session,
-            ),
-          }));
-        }
       },
       addTutorTakeaway: async ({ sessionId, takeaway }) => {
         const result = await saveTutorTakeaway({ sessionId, text: takeaway });

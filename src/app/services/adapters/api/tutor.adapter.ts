@@ -7,6 +7,7 @@ import type {
 } from "../../../models/tutor";
 import type { TutorService } from "../../contracts/tutor.contract";
 import {
+  ApiError,
   httpClient,
   toApiError,
   type GenerateNoteExplanationRequestDto,
@@ -20,12 +21,31 @@ import {
   type UpdateTutorSessionStatusResponseDto,
 } from "../../../api";
 
+export const AI_TUTOR_UNAVAILABLE_MESSAGE =
+  "AI Tutor is unavailable because the production AI backend is not configured.";
+
+function toTutorApiError(error: unknown, operation: string): Error {
+  const apiError = toApiError(error, { operation });
+
+  if (apiError instanceof ApiError && (apiError.status === 404 || apiError.status === 501 || apiError.status === 503)) {
+    return new ApiError({
+      category: "http",
+      status: 503,
+      message: AI_TUTOR_UNAVAILABLE_MESSAGE,
+      operation,
+      cause: apiError,
+    });
+  }
+
+  return apiError;
+}
+
 export class ApiTutorAdapter implements TutorService {
   async getTutorPageData() {
     try {
       return await httpClient.get<TutorPageDto>("/tutor");
     } catch (error) {
-      throw toApiError(error, { operation: "tutor.getTutorPageData" });
+      throw toTutorApiError(error, "tutor.getTutorPageData");
     }
   }
 
@@ -37,7 +57,7 @@ export class ApiTutorAdapter implements TutorService {
         body: payload,
       });
     } catch (error) {
-      throw toApiError(error, { operation: "tutor.generateTutorReply" });
+      throw toTutorApiError(error, "tutor.generateTutorReply");
     }
   }
 
@@ -50,7 +70,7 @@ export class ApiTutorAdapter implements TutorService {
         { body: payload },
       );
     } catch (error) {
-      throw toApiError(error, { operation: "tutor.saveTutorTakeaway" });
+      throw toTutorApiError(error, "tutor.saveTutorTakeaway");
     }
   }
 
@@ -68,7 +88,7 @@ export class ApiTutorAdapter implements TutorService {
         body: payload,
       });
     } catch (error) {
-      throw toApiError(error, { operation: "tutor.updateTutorSessionStatus" });
+      throw toTutorApiError(error, "tutor.updateTutorSessionStatus");
     }
   }
 
@@ -89,7 +109,7 @@ export class ApiTutorAdapter implements TutorService {
 
       return response.explanation;
     } catch (error) {
-      throw toApiError(error, { operation: "tutor.generateNoteExplanation" });
+      throw toTutorApiError(error, "tutor.generateNoteExplanation");
     }
   }
 

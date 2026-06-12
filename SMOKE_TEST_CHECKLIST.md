@@ -57,6 +57,13 @@ Use this checklist for a practical manual pass before launch or demo builds.
 - For timed quizzes, confirm a visible countdown appears.
 - For untimed quizzes, confirm the quiz clearly says `Untimed quiz`.
 
+## AI Tutor
+
+- In mock mode, open AI Tutor and confirm the page clearly labels responses as demo/local mock behavior.
+- Send a tutor prompt in mock mode and confirm the assistant response itself is labeled as a demo response.
+- In API mode without a configured tutor backend/provider, confirm AI Tutor shows an unavailable/configuration message instead of a fake answer.
+- In production-like builds, confirm mock tutor mode is blocked unless `VITE_ALLOW_MOCK_IN_PRODUCTION=true` is intentionally set for a demo build.
+
 ## Legal Pages
 
 - Open `/terms` and `/privacy` from the footer.

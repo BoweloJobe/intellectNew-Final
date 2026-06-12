@@ -25,7 +25,7 @@ export class MockTutorAdapter implements TutorService {
     return {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       role: "assistant",
-      content: `Here is a focused breakdown for ${topicTag}. Start with the core idea, then test recall with 3 short questions, and finish by writing one summary sentence in your own words.`,
+      content: `Demo AI Tutor response: here is a focused breakdown for ${topicTag}. Start with the core idea, then test recall with 3 short questions, and finish by writing one summary sentence in your own words.`,
       createdAt: new Date().toISOString(),
     } as TutorMessage;
   }
@@ -64,7 +64,7 @@ export class MockTutorAdapter implements TutorService {
     const firstSentence = input.noteContent.split(/[.!?\n]/)[0]?.trim() ?? input.noteContent;
     const truncated = firstSentence.length > 110 ? firstSentence.slice(0, 110) + "..." : firstSentence;
 
-    return `In "${input.lessonTitle}", this note on "${input.noteTitle}" covers a concept central to ${topicContext}. At its core: ${truncated}. Grasping this builds directly toward more advanced ideas in ${input.courseName}. A good retention technique: close the note and try restating the idea in your own words, then verify.`;
+    return `Demo AI Tutor explanation: in "${input.lessonTitle}", this note on "${input.noteTitle}" covers a concept central to ${topicContext}. At its core: ${truncated}. Grasping this builds directly toward more advanced ideas in ${input.courseName}. A good retention technique: close the note and try restating the idea in your own words, then verify.`;
   }
 
   buildNewTutorSession(input: {
