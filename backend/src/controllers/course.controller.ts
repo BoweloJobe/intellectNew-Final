@@ -7,6 +7,7 @@ import {
   createModuleSchema,
   updateModuleSchema,
   createLessonSchema,
+  createStandaloneLessonSchema,
   updateLessonSchema,
   requestLessonVideoUploadSchema,
   attachLessonVideoSchema,
@@ -105,6 +106,18 @@ export async function createLesson(req: Request, res: Response, next: NextFuncti
       input,
     )
     res.status(201).json({ status: 'ok', data: { lesson } })
+  } catch (err) { next(err) }
+}
+
+export async function createStandaloneLesson(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const input = validate(createStandaloneLessonSchema, req.body)
+    const course = await CourseService.createStandaloneLesson(
+      req.params.courseId,
+      req.user!,
+      input,
+    )
+    res.status(201).json({ status: 'ok', data: { course } })
   } catch (err) { next(err) }
 }
 

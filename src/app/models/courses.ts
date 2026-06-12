@@ -137,6 +137,11 @@ export interface LessonVideoUploadResult {
   videoUploadStatus?: string | null;
 }
 
+export interface StandaloneLessonCreateInput {
+  courseId: string;
+  title?: string;
+}
+
 export interface InstructorDraftModuleInput {
   /** Backend module ID, present for existing modules during edit. */
   id?: string;

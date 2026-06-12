@@ -6,6 +6,7 @@ import type { InstructorManagedCourse } from "../../models/courses";
 interface CourseStatusCardProps {
   course: InstructorManagedCourse;
   onEdit?: (course: InstructorManagedCourse) => void;
+  onAddLesson?: (course: InstructorManagedCourse) => void;
   onAddQuiz?: (course: InstructorManagedCourse) => void;
   onSubmitForApproval?: (courseId: string) => void;
   onView?: (courseId: string) => void;
@@ -57,6 +58,7 @@ function getStatusBadgeStyle(status: InstructorManagedCourse["publicationStatus"
 export function CourseStatusCard({
   course,
   onEdit,
+  onAddLesson,
   onAddQuiz,
   onSubmitForApproval,
   onView,
@@ -226,6 +228,19 @@ export function CourseStatusCard({
           >
             <Edit2 className="w-4 h-4 mr-2" />
             Edit
+          </Button>
+        )}
+
+        {onAddLesson && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isSubmitting}
+            onClick={() => onAddLesson(course)}
+          >
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Add Lesson
           </Button>
         )}
 

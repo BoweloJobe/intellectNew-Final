@@ -6,6 +6,7 @@ import type {
   LessonVideoUploadResult,
   InstructorManagedCourse,
   CourseModule,
+  StandaloneLessonCreateInput,
 } from "../../../models/courses";
 import type { CoursesService } from "../../contracts/courses.contract";
 import { withMockDelay } from "../../mock-utils";
@@ -18,6 +19,7 @@ import { withMockDelay } from "../../mock-utils";
 const MOCK_MANAGED_COURSES: InstructorManagedCourse[] = [];
 const MOCK_SAVED_COURSE_IDS = new Set<string>();
 let mockCourseSequence = 1;
+const STANDALONE_MODULE_TITLE = "Standalone lessons";
 
 function createMockId(prefix: string): string {
   return `mock-${prefix}-${mockCourseSequence++}`;
@@ -157,14 +159,59 @@ export class MockCoursesAdapter implements CoursesService {
       category: input.category,
       description: input.description,
       difficulty: input.difficulty,
-      estimatedHours: input.estimatedHours ?? 0,
-      coverImageUrl: input.coverImageUrl,
-      image: input.coverImageUrl ?? "",
+      estimatedHours: input.estimatedHours ?? current.estimatedHours,
+      coverImageUrl: input.coverImageUrl ?? current.coverImageUrl,
+      image: input.coverImageUrl ?? current.image,
       price: input.price ?? 0,
       topics: input.topics ?? [],
       modules,
       totalLessons,
       duration: input.estimatedHours ? `${input.estimatedHours}h` : "0h",
+      updatedAt: new Date().toISOString(),
+    };
+
+    MOCK_MANAGED_COURSES[index] = updated;
+    return withMockDelay(updated);
+  }
+
+  async addStandaloneLesson(input: StandaloneLessonCreateInput): Promise<InstructorManagedCourse> {
+    const index = MOCK_MANAGED_COURSES.findIndex((course) => course.id === input.courseId);
+    if (index < 0) {
+      throw new Error("Mock course draft not found.");
+    }
+
+    const current = MOCK_MANAGED_COURSES[index];
+    const modules = current.modules.map((module) => ({
+      ...module,
+      lessons: [...module.lessons],
+    }));
+    let module = modules.find((candidate) => candidate.title === STANDALONE_MODULE_TITLE);
+
+    if (!module) {
+      module = {
+        id: createMockId("module"),
+        title: STANDALONE_MODULE_TITLE,
+        lessons: [],
+      };
+      modules.push(module);
+    }
+
+    module.lessons.push({
+      id: createMockId("lesson"),
+      title: input.title?.trim() || "New lesson",
+      duration: "20m",
+      description: "",
+      videoUrl: undefined,
+      estimatedCompletionTimeMinutes: 20,
+      notesContent: "",
+      isFreePreview: false,
+      quizAvailable: false,
+    });
+
+    const updated = {
+      ...current,
+      modules,
+      totalLessons: modules.reduce((total, candidate) => total + candidate.lessons.length, 0),
       updatedAt: new Date().toISOString(),
     };
 

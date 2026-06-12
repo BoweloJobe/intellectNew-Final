@@ -22,11 +22,14 @@ Use this checklist for a practical manual pass before launch or demo builds.
 - Log in as an instructor or admin.
 - Open Instructor Courses.
 - Create a new course draft.
+- Confirm course creation/editing does not ask for course duration or a cover image URL.
 - In mock mode, confirm the success message explains the draft is local/in-memory and the draft shows in the course list.
 - In API mode, confirm the success message appears and the backend-backed draft shows in the course list.
 - Edit the draft and add a module.
 - Add a lesson with title, description, duration, notes, and estimated completion time.
 - Save and confirm the module/lesson appears when editing the draft again.
+- From the course list, use Add Lesson on an existing course, including an approved course if available.
+- Confirm the standalone lesson is added under the course and the edit flow opens so the lesson can be completed.
 
 ## Payment And Enrollment
 
@@ -79,7 +82,9 @@ Use this checklist for a practical manual pass before launch or demo builds.
 ## Video Upload
 
 - In mock mode, create a local draft course, add a module, add a lesson, and confirm the video upload UI is reachable.
+- In mock mode, add a standalone lesson to an existing course and confirm the video upload UI is reachable for that lesson.
 - In mock mode, attempt lesson video upload and confirm the app says API mode and configured storage are required.
 - In API mode without storage configured, attempt lesson video upload and confirm the app shows a clear storage-not-configured failure.
+- In API mode, add a standalone lesson to an existing or approved course and confirm the lesson persists before attempting upload.
 - In API mode with storage configured, create or edit a course lesson, upload a supported video file, and confirm the signed upload flow moves the lesson to a ready/uploaded state.
 - Confirm manual video URL entry remains a fallback and is not required for the signed upload flow.

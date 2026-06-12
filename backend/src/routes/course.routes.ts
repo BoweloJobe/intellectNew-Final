@@ -31,6 +31,7 @@ router.put('/:courseId/modules/:moduleId', ...isInstructor, CourseController.upd
 router.delete('/:courseId/modules/:moduleId', ...isInstructor, CourseController.deleteModule)
 
 // ─── Instructor: lesson authoring ────────────────────────────────────────────
+router.post('/:courseId/lessons/standalone', ...isInstructor, CourseController.createStandaloneLesson)
 router.post('/:courseId/modules/:moduleId/lessons', ...isInstructor, CourseController.createLesson)
 router.put('/:courseId/modules/:moduleId/lessons/:lessonId', ...isInstructor, CourseController.updateLesson)
 router.delete('/:courseId/modules/:moduleId/lessons/:lessonId', ...isInstructor, CourseController.deleteLesson)

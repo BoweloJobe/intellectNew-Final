@@ -6,6 +6,7 @@ import type {
   InstructorCourseEditInput,
   LessonVideoUploadInput,
   LessonVideoUploadResult,
+  StandaloneLessonCreateInput,
   InstructorManagedCourse,
 } from "../../models/courses";
 
@@ -20,6 +21,7 @@ export interface CoursesService {
   getCourseModerationQueue(): Promise<InstructorManagedCourse[]>;
   createInstructorCourse(input: InstructorCourseDraftInput): Promise<InstructorManagedCourse>;
   editInstructorCourse(input: InstructorCourseEditInput): Promise<InstructorManagedCourse>;
+  addStandaloneLesson(input: StandaloneLessonCreateInput): Promise<InstructorManagedCourse>;
   uploadLessonVideo(input: LessonVideoUploadInput): Promise<LessonVideoUploadResult>;
   submitCourseForApproval(courseId: string): Promise<InstructorManagedCourse>;
   reviewCoursePublication(

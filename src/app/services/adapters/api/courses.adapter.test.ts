@@ -310,6 +310,47 @@ describe("ApiCoursesAdapter", () => {
     });
   });
 
+  it("creates standalone lessons through the course-level endpoint", async () => {
+    mockHttpClient.post.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        course: {
+          ...backendCourse,
+          modules: [
+            {
+              id: "module-standalone",
+              title: "Standalone lessons",
+              order: 0,
+              lessons: [
+                {
+                  id: "lesson-1",
+                  title: "New lesson",
+                  description: null,
+                  notes: null,
+                  videoUrl: null,
+                  videoDurationSecs: null,
+                  estimatedMinutes: 20,
+                  order: 0,
+                  isFree: false,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    const updated = await new ApiCoursesAdapter().addStandaloneLesson({
+      courseId: "course-1",
+      title: "New lesson",
+    });
+
+    expect(mockHttpClient.post).toHaveBeenCalledWith("/courses/course-1/lessons/standalone", {
+      body: { title: "New lesson" },
+    });
+    expect(updated.modules[0].lessons[0].id).toBe("lesson-1");
+  });
+
   it("surfaces blocked lesson deletions during course edits", async () => {
     const courseWithLesson = {
       ...backendCourse,

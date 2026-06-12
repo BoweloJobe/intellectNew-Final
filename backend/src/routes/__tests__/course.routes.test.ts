@@ -87,6 +87,9 @@ vi.mock('../../controllers/course.controller.js', () => ({
   createLesson: vi.fn((_req: Request, res: Response) =>
     res.status(201).json({ handler: 'createLesson' }),
   ),
+  createStandaloneLesson: vi.fn((_req: Request, res: Response) =>
+    res.status(201).json({ handler: 'createStandaloneLesson' }),
+  ),
   updateLesson: vi.fn((_req: Request, res: Response) =>
     res.json({ handler: 'updateLesson' }),
   ),

@@ -13,6 +13,7 @@ import type {
   InstructorDraftQuizQuestionInput,
   LessonVideoUploadInput,
   LessonVideoUploadResult,
+  StandaloneLessonCreateInput,
   InstructorManagedCourse,
 } from "../../../models/courses";
 import { httpClient, toApiError } from "../../../api";
@@ -726,6 +727,18 @@ export class ApiCoursesAdapter implements CoursesService {
       return mapToInstructorManagedCourse(fullResponse.data.course);
     } catch (error) {
       throw toApiError(error, { operation: "courses.editInstructorCourse" });
+    }
+  }
+
+  async addStandaloneLesson(input: StandaloneLessonCreateInput): Promise<InstructorManagedCourse> {
+    try {
+      const response = await httpClient.post<BackendCourseResponse>(
+        `/courses/${encodeURIComponent(input.courseId)}/lessons/standalone`,
+        { body: { title: input.title ?? "New lesson" } },
+      );
+      return mapToInstructorManagedCourse(response.data.course);
+    } catch (error) {
+      throw toApiError(error, { operation: "courses.addStandaloneLesson" });
     }
   }
 

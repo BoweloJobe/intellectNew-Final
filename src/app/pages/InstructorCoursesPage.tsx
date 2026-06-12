@@ -11,6 +11,7 @@ import { CourseAuthoringForm } from "../components/instructor/CourseAuthoringFor
 import { CourseStatusCard } from "../components/instructor/CourseStatusCard";
 import { domainAdapterConfig } from "../api/config/apiConfig";
 import {
+  addStandaloneLesson,
   createInstructorCourse,
   editInstructorCourse,
   getInstructorManagedCourses,
@@ -122,6 +123,21 @@ export function InstructorCoursesPage() {
     );
   };
 
+  const handleAddStandaloneLesson = (course: InstructorManagedCourse) => {
+    void runMutation(
+      async () => addStandaloneLesson({ courseId: course.id }),
+      {
+        successMessage: `Standalone lesson added to "${course.title}".`,
+        onSuccess: async (updatedCourse) => {
+          const refreshed = await getInstructorManagedCourses(instructorName);
+          setCourses(refreshed);
+          setEditingCourse(updatedCourse);
+          setViewMode("edit");
+        },
+      },
+    );
+  };
+
   const goToEdit = (course: InstructorManagedCourse) => {
     clearStatus();
     setEditingCourse(course);
@@ -150,6 +166,8 @@ export function InstructorCoursesPage() {
             <DataErrorState title="Could not create course" description={submitError} />
           </div>
         ) : null}
+
+        {submitSuccess ? <ActionSuccessState message={submitSuccess} className="mb-6" /> : null}
 
         <GlassCard>
           <CourseAuthoringForm
@@ -180,6 +198,8 @@ export function InstructorCoursesPage() {
             <DataErrorState title="Could not update course" description={submitError} />
           </div>
         ) : null}
+
+        {submitSuccess ? <ActionSuccessState message={submitSuccess} className="mb-6" /> : null}
 
         <GlassCard>
           <CourseAuthoringForm
@@ -282,6 +302,7 @@ export function InstructorCoursesPage() {
               course={course}
               isSubmitting={isSubmitting}
               onEdit={courseAuthoringReadiness.isAvailable ? goToEdit : undefined}
+              onAddLesson={courseAuthoringReadiness.isAvailable ? handleAddStandaloneLesson : undefined}
               onAddQuiz={courseAuthoringReadiness.isAvailable ? (course) => {
                 // Open the edit view — the LessonQuizEditor is embedded
                 // inside each lesson in the course authoring form.

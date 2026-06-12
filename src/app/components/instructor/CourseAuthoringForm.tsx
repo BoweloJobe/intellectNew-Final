@@ -96,14 +96,10 @@ export function CourseAuthoringForm({
   const [category, setCategory] = useState(editingCourse?.category ?? "Biology");
   const [description, setDescription] = useState(editingCourse?.description ?? "");
   const [difficulty, setDifficulty] = useState<CourseDifficulty>(editingCourse?.difficulty ?? "beginner");
-  const [estimatedHours, setEstimatedHours] = useState(
-    editingCourse?.estimatedHours ? String(editingCourse.estimatedHours) : ""
-  );
   const [isFree, setIsFree] = useState((editingCourse?.price ?? 0) === 0);
   const [price, setPrice] = useState(
     editingCourse?.price && editingCourse.price > 0 ? String(editingCourse.price) : ""
   );
-  const [coverImageUrl, setCoverImageUrl] = useState(editingCourse?.coverImageUrl ?? "");
   
   // Convert CourseModule to InstructorDraftModuleInput if editing, otherwise use empty module
   const initialModules = editingCourse?.modules
@@ -137,7 +133,6 @@ export function CourseAuthoringForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const parsedEstimatedHours = Number(estimatedHours);
     const priceResult = resolveCoursePrice(isFree, price);
     const normalizedModules = modules
       .map((module) => ({
@@ -194,13 +189,11 @@ export function CourseAuthoringForm({
     if (
       isEditing &&
       (
-        (estimatedHours.trim().length > 0 && (!Number.isFinite(parsedEstimatedHours) || parsedEstimatedHours <= 0)) ||
-        (normalizedModules.length > 0 && hasInvalidLesson)
+        normalizedModules.length > 0 && hasInvalidLesson
       )
     ) {
       alert(
         "Complete the fields you've started:\n" +
-        "- Estimated hours must be greater than 0 when provided\n" +
         "- Each added module needs at least one complete lesson\n" +
         "- Each added lesson: title, video, description, duration, notes, estimated completion time"
       );
@@ -213,8 +206,6 @@ export function CourseAuthoringForm({
       category,
       description: description.trim(),
       difficulty,
-      estimatedHours: estimatedHours.trim().length > 0 ? parsedEstimatedHours : undefined,
-      coverImageUrl: coverImageUrl.trim() || undefined,
       topics: modules.map((m) => m.title.trim()).filter(Boolean),
       modules: isEditing ? normalizedModules : [],
       totalLessons,
@@ -358,30 +349,6 @@ export function CourseAuthoringForm({
 
       {isEditing && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-gray-600 uppercase">Estimated Hours</span>
-              <input
-                value={estimatedHours}
-                onChange={(e) => setEstimatedHours(e.target.value)}
-                type="number"
-                min={1}
-                placeholder="10"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-              />
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-gray-600 uppercase">Cover Image URL</span>
-              <input
-                value={coverImageUrl}
-                onChange={(e) => setCoverImageUrl(e.target.value)}
-                placeholder="https://..."
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-              />
-            </label>
-          </div>
-
           {/* Modules */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">

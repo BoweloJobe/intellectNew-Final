@@ -34,6 +34,10 @@ export const createLessonSchema = z.object({
 
 export const updateLessonSchema = createLessonSchema.partial()
 
+export const createStandaloneLessonSchema = z.object({
+  title: z.string().min(1).max(200).trim().optional(),
+})
+
 export const rejectCourseSchema = z.object({
   reason: z.string().min(10).max(1000).trim(),
 })
@@ -56,6 +60,7 @@ export type CreateModuleInput       = z.infer<typeof createModuleSchema>
 export type UpdateModuleInput       = z.infer<typeof updateModuleSchema>
 export type CreateLessonInput       = z.infer<typeof createLessonSchema>
 export type UpdateLessonInput       = z.infer<typeof updateLessonSchema>
+export type CreateStandaloneLessonInput = z.infer<typeof createStandaloneLessonSchema>
 export type RejectCourseInput       = z.infer<typeof rejectCourseSchema>
 export type RequestLessonVideoUploadInput = z.infer<typeof requestLessonVideoUploadSchema>
 export type AttachLessonVideoInput  = z.infer<typeof attachLessonVideoSchema>

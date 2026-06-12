@@ -14,9 +14,12 @@ import type {
   UpdateModuleInput,
   CreateLessonInput,
   UpdateLessonInput,
+  CreateStandaloneLessonInput,
   RequestLessonVideoUploadInput,
   AttachLessonVideoInput,
 } from '../validation/course.validation.js'
+
+const STANDALONE_MODULE_TITLE = 'Standalone lessons'
 
 // ─── Selectors ───────────────────────────────────────────────────────────────
 
@@ -457,6 +460,48 @@ export async function createLesson(
   })
 }
 
+export async function createStandaloneLesson(
+  courseId: string,
+  user: CourseAuthoringUser,
+  input: CreateStandaloneLessonInput,
+) {
+  await assertCourseAuthoringAccess(courseId, user)
+
+  let module = await prisma.courseModule.findFirst({
+    where: { courseId, title: STANDALONE_MODULE_TITLE },
+    select: { id: true },
+  })
+
+  if (!module) {
+    const moduleCount = await prisma.courseModule.count({ where: { courseId } })
+    module = await prisma.courseModule.create({
+      data: {
+        courseId,
+        title: STANDALONE_MODULE_TITLE,
+        order: moduleCount,
+      },
+      select: { id: true },
+    })
+  }
+
+  const lessonCount = await prisma.lesson.count({
+    where: { courseId, moduleId: module.id },
+  })
+
+  await prisma.lesson.create({
+    data: {
+      courseId,
+      moduleId: module.id,
+      title: input.title?.trim() || 'New lesson',
+      order: lessonCount,
+      estimatedMinutes: 20,
+      isFree: false,
+    },
+  })
+
+  return getCourseWithContent(courseId, { instructorView: true })
+}
+
 export async function updateLesson(
   lessonId: string,
   instructorId: string,
@@ -657,6 +702,15 @@ async function assertCourseOwnership(courseId: string, instructorId: string) {
   const course = await prisma.course.findUnique({ where: { id: courseId } })
   if (!course) throw new AppError(404, 'Course not found')
   if (course.instructorId !== instructorId) throw new AppError(403, 'Access denied')
+  return course
+}
+
+async function assertCourseAuthoringAccess(courseId: string, user: CourseAuthoringUser) {
+  const course = await prisma.course.findUnique({ where: { id: courseId } })
+  if (!course) throw new AppError(404, 'Course not found')
+  if (user.role !== 'ADMIN' && course.instructorId !== user.id) {
+    throw new AppError(403, 'Access denied')
+  }
   return course
 }
 

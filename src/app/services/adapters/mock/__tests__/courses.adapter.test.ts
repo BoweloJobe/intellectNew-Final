@@ -82,4 +82,33 @@ describe("MockCoursesAdapter instructor drafts", () => {
       file,
     })).rejects.toThrow("Video upload requires API mode");
   });
+
+  it("adds standalone lessons to existing local drafts", async () => {
+    const adapter = new MockCoursesAdapter();
+    const created = await adapter.createInstructorCourse({
+      title: "Cell Biology",
+      instructor: "Ada Lovelace",
+      category: "Biology",
+      description: "A local mock draft for course authoring.",
+      difficulty: "beginner",
+      totalLessons: 0,
+      initialStatus: "draft",
+      price: 0,
+    });
+
+    const updated = await adapter.addStandaloneLesson({
+      courseId: created.id,
+      title: "New lesson",
+    });
+
+    expect(updated.modules).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        title: "Standalone lessons",
+        lessons: expect.arrayContaining([
+          expect.objectContaining({ title: "New lesson" }),
+        ]),
+      }),
+    ]));
+    expect(updated.totalLessons).toBe(1);
+  });
 });
