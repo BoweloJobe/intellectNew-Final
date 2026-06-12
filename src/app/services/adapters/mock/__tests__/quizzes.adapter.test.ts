@@ -154,4 +154,33 @@ describe("MockQuizzesAdapter", () => {
       elapsedSeconds: 10,
     })).resolves.toMatchObject({ score: 0, maxScore: 2, percentage: 0 });
   });
+
+  it("surfaces instructor-created standalone quizzes as standalone practice cards", async () => {
+    const adapter = new MockQuizzesAdapter();
+    const created = await adapter.createStandaloneQuiz({
+      title: "Standalone Cell Review",
+      category: "Biology",
+      difficulty: "Easy",
+      questions: [
+        {
+          questionType: "MCQ",
+          text: "Which structure contains DNA?",
+          options: [
+            { text: "Nucleus", isCorrect: true },
+            { text: "Ribosome", isCorrect: false },
+          ],
+        },
+      ],
+    });
+
+    const data = await adapter.getQuizzesPageData();
+    const card = data.practiceQuizzes.find((quiz) => quiz.quizId === created.quizId);
+
+    expect(card).toMatchObject({
+      topic: "Standalone Cell Review",
+      subject: "Biology",
+      isStandalone: true,
+    });
+    expect(card?.lessonId).toBeUndefined();
+  });
 });

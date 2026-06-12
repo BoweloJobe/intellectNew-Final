@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { BarChart3, Bookmark, CheckCircle2, PlayCircle } from "lucide-react";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
 import { GlassCard } from "../components/GlassCard";
 import { Button } from "../components/ui/button";
@@ -22,7 +22,6 @@ import { useAuth } from "../auth/AuthContext";
 import { getAuthUserGreetingName } from "../auth/auth-normalizers";
 import { getCourseAccessDecision } from "../utils/course-access";
 import { LessonVideoPlayer } from "../components/lesson/LessonVideoPlayer";
-import { LessonHeader } from "../components/lesson/LessonHeader";
 import { LessonNotes } from "../components/lesson/LessonNotes";
 import { LessonSidebar } from "../components/lesson/LessonSidebar";
 import type { SidebarModuleGroup } from "../components/lesson/LessonSidebar";
@@ -30,6 +29,26 @@ import type { SidebarModuleGroup } from "../components/lesson/LessonSidebar";
 type ViewState = "loading" | "ready" | "error" | "not-found";
 const WATCH_PROGRESS_SAVE_INTERVAL_MS = 30_000;
 const MIN_WATCH_PROGRESS_SAVE_DELTA_SECONDS = 10;
+export function getLessonQuizRoute(lesson: Pick<VideoLesson, "id" | "quizId">, courseId: string) {
+  if (!lesson.quizId) {
+    return null;
+  }
+
+  return `/quizzes?quizId=${encodeURIComponent(lesson.quizId)}&lessonId=${encodeURIComponent(lesson.id)}&courseId=${encodeURIComponent(courseId)}`;
+}
+
+export type LessonQuizActionState = "attempt" | "unavailable" | "hidden";
+
+export function getLessonQuizActionState(
+  lesson: Pick<VideoLesson, "id" | "quizAvailable" | "quizId">,
+  courseId: string,
+): LessonQuizActionState {
+  if (!lesson.quizAvailable) {
+    return "hidden";
+  }
+
+  return getLessonQuizRoute(lesson, courseId) ? "attempt" : "unavailable";
+}
 
 export function VideoLessonPage() {
   const { courseId, lessonId } = useParams();
@@ -286,21 +305,18 @@ export function VideoLessonPage() {
   if (viewState === "loading") {
     return (
       <div className="max-w-7xl mx-auto px-4 pb-20">
-        <GlassCard className="mb-6 p-4">
-          <div className="h-4 w-40 rounded bg-white/70 animate-pulse" />
-        </GlassCard>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="space-y-4">
             <div className="aspect-video rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 animate-pulse" />
-            <GlassCard className="space-y-4">
-              <div className="h-8 w-3/4 rounded bg-white/70 animate-pulse" />
-              <div className="h-5 w-full rounded bg-white/60 animate-pulse" />
-              <div className="h-5 w-5/6 rounded bg-white/60 animate-pulse" />
+            <div className="h-8 w-2/3 rounded bg-white/70 animate-pulse" />
+            <GlassCard className="min-h-[280px] space-y-4 p-5">
+              <div className="h-6 w-40 rounded bg-white/70 animate-pulse" />
+              <div className="h-4 w-full rounded bg-white/60 animate-pulse" />
+              <div className="h-4 w-5/6 rounded bg-white/60 animate-pulse" />
             </GlassCard>
           </div>
 
-          <GlassCard className="h-[540px] space-y-3">
+          <GlassCard className="h-[480px] space-y-3">
             {Array.from({ length: 6 }, (_, index) => (
               <div key={index} className="h-20 rounded-xl bg-white/65 animate-pulse" />
             ))}
@@ -371,32 +387,96 @@ export function VideoLessonPage() {
     );
   }
 
+  const quizRoute = getLessonQuizRoute(lesson, parsedCourseId);
+  const quizActionState = getLessonQuizActionState(lesson, parsedCourseId);
+
+  const handleLaunchQuiz = () => {
+    if (!quizRoute) {
+      return;
+    }
+
+    navigate(quizRoute, {
+      state: { fromLesson: lesson.id, courseName: lesson.courseName },
+    });
+  };
+
+  const handleNavigateNext = () => {
+    if (!nextLesson || !nextLessonId) {
+      return;
+    }
+
+    const access = getCourseAccessDecision({
+      lessonOrder: nextLesson.lessonOrder,
+      subscription,
+      isFreePreview: nextLesson.isFreePreview,
+    });
+
+    if (!access.isAccessible) {
+      setUpgradePrompt("Upgrade to Pro to continue into premium lessons.");
+      return;
+    }
+
+    navigate(`/courses/${parsedCourseId}/lessons/${nextLessonId}`);
+  };
+
+  const handleUpgrade = () => {
+    navigate(`/checkout?plan=pro&returnTo=${encodeURIComponent(location.pathname)}`);
+  };
+
+  const handleMarkComplete = () => {
+    setIsCompleting(true);
+    setCompletionSuccess(null);
+    setCompletionError(null);
+    void completeCourseLesson({
+      courseId: parsedCourseId,
+      lessonId: lesson.id,
+      totalLessons: orderedCourseLessons.length || lesson.totalLessonsInModule,
+      nextLessonId,
+    }).then((result) => {
+      if (result.syncOk) {
+        addRecentActivity("lesson-completed", `Finished ${lesson.title} in ${lesson.courseName}`);
+        pushNotification(
+          createProductNotification({
+            title: "Lesson completed",
+            detail:
+              learnerName !== "there"
+                ? `${learnerName}, ${lesson.title} is complete. Next step is ready.`
+                : `${lesson.title} is complete. Next step is ready.`,
+            category: "course",
+            source: "course-update",
+            actionLabel: lesson.quizAvailable ? "Start quiz" : "Continue lesson",
+          }),
+        );
+        applyLessonCompletion(result.completedDelta);
+        setCompletionSuccess(`Completed "${lesson.title}".`);
+        void saveLessonWatchProgress(lesson.id, {
+          watchedSeconds: Math.max(lesson.duration, lesson.watchedDuration ?? 0),
+          lastPositionSeconds: lesson.duration,
+          completed: true,
+        }).catch(() => {
+          // The completion endpoint already synced; watch progress can retry on the next interval.
+        });
+      } else {
+        setCompletionError(`Could not sync completion for ${lesson.title}. Your local progress is kept, but the server did not confirm it.`);
+        pushNotification(
+          createProductNotification({
+            title: "Sync issue",
+            detail: `Could not sync lesson completion for ${lesson.courseName}. Your local progress is kept.`,
+            category: "course",
+            source: "course-update",
+          }),
+        );
+      }
+    }).catch((error) => {
+      setCompletionError(getAsyncErrorMessage(error, "Could not complete this lesson."));
+    }).finally(() => {
+      setIsCompleting(false);
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 pb-20">
-      {/* Breadcrumb */}
-      <GlassCard className="mb-6 p-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Link
-            to="/courses"
-            className="hover:text-[#0d6efd] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a9ff5]/40 rounded-sm"
-          >
-            Courses
-          </Link>
-          <ChevronRight className="h-4 w-4 text-gray-400" />
-          <Link
-            to={`/courses/${parsedCourseId}`}
-            className="hover:text-[#0d6efd] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4a9ff5]/40 rounded-sm"
-          >
-            {lesson.courseName}
-          </Link>
-          <ChevronRight className="h-4 w-4 text-gray-400" />
-          <span className="text-gray-900 font-medium truncate">{lesson.title}</span>
-        </div>
-      </GlassCard>
-
-      {/* Main grid: content + sidebar */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        {/* Main column */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="space-y-4">
           <LessonVideoPlayer
             videoUrl={lesson.videoUrl}
@@ -430,75 +510,82 @@ export function VideoLessonPage() {
             </p>
           ) : null}
 
-          <LessonHeader
-            lesson={lesson}
-            parsedCourseId={parsedCourseId}
-            completedCount={completedLessonIds.length}
-            totalLessonsCount={orderedCourseLessons.length}
-            isCompleted={isLessonCompleted}
-            isCompleting={isCompleting}
-            isLessonSwitching={isLessonSwitching}
-            isCourseSaved={isCourseSaved}
-            learnerName={learnerName}
-            nextLesson={nextLesson}
-            nextLessonId={nextLessonId}
-            upgradePrompt={upgradePrompt}
-            subscription={subscription}
-            onMarkComplete={() => {
-              setIsCompleting(true);
-              setCompletionSuccess(null);
-              setCompletionError(null);
-              void completeCourseLesson({
-                courseId: parsedCourseId,
-                lessonId: lesson.id,
-                totalLessons: orderedCourseLessons.length || lesson.totalLessonsInModule,
-                nextLessonId,
-              }).then((result) => {
-                if (result.syncOk) {
-                  addRecentActivity("lesson-completed", `Finished ${lesson.title} in ${lesson.courseName}`);
-                  pushNotification(
-                    createProductNotification({
-                      title: "Lesson completed",
-                      detail:
-                        learnerName !== "there"
-                          ? `${learnerName}, ${lesson.title} is complete. Next step is ready.`
-                          : `${lesson.title} is complete. Next step is ready.`,
-                      category: "course",
-                      source: "course-update",
-                      actionLabel: lesson.quizAvailable ? "Start quiz" : "Continue lesson",
-                    }),
-                  );
-                  applyLessonCompletion(result.completedDelta);
-                  setCompletionSuccess(`Completed "${lesson.title}".`);
-                  void saveLessonWatchProgress(lesson.id, {
-                    watchedSeconds: Math.max(lesson.duration, lesson.watchedDuration ?? 0),
-                    lastPositionSeconds: lesson.duration,
-                    completed: true,
-                  }).catch(() => {
-                    // The completion endpoint already synced; watch progress can retry on the next interval.
-                  });
-                } else {
-                  setCompletionError(`Could not sync completion for ${lesson.title}. Your local progress is kept, but the server did not confirm it.`);
-                  pushNotification(
-                    createProductNotification({
-                      title: "Sync issue",
-                      detail: `Could not sync lesson completion for ${lesson.courseName}. Your local progress is kept.`,
-                      category: "course",
-                      source: "course-update",
-                    }),
-                  );
-                }
-              }).catch((error) => {
-                setCompletionError(getAsyncErrorMessage(error, "Could not complete this lesson."));
-              }).finally(() => {
-                setIsCompleting(false);
-              });
-            }}
-            onToggleBookmark={() => { toggleBookmark(parsedCourseId); }}
-            onSetUpgradePrompt={setUpgradePrompt}
-          />
+          <section className="space-y-3 px-1" aria-label="Lesson actions">
+            <h1 className="text-2xl font-semibold leading-tight text-gray-900">{lesson.title}</h1>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {quizActionState === "attempt" ? (
+                <Button
+                  type="button"
+                  onClick={handleLaunchQuiz}
+                  className="bg-[#0d6efd] text-white hover:bg-[#1c7ed6]"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Attempt Quiz
+                </Button>
+              ) : quizActionState === "unavailable" ? (
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+                  Quiz unavailable for this lesson.
+                </span>
+              ) : null}
+
+              {!isLessonCompleted ? (
+                <Button
+                  type="button"
+                  disabled={isCompleting}
+                  onClick={handleMarkComplete}
+                  variant="outline"
+                  className="bg-white/70"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {isCompleting ? "Saving..." : "Mark Complete"}
+                </Button>
+              ) : nextLessonId ? (
+                <Button
+                  type="button"
+                  disabled={isLessonSwitching}
+                  onClick={handleNavigateNext}
+                  variant="outline"
+                  className="bg-white/70"
+                >
+                  <PlayCircle className="h-4 w-4" />
+                  Continue Lesson
+                </Button>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Module complete
+                </span>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="bg-white/70"
+                onClick={() => { toggleBookmark(parsedCourseId); }}
+              >
+                <Bookmark className="h-4 w-4" />
+                {isCourseSaved ? "Saved" : "Save Course"}
+              </Button>
+            </div>
+
+            {upgradePrompt ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-sm text-amber-700">{upgradePrompt}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="mt-2 bg-[#4a9ff5] text-white hover:bg-[#2e8ef7]"
+                  onClick={handleUpgrade}
+                >
+                  Upgrade to Pro
+                </Button>
+              </div>
+            ) : null}
+          </section>
 
           <LessonNotes
+            className="min-h-[min(420px,52vh)]"
             notes={lesson.notes}
             lessonId={lesson.id}
             lessonTitle={lesson.title}
@@ -507,8 +594,7 @@ export function VideoLessonPage() {
           />
         </div>
 
-        {/* Sidebar — sticky, independent scroll */}
-        <aside className="lg:sticky lg:top-6 lg:self-start">
+        <aside className="lg:sticky lg:top-28 lg:self-start">
           <LessonSidebar
             sidebarModuleGroups={sidebarModuleGroups}
             currentLessonId={lesson.id}

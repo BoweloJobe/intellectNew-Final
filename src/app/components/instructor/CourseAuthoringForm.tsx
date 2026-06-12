@@ -36,6 +36,10 @@ export function resolveCoursePrice(isFree: boolean, rawPrice: string): CoursePri
   return { ok: true, price: parsedPrice };
 }
 
+export function resolveLessonEstimatedCompletion(rawValue: number): number {
+  return Number.isFinite(rawValue) && rawValue > 0 ? rawValue : 20;
+}
+
 function quizQuestionToInput(q: QuizQuestion): InstructorDraftQuizQuestionInput {
   const findOption = (id: string) => q.options.find((o) => o.id === id)?.text ?? "";
   return {
@@ -146,8 +150,10 @@ export function CourseAuthoringForm({
             videoProvider: lesson.videoProvider,
             videoUploadStatus: lesson.videoUploadStatus,
             description: lesson.description.trim(),
-            duration: lesson.duration.trim(),
-            estimatedCompletionTimeMinutes: Number(lesson.estimatedCompletionTimeMinutes),
+            duration: lesson.duration.trim() || "Self-paced",
+            estimatedCompletionTimeMinutes: resolveLessonEstimatedCompletion(
+              Number(lesson.estimatedCompletionTimeMinutes),
+            ),
             notesContent: lesson.notesContent.trim(),
             isFreePreview: Boolean(lesson.isFreePreview),
             quizAvailable: Boolean(lesson.quizAvailable),
@@ -168,12 +174,8 @@ export function CourseAuthoringForm({
       module.lessons.length === 0 || module.lessons.some(
         (lesson) =>
           !lesson.title ||
-          !lesson.videoUrl ||
           !lesson.description ||
-          !lesson.duration ||
-          !lesson.notesContent ||
-          !Number.isFinite(lesson.estimatedCompletionTimeMinutes) ||
-          lesson.estimatedCompletionTimeMinutes <= 0
+          !lesson.notesContent
       )
     );
 
@@ -195,7 +197,7 @@ export function CourseAuthoringForm({
       alert(
         "Complete the fields you've started:\n" +
         "- Each added module needs at least one complete lesson\n" +
-        "- Each added lesson: title, video, description, duration, notes, estimated completion time"
+        "- Each added lesson: title, description, and notes"
       );
       return;
     }

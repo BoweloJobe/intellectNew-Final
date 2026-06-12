@@ -2,7 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api";
-import { QuizPage } from "./QuizPage";
+import { getPracticeQuizKindLabel, QuizPage } from "./QuizPage";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -192,5 +192,13 @@ describe("QuizPage timed attempt behavior", () => {
     });
 
     expect(container.textContent).toContain("Untimed quiz");
+  });
+});
+
+describe("getPracticeQuizKindLabel", () => {
+  it("labels standalone and lesson-bound quizzes distinctly", () => {
+    expect(getPracticeQuizKindLabel({ isStandalone: true })).toBe("Standalone Quiz");
+    expect(getPracticeQuizKindLabel({ lessonId: "lesson-1" })).toBe("Lesson Quiz");
+    expect(getPracticeQuizKindLabel({})).toBeNull();
   });
 });

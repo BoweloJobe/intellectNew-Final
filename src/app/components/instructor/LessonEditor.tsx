@@ -158,31 +158,6 @@ export function LessonEditor({
             />
           </label>
 
-          {/* Duration + Estimated Completion (same row) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-gray-600 uppercase">Duration Label *</span>
-              <input
-                value={lesson.duration}
-                onChange={(e) => updateField("duration", e.target.value)}
-                placeholder="e.g. 15 min"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-              />
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-xs font-medium text-gray-600 uppercase">Estimated Completion (min) *</span>
-              <input
-                value={lesson.estimatedCompletionTimeMinutes}
-                onChange={(e) => updateField("estimatedCompletionTimeMinutes", Number(e.target.value))}
-                type="number"
-                min={1}
-                placeholder="20"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-              />
-            </label>
-          </div>
-
           {/* Description */}
           <label className="space-y-1">
             <span className="text-xs font-medium text-gray-600 uppercase">Description *</span>
@@ -227,14 +202,14 @@ export function LessonEditor({
             ) : null}
             {!canUploadVideo ? (
               <p className="text-xs text-amber-700">
-                Video upload requires API mode and a saved lesson. Use the external URL field for now.
+                Video upload requires API mode and a saved lesson. The external URL fallback is available below when needed.
               </p>
             ) : null}
             {uploadMessage ? <p className="text-xs text-emerald-700">{uploadMessage}</p> : null}
             {uploadError ? <p className="text-xs text-red-700">{uploadError}</p> : null}
           </div>
           <label className="space-y-1">
-            <span className="text-xs font-medium text-gray-600 uppercase">External video URL / manual fallback *</span>
+            <span className="text-xs font-medium text-gray-600 uppercase">Optional external video URL fallback</span>
             <input
               value={lesson.videoUrl}
               onChange={(e) => updateField("videoUrl", e.target.value)}

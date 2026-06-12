@@ -53,6 +53,29 @@ const editingCourse: InstructorManagedCourse = {
   isCustom: false,
 };
 
+const editingCourseWithLesson: InstructorManagedCourse = {
+  ...editingCourse,
+  modules: [
+    {
+      id: "module-1",
+      title: "Module 1",
+      lessons: [
+        {
+          id: "lesson-1",
+          title: "Bonding Review",
+          duration: "15 min",
+          description: "Review chemical bonding.",
+          videoUrl: "",
+          estimatedCompletionTimeMinutes: 15,
+          notesContent: "Key notes",
+          isFreePreview: false,
+          quizAvailable: false,
+        },
+      ],
+    },
+  ],
+};
+
 describe("CourseAuthoringForm fields", () => {
   it("does not show course duration or cover URL fields during creation", () => {
     const { host, root } = renderForm();
@@ -69,6 +92,19 @@ describe("CourseAuthoringForm fields", () => {
 
     expect(host.textContent).not.toContain("Estimated Hours");
     expect(host.textContent).not.toContain("Cover Image URL");
+
+    act(() => root.unmount());
+    host.remove();
+  });
+
+  it("keeps video upload reachable while hiding lesson duration and estimated completion inputs", () => {
+    const { host, root } = renderForm(editingCourseWithLesson);
+
+    expect(host.textContent).toContain("Upload lesson video");
+    expect(host.textContent).toContain("Optional external video URL fallback");
+    expect(host.textContent).not.toContain("Duration Label");
+    expect(host.textContent).not.toContain("Estimated Completion");
+    expect(host.textContent).not.toContain("External video URL / manual fallback *");
 
     act(() => root.unmount());
     host.remove();

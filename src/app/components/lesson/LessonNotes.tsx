@@ -15,6 +15,7 @@ interface LessonNotesProps {
   lessonTitle: string;
   courseName: string;
   tags: string[];
+  className?: string;
 }
 
 function formatTimestamp(seconds?: number): string | null {
@@ -24,7 +25,14 @@ function formatTimestamp(seconds?: number): string | null {
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export function LessonNotes({ notes, lessonId, lessonTitle, courseName, tags }: LessonNotesProps) {
+export function LessonNotes({
+  notes,
+  lessonId,
+  lessonTitle,
+  courseName,
+  tags,
+  className = "",
+}: LessonNotesProps) {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [aiState, setAiState] = useState<AiState>("idle");
@@ -81,19 +89,14 @@ export function LessonNotes({ notes, lessonId, lessonTitle, courseName, tags }: 
   };
 
   return (
-    <GlassCard className="p-5">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Lesson Notes</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Key concepts and timestamps. Click "Explain with AI" on any note for a deeper breakdown.
-          </p>
-        </div>
-        <Sparkles className="h-5 w-5 text-[#4a9ff5] opacity-50 shrink-0" />
+    <GlassCard className={`flex h-full flex-col p-5 lg:p-6 ${className}`.trim()}>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-gray-900">Notes</h2>
+        <Sparkles className="h-5 w-5 shrink-0 text-[#4a9ff5] opacity-50" aria-hidden="true" />
       </div>
 
       {notes.length > 0 ? (
-        <div className="space-y-5">
+        <div className="flex-1 space-y-5 overflow-y-auto pr-1">
           {notes.map((note) => {
             const isSelected = selectedNoteId === note.id;
             const timestamp = formatTimestamp(note.timestamp);
@@ -122,7 +125,7 @@ export function LessonNotes({ notes, lessonId, lessonTitle, courseName, tags }: 
                   </button>
                 </div>
 
-                <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-line leading-relaxed">
+                <div className="max-w-none whitespace-pre-line text-[0.95rem] leading-relaxed text-gray-700">
                   {note.content}
                 </div>
 

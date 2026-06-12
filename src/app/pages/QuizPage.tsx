@@ -65,6 +65,18 @@ function formatElapsedSeconds(seconds: number): string {
   return `${minutes}m ${remainder.toString().padStart(2, "0")}s`;
 }
 
+export function getPracticeQuizKindLabel(quiz: Pick<PracticeQuiz, "isStandalone" | "lessonId">): string | null {
+  if (quiz.isStandalone) {
+    return "Standalone Quiz";
+  }
+
+  if (quiz.lessonId) {
+    return "Lesson Quiz";
+  }
+
+  return null;
+}
+
 export function QuizPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1045,11 +1057,15 @@ export function QuizPage() {
                                     {Math.ceil(quiz.timeLimitSeconds / 60)} min
                                   </span>
                                 )}
-                                {quiz.lessonId && !quiz.isPremium && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                                    Course Quiz
+                                {getPracticeQuizKindLabel(quiz) === "Standalone Quiz" ? (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                    Standalone Quiz
                                   </span>
-                                )}
+                                ) : getPracticeQuizKindLabel(quiz) === "Lesson Quiz" ? (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                                    Lesson Quiz
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
 
@@ -1066,7 +1082,7 @@ export function QuizPage() {
                                 className="w-full bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
                                 onClick={() => navigate(`/quizzes/${quiz.quizId}`)}
                               >
-                                View Quiz
+                                Open Standalone Quiz
                               </Button>
                             ) : (
                               <Button

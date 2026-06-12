@@ -24,10 +24,48 @@ type NotificationFilter = "all" | "unread" | "read" | "quiz" | "course" | "commu
 type NotificationSort = "newest" | "oldest";
 type NotificationGroupMode = "recency" | "type";
 
+export function shouldShowAuthenticatedNav(isAuthenticated: boolean, isAuthRestoring: boolean): boolean {
+  return isAuthenticated && !isAuthRestoring;
+}
+
+export function getNavbarLinks(role: string | null, isAuthenticated: boolean) {
+  if (!isAuthenticated) {
+    return [];
+  }
+
+  if (role === "instructor") {
+    return [
+      { name: "Dashboard", path: "/instructor" },
+      { name: "My Courses", path: "/instructor/courses" },
+      { name: "Quizzes", path: "/instructor/quizzes/new" },
+      { name: "Community", path: "/community" },
+    ];
+  }
+
+  if (role === "admin") {
+    return [
+      { name: "Admin", path: "/admin" },
+      { name: "Courses", path: "/courses" },
+      { name: "Community", path: "/community" },
+    ];
+  }
+
+  return [
+    { name: "Dashboard", path: "/dashboard" },
+    { name: "Courses", path: "/courses" },
+    { name: "Learn", path: "/courses" },
+    { name: "Quizzes", path: "/quizzes" },
+    { name: "Progress", path: "/progress" },
+    { name: "Community", path: "/community" },
+    { name: "Pricing", path: "/pricing" },
+  ];
+}
+
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, role, signOut } = useAuth();
+  const { user, role, isAuthenticated, loading: isAuthRestoring, signOut } = useAuth();
+  const showAuthenticatedNav = shouldShowAuthenticatedNav(isAuthenticated, isAuthRestoring);
   const {
     state: { notifications },
     markNotificationRead,
@@ -62,35 +100,8 @@ export function Navbar() {
   const profileRef = useRef<HTMLDivElement | null>(null);
   const globalSearchRef = useRef<HTMLDivElement | null>(null);
   const globalSearchInputRef = useRef<HTMLInputElement | null>(null);
-  const isAuthenticated = Boolean(user);
-  const homeRoute = isAuthenticated ? getDefaultPathForRole(role) : "/";
-  const isPublicPage =
-    !isAuthenticated &&
-    (location.pathname === "/" || ["/login", "/signup", "/forgot-password", "/pricing"].includes(location.pathname));
-  
-  const navLinks = role === "instructor"
-    ? [
-        { name: "Dashboard", path: "/instructor" },
-        { name: "My Courses", path: "/instructor/courses" },
-        { name: "Community", path: "/community" },
-        { name: "Pricing", path: "/pricing" },
-      ]
-    : role === "admin"
-      ? [
-          { name: "Admin", path: "/admin" },
-          { name: "Courses", path: "/courses" },
-          { name: "Community", path: "/community" },
-          { name: "Pricing", path: "/pricing" },
-        ]
-      : [
-          { name: "Dashboard", path: "/dashboard" },
-          { name: "Courses", path: "/courses" },
-          { name: "Learn", path: "/courses" },
-          { name: "Quizzes", path: "/quizzes" },
-          { name: "Progress", path: "/progress" },
-          { name: "Community", path: "/community" },
-          { name: "Pricing", path: "/pricing" },
-        ];
+  const homeRoute = showAuthenticatedNav ? getDefaultPathForRole(role) : "/";
+  const navLinks = getNavbarLinks(role, showAuthenticatedNav);
 
   const { resolvedTheme, setTheme } = useTheme();
   const isDarkMode = resolvedTheme === "dark";
@@ -295,12 +306,12 @@ export function Navbar() {
   }, [isNotificationsOpen]);
 
   useEffect(() => {
-    if (isPublicPage || !isGlobalSearchOpen) {
+    if (!showAuthenticatedNav || !isGlobalSearchOpen) {
       return;
     }
 
     void loadGlobalSearchCatalog();
-  }, [isGlobalSearchOpen, isPublicPage]);
+  }, [showAuthenticatedNav, isGlobalSearchOpen]);
 
   useEffect(() => {
     if (!isGlobalSearchOpen) {
@@ -422,7 +433,7 @@ export function Navbar() {
           </Link>
 
           {/* Navigation Links - Only show when logged in */}
-          {!isPublicPage && (
+          {showAuthenticatedNav && (
             <div className="hidden lg:inline-flex h-10 w-fit shrink-0 items-center justify-center rounded-2xl border border-border/40 bg-surface-overlay-2/80 p-1 text-muted-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition-colors duration-200 ease-out">
               {navLinks.map((link) => {
                 const isActive = isNavLinkActive(link.path, link.name);
@@ -448,7 +459,7 @@ export function Navbar() {
 
           {/* Right Section */}
           <div className="flex shrink-0 items-center gap-1.5">
-            {!isPublicPage ? (
+            {showAuthenticatedNav ? (
               <>
                 <div className="relative" ref={globalSearchRef}>
                   <button
@@ -801,6 +812,11 @@ export function Navbar() {
               </>
             ) : (
               <>
+                <Link to="/pricing">
+                  <Button variant="ghost" className="text-foreground hover:bg-surface-overlay-1/75">
+                    Pricing
+                  </Button>
+                </Link>
                 <Link to="/login">
                   <Button variant="ghost" className="text-foreground hover:bg-surface-overlay-1/75">
                     Login
