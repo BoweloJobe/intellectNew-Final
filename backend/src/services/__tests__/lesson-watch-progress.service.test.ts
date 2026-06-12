@@ -11,6 +11,9 @@ const mockPrisma = vi.hoisted(() => ({
     findFirst: vi.fn(),
     count: vi.fn(),
   },
+  courseModule: {
+    findMany: vi.fn(),
+  },
   lessonProgress: {
     upsert: vi.fn(),
     count: vi.fn(),
@@ -125,6 +128,14 @@ describe('lesson watch progress service', () => {
     mockPrisma.lesson.count.mockResolvedValue(1)
     mockPrisma.lessonProgress.count.mockResolvedValue(1)
     mockPrisma.enrollment.update.mockResolvedValue({ completedAt: new Date() })
+    mockPrisma.courseModule.findMany.mockResolvedValue([
+      {
+        id: 'module-1',
+        title: 'Basics',
+        order: 0,
+        lessons: [{ id: 'lesson-1', title: 'Intro', order: 0 }],
+      },
+    ])
     mockPrisma.lessonProgress.findMany.mockResolvedValue([{ lessonId: 'lesson-1', completedAt: new Date() }])
 
     await updateLessonWatchProgress('user-1', 'lesson-1', {

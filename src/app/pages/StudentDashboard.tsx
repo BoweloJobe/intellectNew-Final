@@ -45,6 +45,7 @@ export function StudentDashboard() {
       recentlyAccessedCourses,
     },
     getCourseStatus,
+    getCourseProgressSummary,
   } = useCoursesState();
   const { completionCounts, realStudyHours, realCurrentStreak } = useProgressStats();
   const {
@@ -138,13 +139,14 @@ export function StudentDashboard() {
       .map((courseId) => {
         const progress = courseProgress[courseId] ?? 0;
         const lessonProgress = courseLessonProgress[courseId];
+        const summary = getCourseProgressSummary(courseId, lessonProgress?.totalLessons ?? 0);
         const resumeLessonId = lessonProgress?.currentLessonId ?? null;
         const lastAccessedAt =
           recentlyAccessedCourses.find((r) => r.courseId === courseId)?.lastAccessedAt
           ?? lessonProgress?.lastAccessedAt
           ?? null;
         const title = courseTitles[courseId] ?? "Course";
-        const completedCount = lessonProgress?.completedLessonIds.length ?? 0;
+        const completedCount = summary.completedLessons;
         const lessonLabel = completedCount > 0 ? `Lesson ${completedCount + 1}` : "First lesson";
         const lessonHref = resumeLessonId
           ? `/courses/${courseId}/lessons/${resumeLessonId}`
@@ -185,17 +187,21 @@ export function StudentDashboard() {
         return {
           courseId,
           title,
-          progress,
+          progress: summary.progress || progress,
           lesson: lessonLabel,
-          duration: `${completedCount} lesson${completedCount === 1 ? "" : "s"} done`,
+          duration: `${completedCount}/${summary.totalLessons} lessons complete`,
+          moduleProgress: summary.currentModule
+            ? `Current module: ${summary.currentModule.completedLessons}/${summary.currentModule.totalLessons} lessons complete`
+            : "",
           resumeLessonId: resumeLessonId ?? "",
           status: getCourseStatus(courseId),
+          hasLessons: summary.hasLessons,
           lastAccessedAt,
           lastAccessedLabel,
           nextAction,
         };
       })
-      .filter((c) => c.status === "in-progress" && c.progress > 0 && c.progress < 100)
+      .filter((c) => c.hasLessons && c.status !== "not-enrolled" && c.status !== "completed" && c.progress < 100)
       .sort((a, b) => {
         if (!a.lastAccessedAt || !b.lastAccessedAt) return 0;
         return new Date(b.lastAccessedAt).getTime() - new Date(a.lastAccessedAt).getTime();
@@ -210,6 +216,7 @@ export function StudentDashboard() {
     recentlyAccessedCourses,
     recentActivity,
     getCourseStatus,
+    getCourseProgressSummary,
   ]);
 
   // No backend schedule endpoint — upcoming quizzes show empty state
@@ -328,6 +335,9 @@ export function StudentDashboard() {
                           <h3 className="font-semibold text-base text-gray-900 mb-1">{course.title}</h3>
                           <p className="text-sm text-gray-600">{course.lesson}</p>
                           <p className="text-xs text-gray-500 mt-1">{course.nextAction.helper}</p>
+                          {course.moduleProgress ? (
+                            <p className="text-xs text-gray-500 mt-1">{course.moduleProgress}</p>
+                          ) : null}
                         </div>
                         <div className="text-[#4a9ff5] text-xs font-semibold uppercase tracking-wide">
                           {course.nextAction.label}

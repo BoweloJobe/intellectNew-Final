@@ -293,6 +293,116 @@ describe("ApiCoursesAdapter", () => {
     expect(mockHttpClient.get).toHaveBeenCalledWith("/courses/saved");
   });
 
+  it("maps catalog lesson counts from backend module counts", async () => {
+    mockHttpClient.get.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        courses: [
+          {
+            ...backendCourse,
+            modules: [
+              { id: "module-1", title: "Basics", order: 0, _count: { lessons: 2 } },
+              { id: "module-2", title: "Practice", order: 1, _count: { lessons: 3 } },
+            ],
+          },
+        ],
+      },
+    });
+
+    const data = await new ApiCoursesAdapter().getCoursesPageData();
+
+    expect(data.courses[0].totalLessons).toBe(5);
+  });
+
+  it("maps enrolled course progress with next lesson and module summary", async () => {
+    mockHttpClient.get
+      .mockResolvedValueOnce({
+        status: "ok",
+        data: {
+          enrollments: [
+            {
+              id: "enrollment-1",
+              enrolledAt: "2026-06-10T12:00:00.000Z",
+              completedAt: null,
+              course: backendCourse,
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        status: "ok",
+        data: {
+          progress: {
+            courseId: "course-1",
+            totalLessons: 5,
+            completedLessons: 2,
+            percentage: 40,
+            completedAt: null,
+            nextLessonId: "lesson-3",
+            currentModule: {
+              id: "module-2",
+              title: "Practice",
+              totalLessons: 3,
+              completedLessons: 0,
+            },
+            modules: [
+              {
+                id: "module-1",
+                title: "Basics",
+                totalLessons: 2,
+                completedLessons: 2,
+              },
+              {
+                id: "module-2",
+                title: "Practice",
+                totalLessons: 3,
+                completedLessons: 0,
+              },
+            ],
+            lessonProgress: [
+              { lessonId: "lesson-1", completedAt: "2026-06-10T12:00:00.000Z" },
+              { lessonId: "lesson-2", completedAt: "2026-06-10T12:05:00.000Z" },
+            ],
+          },
+        },
+      });
+
+    const progress = await new ApiCoursesAdapter().getEnrolledCoursesProgress();
+
+    expect(progress).toEqual([
+      {
+        courseId: "course-1",
+        courseTitle: "Cell Biology",
+        progress: 40,
+        resumeLessonId: "lesson-3",
+        completedLessonIds: ["lesson-1", "lesson-2"],
+        lastAccessedAt: "2026-06-10T12:05:00.000Z",
+        totalLessons: 5,
+        completedLessons: 2,
+        currentModule: {
+          id: "module-2",
+          title: "Practice",
+          totalLessons: 3,
+          completedLessons: 0,
+        },
+        modules: [
+          {
+            id: "module-1",
+            title: "Basics",
+            totalLessons: 2,
+            completedLessons: 2,
+          },
+          {
+            id: "module-2",
+            title: "Practice",
+            totalLessons: 3,
+            completedLessons: 0,
+          },
+        ],
+      },
+    ]);
+  });
+
   it("saves and unsaves courses through backend endpoints", async () => {
     mockHttpClient.post.mockResolvedValueOnce(undefined);
     mockHttpClient.delete.mockResolvedValueOnce(undefined);

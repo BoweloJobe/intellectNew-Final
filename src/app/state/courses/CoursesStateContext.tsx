@@ -3,6 +3,7 @@ import type {
   CourseLessonProgress,
   CourseStatus,
   RecentCourseAccess,
+  CourseModuleProgress,
 } from "../../models/courses";
 import {
   completeCourseLesson as completeCourseLessonRequest,
@@ -47,7 +48,16 @@ type CoursesContextValue = {
   toggleBookmark: (courseId: string) => boolean;
   setCourseProgress: (courseId: string, progress: number) => void;
   getCourseStatus: (courseId: string) => CourseStatus;
-  getCourseProgressSummary: (courseId: string, totalLessons: number) => { completedLessons: number; totalLessons: number };
+  getCourseProgressSummary: (courseId: string, totalLessons: number) => {
+    completedLessons: number;
+    totalLessons: number;
+    progress: number;
+    currentLessonId: string | null;
+    lastAccessedAt: string | null;
+    currentModule: CourseModuleProgress | null;
+    modules: CourseModuleProgress[];
+    hasLessons: boolean;
+  };
   markCourseAccessed: (courseId: string) => void;
   completeCourseLesson: (input: CompleteCourseLessonInput) => Promise<{ syncOk: boolean; completedDelta: number }>;
   joinCourse: (courseId: string) => Promise<{ syncOk: boolean; joinedNewCourse: boolean }>;
@@ -92,6 +102,10 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
               completedLessonIds: enrollment.completedLessonIds,
               currentLessonId: enrollment.resumeLessonId,
               lastAccessedAt: enrollment.lastAccessedAt,
+              totalLessons: enrollment.totalLessons,
+              completedLessons: enrollment.completedLessons,
+              currentModule: enrollment.currentModule,
+              modules: enrollment.modules,
             };
             if (enrollment.courseTitle) {
               newCourseTitles[enrollment.courseId] = enrollment.courseTitle;
@@ -156,13 +170,22 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
         return "enrolled";
       },
       getCourseProgressSummary: (courseId, totalLessons) => {
+        const lessonProgress = courseLessonProgress[courseId];
+        const resolvedTotalLessons = lessonProgress?.totalLessons ?? totalLessons;
         const completedLessons =
-          courseLessonProgress[courseId]?.completedLessonIds.length
-          ?? Math.round(((courseProgress[courseId] ?? 0) / 100) * totalLessons);
+          lessonProgress?.completedLessons
+          ?? lessonProgress?.completedLessonIds.length
+          ?? Math.round(((courseProgress[courseId] ?? 0) / 100) * resolvedTotalLessons);
 
         return {
-          completedLessons: Math.min(totalLessons, completedLessons),
-          totalLessons,
+          completedLessons: Math.min(resolvedTotalLessons, completedLessons),
+          totalLessons: resolvedTotalLessons,
+          progress: clampProgress(courseProgress[courseId] ?? 0),
+          currentLessonId: lessonProgress?.currentLessonId ?? null,
+          lastAccessedAt: lessonProgress?.lastAccessedAt ?? null,
+          currentModule: lessonProgress?.currentModule ?? null,
+          modules: lessonProgress?.modules ?? [],
+          hasLessons: resolvedTotalLessons > 0,
         };
       },
       markCourseAccessed: (courseId) => {
@@ -206,6 +229,10 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
             completedLessonIds,
             currentLessonId: nextLessonId,
             lastAccessedAt: accessedAt,
+            totalLessons,
+            completedLessons: completedLessonIds.length,
+            currentModule: previousState[courseId]?.currentModule ?? null,
+            modules: previousState[courseId]?.modules ?? [],
           },
         }));
         setCourseProgressState((progressPrevious) => ({
@@ -234,6 +261,10 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
                   completedLessonIds: e.completedLessonIds,
                   currentLessonId: e.resumeLessonId,
                   lastAccessedAt: e.lastAccessedAt,
+                  totalLessons: e.totalLessons,
+                  completedLessons: e.completedLessons,
+                  currentModule: e.currentModule,
+                  modules: e.modules,
                 };
                 if (e.courseTitle) {
                   updatedTitles[e.courseId] = e.courseTitle;
@@ -268,6 +299,10 @@ export function CoursesProvider({ children }: { children: ReactNode }) {
             completedLessonIds: previous[courseId]?.completedLessonIds ?? [],
             currentLessonId: previous[courseId]?.currentLessonId ?? null,
             lastAccessedAt: accessedAt,
+            totalLessons: previous[courseId]?.totalLessons,
+            completedLessons: previous[courseId]?.completedLessons,
+            currentModule: previous[courseId]?.currentModule ?? null,
+            modules: previous[courseId]?.modules ?? [],
           },
         }));
         setRecentlyAccessedCourses((previous) => [

@@ -187,12 +187,17 @@ function mapModule(mod: BackendModule): CourseModule {
 
 function mapToCourse(course: BackendCourse): Course {
   const price = course.price === null ? null : Number(course.price);
+  const totalLessons = (course.modules ?? []).reduce(
+    (sum, module) => sum + (module.lessons?.length ?? module._count?.lessons ?? 0),
+    0,
+  );
+
   return {
     id: course.id,
     title: course.title,
     instructor: `${course.instructor.firstName} ${course.instructor.lastName}`.trim(),
     progress: 0,
-    totalLessons: 0,
+    totalLessons,
     completedLessons: 0,
     duration: course.estimatedHours ? `${course.estimatedHours}h` : "—",
     rating: 0,
@@ -270,10 +275,20 @@ interface BackendCourseProgressData {
   completedLessons: number;
   percentage: number;
   completedAt: string | null;
+  nextLessonId?: string | null;
+  currentModule?: BackendCourseModuleProgress | null;
+  modules?: BackendCourseModuleProgress[];
   lessonProgress: Array<{ lessonId: string; completedAt: string }>;
 }
 
 type BackendCourseProgressResponse = { status: string; data: { progress: BackendCourseProgressData } };
+
+interface BackendCourseModuleProgress {
+  id: string;
+  title: string;
+  totalLessons: number;
+  completedLessons: number;
+}
 
 export class ApiCoursesAdapter implements CoursesService {
   async getCoursesPageData(): Promise<CoursesPageData> {
@@ -351,6 +366,10 @@ export class ApiCoursesAdapter implements CoursesService {
             resumeLessonId: null,
             completedLessonIds: [],
             lastAccessedAt: null,
+            totalLessons: 0,
+            completedLessons: 0,
+            currentModule: null,
+            modules: [],
           };
         }
 
@@ -367,9 +386,13 @@ export class ApiCoursesAdapter implements CoursesService {
           courseId: courseIdStr,
           courseTitle: e.course.title,
           progress: p.percentage,
-          resumeLessonId: null,   // backend doesn't compute next-lesson; callers use completedLessonIds
+          resumeLessonId: p.nextLessonId ?? null,
           completedLessonIds,
           lastAccessedAt,
+          totalLessons: p.totalLessons,
+          completedLessons: p.completedLessons,
+          currentModule: p.currentModule ?? null,
+          modules: p.modules ?? [],
         };
       });
     } catch (error) {

@@ -124,6 +124,15 @@ const coursePublicSelect = {
   instructor: {
     select: { id: true, firstName: true, lastName: true, avatarUrl: true },
   },
+  modules: {
+    orderBy: { order: 'asc' as const },
+    select: {
+      id: true,
+      title: true,
+      order: true,
+      _count: { select: { lessons: true } },
+    },
+  },
 } as const
 
 // ─── Instructor: Course management ───────────────────────────────────────────

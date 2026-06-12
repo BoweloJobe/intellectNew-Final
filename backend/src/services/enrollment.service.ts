@@ -71,26 +71,7 @@ export async function getCourseProgress(userId: string, courseId: string) {
   })
   if (!enrollment) throw new AppError(403, 'Not enrolled in this course')
 
-  const [totalLessons, completedLessons] = await Promise.all([
-    prisma.lesson.count({ where: { courseId } }),
-    prisma.lessonProgress.count({ where: { userId, courseId } }),
-  ])
-
-  const progressDetails = await prisma.lessonProgress.findMany({
-    where: { userId, courseId },
-    select: { lessonId: true, completedAt: true },
-  })
-
-  const percentage = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100)
-
-  return {
-    courseId,
-    totalLessons,
-    completedLessons,
-    percentage,
-    completedAt: enrollment.completedAt,
-    lessonProgress: progressDetails,
-  }
+  return getCourseProgressSummary(userId, courseId, enrollment.completedAt)
 }
 
 export async function markLessonComplete(userId: string, lessonId: string, courseId: string) {
@@ -127,19 +108,68 @@ export async function markLessonComplete(userId: string, lessonId: string, cours
   }
 
   // Return the same shape as getCourseProgress so callers can reconcile immediately
-  const progressDetails = await prisma.lessonProgress.findMany({
-    where: { userId, courseId },
-    select: { lessonId: true, completedAt: true },
-  })
+  return getCourseProgressSummary(userId, courseId, courseCompletedAt)
+}
 
+async function getCourseProgressSummary(userId: string, courseId: string, completedAt: Date | null) {
+  const [modules, progressDetails] = await Promise.all([
+    prisma.courseModule.findMany({
+      where: { courseId },
+      orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        title: true,
+        order: true,
+        lessons: {
+          orderBy: { order: 'asc' },
+          select: { id: true, title: true, order: true },
+        },
+      },
+    }),
+    prisma.lessonProgress.findMany({
+      where: { userId, courseId },
+      select: { lessonId: true, completedAt: true },
+    }),
+  ])
+
+  const completedLessonIds = new Set(progressDetails.map((progress) => progress.lessonId))
+  const lessons = modules.flatMap((module) =>
+    module.lessons.map((lesson) => ({
+      ...lesson,
+      moduleId: module.id,
+    })),
+  )
+  const totalLessons = lessons.length
+  const completedLessons = completedLessonIds.size
   const percentage = totalLessons === 0 ? 0 : Math.round((completedLessons / totalLessons) * 100)
+  const nextLesson = lessons.find((lesson) => !completedLessonIds.has(lesson.id)) ?? null
+  const currentModule =
+    modules.find((module) => module.lessons.some((lesson) => lesson.id === nextLesson?.id))
+    ?? modules.find((module) => module.lessons.some((lesson) => completedLessonIds.has(lesson.id)))
+    ?? modules[0]
+    ?? null
 
   return {
     courseId,
     totalLessons,
     completedLessons,
     percentage,
-    completedAt: courseCompletedAt,
+    completedAt,
+    nextLessonId: nextLesson?.id ?? null,
+    currentModule: currentModule
+      ? {
+          id: currentModule.id,
+          title: currentModule.title,
+          totalLessons: currentModule.lessons.length,
+          completedLessons: currentModule.lessons.filter((lesson) => completedLessonIds.has(lesson.id)).length,
+        }
+      : null,
+    modules: modules.map((module) => ({
+      id: module.id,
+      title: module.title,
+      totalLessons: module.lessons.length,
+      completedLessons: module.lessons.filter((lesson) => completedLessonIds.has(lesson.id)).length,
+    })),
     lessonProgress: progressDetails,
   }
 }

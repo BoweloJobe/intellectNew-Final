@@ -42,6 +42,9 @@ const mockPrisma = vi.hoisted(() => ({
     findFirst: vi.fn(),
     count: vi.fn(),
   },
+  courseModule: {
+    findMany: vi.fn(),
+  },
   lessonProgress: {
     upsert: vi.fn(),
     count: vi.fn(),
@@ -93,6 +96,19 @@ describe("POST /enrollments/lessons/:lessonId/complete", () => {
     mockPrisma.lessonProgress.upsert.mockResolvedValue({});
     mockPrisma.lesson.count.mockResolvedValue(4);
     mockPrisma.lessonProgress.count.mockResolvedValue(2);
+    mockPrisma.courseModule.findMany.mockResolvedValue([
+      {
+        id: "module-1",
+        title: "Foundations",
+        order: 0,
+        lessons: [
+          { id: "lesson-0", title: "Intro", order: 0 },
+          { id: "lesson-1", title: "Cells", order: 1 },
+          { id: "lesson-2", title: "DNA", order: 2 },
+          { id: "lesson-3", title: "Lab", order: 3 },
+        ],
+      },
+    ]);
     mockPrisma.lessonProgress.findMany.mockResolvedValue(
       baseLessonProgress(2, ["lesson-0", "lesson-1"]),
     );
@@ -110,6 +126,21 @@ describe("POST /enrollments/lessons/:lessonId/complete", () => {
     expect(cp.totalLessons).toBe(4);
     expect(cp.completedLessons).toBe(2);
     expect(cp.percentage).toBe(50);
+    expect(cp.nextLessonId).toBe("lesson-2");
+    expect(cp.currentModule).toEqual({
+      id: "module-1",
+      title: "Foundations",
+      totalLessons: 4,
+      completedLessons: 2,
+    });
+    expect(cp.modules).toEqual([
+      {
+        id: "module-1",
+        title: "Foundations",
+        totalLessons: 4,
+        completedLessons: 2,
+      },
+    ]);
     expect(cp.lessonProgress).toHaveLength(2);
     expect(cp.completedAt).toBeNull();
   });
@@ -122,6 +153,19 @@ describe("POST /enrollments/lessons/:lessonId/complete", () => {
     mockPrisma.lessonProgress.count.mockResolvedValue(4); // all done
     const completedAt = new Date();
     mockPrisma.enrollment.update.mockResolvedValue({ completedAt });
+    mockPrisma.courseModule.findMany.mockResolvedValue([
+      {
+        id: "module-1",
+        title: "Foundations",
+        order: 0,
+        lessons: [
+          { id: "l1", title: "One", order: 0 },
+          { id: "l2", title: "Two", order: 1 },
+          { id: "l3", title: "Three", order: 2 },
+          { id: "l4", title: "Four", order: 3 },
+        ],
+      },
+    ]);
     mockPrisma.lessonProgress.findMany.mockResolvedValue(
       baseLessonProgress(4, ["l1", "l2", "l3", "l4"]),
     );
@@ -143,6 +187,19 @@ describe("POST /enrollments/lessons/:lessonId/complete", () => {
     mockPrisma.lessonProgress.upsert.mockResolvedValue({}); // upsert does nothing on conflict
     mockPrisma.lesson.count.mockResolvedValue(4);
     mockPrisma.lessonProgress.count.mockResolvedValue(2); // still 2
+    mockPrisma.courseModule.findMany.mockResolvedValue([
+      {
+        id: "module-1",
+        title: "Foundations",
+        order: 0,
+        lessons: [
+          { id: "lesson-0", title: "Intro", order: 0 },
+          { id: "lesson-1", title: "Cells", order: 1 },
+          { id: "lesson-2", title: "DNA", order: 2 },
+          { id: "lesson-3", title: "Lab", order: 3 },
+        ],
+      },
+    ]);
     mockPrisma.lessonProgress.findMany.mockResolvedValue(
       baseLessonProgress(2, ["lesson-0", "lesson-1"]),
     );
@@ -176,5 +233,49 @@ describe("POST /enrollments/lessons/:lessonId/complete", () => {
       .send({ courseId: "course-1" });
 
     expect(res.status).toBe(404);
+  });
+
+  it("returns progress with next lesson and module summary", async () => {
+    mockPrisma.enrollment.findUnique.mockResolvedValue(baseEnrollment());
+    mockPrisma.courseModule.findMany.mockResolvedValue([
+      {
+        id: "module-1",
+        title: "Foundations",
+        order: 0,
+        lessons: [
+          { id: "lesson-1", title: "Intro", order: 0 },
+          { id: "lesson-2", title: "Cells", order: 1 },
+        ],
+      },
+      {
+        id: "module-2",
+        title: "Practice",
+        order: 1,
+        lessons: [
+          { id: "lesson-3", title: "Lab", order: 0 },
+        ],
+      },
+    ]);
+    mockPrisma.lessonProgress.findMany.mockResolvedValue(
+      baseLessonProgress(1, ["lesson-1"]),
+    );
+
+    const res = await request(app)
+      .get("/enrollments/courses/course-1/progress");
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.progress).toMatchObject({
+      courseId: "course-1",
+      totalLessons: 3,
+      completedLessons: 1,
+      percentage: 33,
+      nextLessonId: "lesson-2",
+      currentModule: {
+        id: "module-1",
+        title: "Foundations",
+        totalLessons: 2,
+        completedLessons: 1,
+      },
+    });
   });
 });

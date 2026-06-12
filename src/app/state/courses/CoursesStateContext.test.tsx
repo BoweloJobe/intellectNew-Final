@@ -18,10 +18,11 @@ vi.mock("../../utils/logger", () => ({
   logError: vi.fn(),
 }));
 
-import { saveCourse, unsaveCourse } from "../../services/courses.service";
+import { getEnrolledCoursesProgress, saveCourse, unsaveCourse } from "../../services/courses.service";
 
 const mockSaveCourse = vi.mocked(saveCourse);
 const mockUnsaveCourse = vi.mocked(unsaveCourse);
+const mockGetEnrolledCoursesProgress = vi.mocked(getEnrolledCoursesProgress);
 const mockLogError = vi.mocked(logError);
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -165,6 +166,67 @@ describe("CoursesProvider saved courses", () => {
       operation: "courses.unsaveCourse",
       courseId: "course-1",
       error,
+    });
+  });
+
+  it("hydrates enriched enrollment progress from the backend", async () => {
+    mockGetEnrolledCoursesProgress.mockResolvedValueOnce([
+      {
+        courseId: "course-1",
+        courseTitle: "Cell Biology",
+        progress: 40,
+        resumeLessonId: "lesson-3",
+        completedLessonIds: ["lesson-1", "lesson-2"],
+        lastAccessedAt: "2026-06-10T12:00:00.000Z",
+        totalLessons: 5,
+        completedLessons: 2,
+        currentModule: {
+          id: "module-2",
+          title: "Practice",
+          totalLessons: 3,
+          completedLessons: 0,
+        },
+        modules: [
+          { id: "module-1", title: "Basics", totalLessons: 2, completedLessons: 2 },
+          { id: "module-2", title: "Practice", totalLessons: 3, completedLessons: 0 },
+        ],
+      },
+    ]);
+
+    await act(async () => {
+      root.render(
+        <CoursesProvider>
+          <Probe />
+        </CoursesProvider>,
+      );
+    });
+
+    await act(async () => {
+      await latestState?.reloadEnrollments();
+    });
+
+    expect(latestState?.state.courseProgress["course-1"]).toBe(40);
+    expect(latestState?.state.courseLessonProgress["course-1"]).toMatchObject({
+      currentLessonId: "lesson-3",
+      totalLessons: 5,
+      completedLessons: 2,
+      currentModule: {
+        id: "module-2",
+        title: "Practice",
+        totalLessons: 3,
+        completedLessons: 0,
+      },
+    });
+    expect(latestState?.getCourseProgressSummary("course-1", 0)).toMatchObject({
+      progress: 40,
+      completedLessons: 2,
+      totalLessons: 5,
+      currentLessonId: "lesson-3",
+      currentModule: {
+        id: "module-2",
+        title: "Practice",
+      },
+      hasLessons: true,
     });
   });
 });

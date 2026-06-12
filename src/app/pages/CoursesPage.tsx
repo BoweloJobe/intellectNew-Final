@@ -147,7 +147,7 @@ export function CoursesPage() {
   }, [bookmarks, courseProgress, courses]);
 
   const recentlyAccessedLabelByCourseId = useMemo(() => {
-    return recentlyAccessedCourses.reduce<Record<string, string>>((accumulator, item) => {
+    const labels = recentlyAccessedCourses.reduce<Record<string, string>>((accumulator, item) => {
       const minutesAgo = Math.max(
         1,
         Math.round((Date.now() - new Date(item.lastAccessedAt).getTime()) / (1000 * 60)),
@@ -158,7 +158,22 @@ export function CoursesPage() {
 
       return accumulator;
     }, {});
-  }, [recentlyAccessedCourses]);
+
+    for (const course of courses) {
+      const summary = getCourseProgressSummary(course.id, course.totalLessons);
+      if (!labels[course.id] && summary.lastAccessedAt) {
+        const minutesAgo = Math.max(
+          1,
+          Math.round((Date.now() - new Date(summary.lastAccessedAt).getTime()) / (1000 * 60)),
+        );
+        labels[course.id] = minutesAgo < 60
+          ? `${minutesAgo}m ago`
+          : `${Math.round(minutesAgo / 60)}h ago`;
+      }
+    }
+
+    return labels;
+  }, [courses, getCourseProgressSummary, recentlyAccessedCourses]);
 
   const completedCourses = filteredCourses.filter((course) => getCourseStatus(course.id) === "completed");
   const visibleCourses = filteredCourses.slice(0, visibleCount);
@@ -272,7 +287,102 @@ export function CoursesPage() {
                     />
                   </div>
                   )
-                : visibleCourses.map((course) => (
+                : visibleCourses.map((course) => {
+                  const status = getCourseStatus(course.id);
+                  const summary = getCourseProgressSummary(course.id, course.totalLessons);
+                  const progress = status === "not-enrolled" ? 0 : summary.progress;
+                  const continueHref = status !== "not-enrolled" && summary.currentLessonId
+                    ? `/courses/${course.id}/lessons/${summary.currentLessonId}`
+                    : `/courses/${course.id}`;
+                  const hasLessons = summary.hasLessons;
+                  const actionLabel = !hasLessons
+                    ? "No Lessons Yet"
+                    : status === "not-enrolled"
+                    ? "Start Course"
+                    : status === "completed"
+                    ? "Review Course"
+                    : "Continue Where You Left Off";
+                  const actionButton = (
+                    <Button
+                      className="w-full bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!hasLessons}
+                      onClick={(event) => {
+                        if (!hasLessons) {
+                          event.preventDefault();
+                          return;
+                        }
+
+                        if (status === "not-enrolled") {
+                          if (isPaidCourse(course.price)) {
+                            event.preventDefault();
+                            void startCourseEnrollment({
+                              courseId: course.id,
+                              price: course.price,
+                              returnTo: `/courses/${course.id}`,
+                              origin: window.location.origin,
+                              joinCourse,
+                              createPaymentOrder: createCoursePaymentOrder,
+                              redirectToApprovalUrl: (url) => {
+                                window.location.assign(url);
+                              },
+                            }).catch((error) => {
+                              pushNotification(
+                                createProductNotification({
+                                  title: "Payment could not start",
+                                  detail: error instanceof Error ? error.message : "Payment could not be started.",
+                                  category: "course",
+                                  source: "course-update",
+                                }),
+                              );
+                            });
+                            return;
+                          }
+
+                          addRecentActivity("course", `Joined ${course.title}`);
+                          pushNotification(
+                            createProductNotification({
+                              title: "Course enrolled",
+                              detail: `You joined ${course.title}. Enrollment stats were updated.`,
+                              category: "course",
+                              source: "course-update",
+                              actionLabel: "Open course",
+                              metadata: { courseId: course.id },
+                            }),
+                          );
+                          void joinCourse(course.id).then((result) => {
+                            applyCourseJoin(result.joinedNewCourse);
+
+                            if (!result.syncOk) {
+                                pushNotification(
+                                  createProductNotification({
+                                    title: "Enrollment sync issue",
+                                    detail: `Could not confirm enrollment for ${course.title}. You can keep learning locally.`,
+                                    category: "course",
+                                    source: "course-update",
+                                  }),
+                                );
+                            }
+                          });
+                          markCourseAccessed(course.id);
+                          addRecentActivity("course", `Accessed ${course.title}`);
+                          setSuccessMessage(`Started ${course.title}.`);
+                        } else {
+                          addRecentActivity("course", `Reviewed ${course.title}`);
+                          markCourseAccessed(course.id);
+                          addRecentActivity("course", `Accessed ${course.title}`);
+                          setSuccessMessage(`Resumed ${course.title}.`);
+                        }
+
+                        window.setTimeout(() => {
+                          setSuccessMessage(null);
+                        }, 2200);
+                      }}
+                    >
+                      {actionLabel}
+                    </Button>
+                  );
+
+                  return (
                   <GlassCard key={course.id} hover className="flex flex-col">
                     <div className="mb-4">
                       <div className="w-full h-32 bg-gradient-to-br from-[#4a9ff5]/20 to-[#0d6efd]/20 rounded-xl flex items-center justify-center text-5xl mb-4">
@@ -284,19 +394,19 @@ export function CoursesPage() {
                       </div>
                       <div className="flex items-center justify-between mb-2">
                         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                          getCourseStatus(course.id) === "completed"
+                          status === "completed"
                             ? "bg-green-100 text-green-700"
-                            : getCourseStatus(course.id) === "in-progress"
+                            : status === "in-progress"
                             ? "bg-[#4a9ff5]/10 text-[#4a9ff5]"
-                            : getCourseStatus(course.id) === "enrolled"
+                            : status === "enrolled"
                             ? "bg-blue-100 text-blue-700"
                             : "bg-gray-100 text-gray-700"
                         }`}>
-                          {getCourseStatus(course.id) === "completed"
+                          {status === "completed"
                             ? "Completed"
-                            : getCourseStatus(course.id) === "in-progress"
+                            : status === "in-progress"
                             ? "In Progress"
-                            : getCourseStatus(course.id) === "enrolled"
+                            : status === "enrolled"
                             ? "Enrolled"
                             : "Not Enrolled"}
                         </span>
@@ -331,96 +441,31 @@ export function CoursesPage() {
                         <span className="text-sm font-medium text-gray-900">{course.rating}</span>
                       </div>
 
-                      {course.progress > 0 && (
+                      {status !== "not-enrolled" ? (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Progress</span>
-                            <span className="text-[#4a9ff5] font-medium">{course.progress}%</span>
+                            <span className="text-[#4a9ff5] font-medium">{progress}%</span>
                           </div>
-                          <Progress value={course.progress} className="h-2" />
+                          <Progress value={progress} className="h-2" />
                           <p className="text-xs text-gray-500">
-                            {getCourseProgressSummary(course.id, course.totalLessons).completedLessons}/{course.totalLessons} lessons complete
+                            {summary.completedLessons}/{summary.totalLessons} lessons complete
                           </p>
+                          {summary.currentModule ? (
+                            <p className="text-xs text-gray-500">
+                              Current module: {summary.currentModule.completedLessons}/{summary.currentModule.totalLessons} lessons complete
+                            </p>
+                          ) : !summary.hasLessons ? (
+                            <p className="text-xs text-gray-500">No lessons are available for this course yet.</p>
+                          ) : null}
                         </div>
-                      )}
+                      ) : !hasLessons ? (
+                        <p className="text-xs text-gray-500">No lessons are available for this course yet.</p>
+                      ) : null}
                     </div>
 
                     <div className="mt-auto">
-                      <Link to={`/courses/${course.id}`}>
-                        <Button
-                          className="w-full bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
-                          onClick={(event) => {
-                            const status = getCourseStatus(course.id);
-
-                            if (status === "not-enrolled") {
-                              if (isPaidCourse(course.price)) {
-                                event.preventDefault();
-                                void startCourseEnrollment({
-                                  courseId: course.id,
-                                  price: course.price,
-                                  returnTo: `/courses/${course.id}`,
-                                  origin: window.location.origin,
-                                  joinCourse,
-                                  createPaymentOrder: createCoursePaymentOrder,
-                                  redirectToApprovalUrl: (url) => {
-                                    window.location.assign(url);
-                                  },
-                                }).catch((error) => {
-                                  pushNotification(
-                                    createProductNotification({
-                                      title: "Payment could not start",
-                                      detail: error instanceof Error ? error.message : "Payment could not be started.",
-                                      category: "course",
-                                      source: "course-update",
-                                    }),
-                                  );
-                                });
-                                return;
-                              }
-
-                              addRecentActivity("course", `Joined ${course.title}`);
-                              pushNotification(
-                                createProductNotification({
-                                  title: "Course enrolled",
-                                  detail: `You joined ${course.title}. Enrollment stats were updated.`,
-                                  category: "course",
-                                  source: "course-update",
-                                  actionLabel: "Open course",
-                                  metadata: { courseId: course.id },
-                                }),
-                              );
-                              void joinCourse(course.id).then((result) => {
-                                applyCourseJoin(result.joinedNewCourse);
-
-                                if (!result.syncOk) {
-                                    pushNotification(
-                                      createProductNotification({
-                                        title: "Enrollment sync issue",
-                                        detail: `Could not confirm enrollment for ${course.title}. You can keep learning locally.`,
-                                        category: "course",
-                                        source: "course-update",
-                                      }),
-                                    );
-                                }
-                              });
-                              markCourseAccessed(course.id);
-                              addRecentActivity("course", `Accessed ${course.title}`);
-                              setSuccessMessage(`Started ${course.title}.`);
-                            } else {
-                              addRecentActivity("course", `Reviewed ${course.title}`);
-                              markCourseAccessed(course.id);
-                              addRecentActivity("course", `Accessed ${course.title}`);
-                              setSuccessMessage(`Resumed ${course.title}.`);
-                            }
-
-                            window.setTimeout(() => {
-                              setSuccessMessage(null);
-                            }, 2200);
-                          }}
-                        >
-                          {getCourseStatus(course.id) === "not-enrolled" ? "Start Course" : "Continue Where You Left Off"}
-                        </Button>
-                      </Link>
+                      {hasLessons ? <Link to={continueHref}>{actionButton}</Link> : actionButton}
                       <Button
                         type="button"
                         variant="outline"
@@ -447,7 +492,8 @@ export function CoursesPage() {
                       </Button>
                     </div>
                   </GlassCard>
-                ))}
+                  );
+                })}
           </div>
 
           {!isLoading && !isError && filteredCourses.length > 0 ? (

@@ -163,6 +163,10 @@ export interface CourseLessonProgress {
   completedLessonIds: string[];
   currentLessonId: string | null;
   lastAccessedAt: string | null;
+  totalLessons?: number;
+  completedLessons?: number;
+  currentModule?: CourseModuleProgress | null;
+  modules?: CourseModuleProgress[];
 }
 
 export interface RecentCourseAccess {
@@ -177,6 +181,17 @@ export interface EnrolledCourseProgress {
   completedLessonIds: string[];
   lastAccessedAt: string | null;
   courseTitle?: string;
+  totalLessons?: number;
+  completedLessons?: number;
+  currentModule?: CourseModuleProgress | null;
+  modules?: CourseModuleProgress[];
+}
+
+export interface CourseModuleProgress {
+  id: string;
+  title: string;
+  totalLessons: number;
+  completedLessons: number;
 }
 
 export interface CoursesPageData {

@@ -24,7 +24,8 @@ type WeaknessMapItem = {
 
 export function ProgressPage() {
   const {
-    state: { enrolledCourseIds, courseProgress, recentlyAccessedCourses },
+    state: { enrolledCourseIds, courseProgress, courseLessonProgress, courseTitles, recentlyAccessedCourses },
+    getCourseProgressSummary,
   } = useCoursesState();
   const {
     state: { weeklySnapshot },
@@ -145,7 +146,10 @@ export function ProgressPage() {
   }, [completionCounts]);
 
   const derivedStats = useMemo(() => {
-    const totalCompletedLessons = Math.round(realStudyHours * 60 / 20);
+    const totalCompletedLessons = Object.values(courseLessonProgress)
+      .reduce((sum, progress) => sum + (progress.completedLessons ?? progress.completedLessonIds.length), 0);
+    const totalLessons = Object.values(courseLessonProgress)
+      .reduce((sum, progress) => sum + (progress.totalLessons ?? progress.completedLessonIds.length), 0);
     const courseCompletionPct = completionCounts.total > 0
       ? Math.round((completionCounts.completed / completionCounts.total) * 100)
       : 0;
@@ -155,7 +159,7 @@ export function ProgressPage() {
       {
         label: "Total Study Hours",
         value: `${realStudyHours}h`,
-        trend: `${totalCompletedLessons} lessons · ${totalQuizzesTaken} quizzes`,
+        trend: `${totalCompletedLessons}/${totalLessons} lessons · ${totalQuizzesTaken} quizzes`,
       },
       {
         label: "Avg. Quiz Score",
@@ -173,7 +177,23 @@ export function ProgressPage() {
         trend: `${courseCompletionPct}%`,
       },
     ];
-  }, [completionCounts, realStudyHours, realCurrentStreak, studyDaysThisWeek, weeklySnapshot]);
+  }, [completionCounts, courseLessonProgress, realStudyHours, realCurrentStreak, studyDaysThisWeek, weeklySnapshot]);
+
+  const courseBreakdown = useMemo(() => {
+    return enrolledCourseIds.map((courseId) => {
+      const course = catalogCourses.find((item) => item.id === courseId);
+      const summary = getCourseProgressSummary(courseId, course?.totalLessons ?? courseLessonProgress[courseId]?.totalLessons ?? 0);
+
+      return {
+        courseId,
+        title: course?.title ?? courseTitles[courseId] ?? "Course",
+        progress: summary.progress,
+        completedLessons: summary.completedLessons,
+        totalLessons: summary.totalLessons,
+        currentModule: summary.currentModule,
+      };
+    });
+  }, [catalogCourses, courseLessonProgress, courseTitles, enrolledCourseIds, getCourseProgressSummary]);
 
   const weaknessMap = useMemo<WeaknessMapItem[]>(() => {
     const focusLookup = focusAreas.map((item) => item.toLowerCase());
@@ -283,6 +303,33 @@ export function ProgressPage() {
           </GlassCard>
         ))}
       </div>
+
+      <GlassCard className="mb-8">
+        <h3 className="text-xl font-semibold mb-6 text-gray-900">Course Progress</h3>
+        {courseBreakdown.length === 0 ? (
+          <p className="text-sm text-gray-600">No enrolled courses yet. Enroll in a course to start tracking lesson progress.</p>
+        ) : (
+          <div className="space-y-5">
+            {courseBreakdown.map((course) => (
+              <div key={course.courseId}>
+                <div className="flex items-center justify-between gap-4 mb-2">
+                  <div>
+                    <p className="font-medium text-gray-900">{course.title}</p>
+                    <p className="text-xs text-gray-500">
+                      {course.completedLessons}/{course.totalLessons} lessons complete
+                      {course.currentModule
+                        ? ` · Current module: ${course.currentModule.completedLessons}/${course.currentModule.totalLessons} lessons`
+                        : ""}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-[#4a9ff5]">{course.progress}%</span>
+                </div>
+                <Progress value={course.progress} className="h-2" />
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Weekly Study Time */}
