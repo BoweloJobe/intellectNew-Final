@@ -124,22 +124,29 @@ export class ApiCommunityAdapter implements CommunityService {
     }
   }
 
-  // Study groups and topic follows are UI-only preferences not yet backend-managed.
-  // These are no-ops in API mode — they do not throw, so the UI optimistic update
-  // still applies but is not persisted to the backend.
-  async joinStudyGroup(_groupName: string): Promise<void> {
-    return;
+  // Study groups and topic follows are not yet supported by the backend.
+  // Attempting these actions will throw an error to prevent silent failures.
+  async joinStudyGroup(groupName: string): Promise<void> {
+    throw new Error(
+      `Study groups are not yet available. Cannot join "${groupName}". This feature is coming soon.`,
+    );
   }
 
-  async leaveStudyGroup(_groupName: string): Promise<void> {
-    return;
+  async leaveStudyGroup(groupName: string): Promise<void> {
+    throw new Error(
+      `Study groups are not yet available. Cannot leave "${groupName}". This feature is coming soon.`,
+    );
   }
 
-  async followTopic(_topic: string): Promise<void> {
-    return;
+  async followTopic(topic: string): Promise<void> {
+    throw new Error(
+      `Topic following is not yet available. Cannot follow "${topic}". This feature is coming soon.`,
+    );
   }
 
-  async unfollowTopic(_topic: string): Promise<void> {
-    return;
+  async unfollowTopic(topic: string): Promise<void> {
+    throw new Error(
+      `Topic following is not yet available. Cannot unfollow "${topic}". This feature is coming soon.`,
+    );
   }
 }

@@ -20,7 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Textarea } from "../components/ui/textarea";
-import { Search, MessageCircle, ThumbsUp, Users, TrendingUp, Bookmark } from "lucide-react";
+import { Search, MessageCircle, ThumbsUp, Users, TrendingUp, Bookmark, Lock } from "lucide-react";
 import { getDiscussionTrendingScore } from "../services/community.service";
 import { saveDiscussionDraftForm } from "../services/form-flows.service";
 import { useCommunityState } from "../state/community/CommunityStateContext";
@@ -29,12 +29,15 @@ import {
   useNotificationsState,
 } from "../state/notifications/NotificationsStateContext";
 import { normalizeRequiredTextInput, trimmedTextRules } from "../utils/form-validation";
+import { domainAdapterConfig } from "../api/config/apiConfig";
 
 type DiscussionComposerValues = {
   title: string;
   category: string;
   body: string;
 };
+
+const isApiMode = domainAdapterConfig.community === "api";
 
 export function CommunityPage() {
   const { addRecentActivity, pushNotification } = useNotificationsState();
@@ -61,6 +64,7 @@ export function CommunityPage() {
     communityTrendingDiscussions,
   } = useCommunityState();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(3);
   const {
@@ -180,9 +184,18 @@ export function CommunityPage() {
 
   const showActionFeedback = (message: string) => {
     setSuccessMessage(message);
+    setErrorMessage(null);
     window.setTimeout(() => {
       setSuccessMessage(null);
     }, 2200);
+  };
+
+  const showActionError = (message: string) => {
+    setErrorMessage(message);
+    setSuccessMessage(null);
+    window.setTimeout(() => {
+      setErrorMessage(null);
+    }, 3500);
   };
 
   const openComposer = (mode: "draft" | "new") => {
@@ -258,6 +271,8 @@ export function CommunityPage() {
       </div>
 
       {successMessage ? <ActionSuccessState message={successMessage} className="mb-8" /> : null}
+
+      {errorMessage ? <DataErrorState title="Action Failed" description={errorMessage} className="mb-8" /> : null}
 
       {isError ? (
         <div className="mb-8">
@@ -526,12 +541,18 @@ export function CommunityPage() {
                                 type="button"
                                 className={`flex items-center gap-1 transition-colors ${isLiked ? "text-[#4a9ff5]" : "hover:text-[#4a9ff5]"}`}
                                 onClick={() => {
-                                  toggleDiscussionLike(discussion.id);
-                                  showActionFeedback(
-                                    isLiked
-                                      ? `Removed like from ${discussion.title}.`
-                                      : `Liked ${discussion.title}.`,
-                                  );
+                                  void (async () => {
+                                    const success = await toggleDiscussionLike(discussion.id);
+                                    if (success) {
+                                      showActionFeedback(
+                                        isLiked
+                                          ? `Removed like from ${discussion.title}.`
+                                          : `Liked ${discussion.title}.`,
+                                      );
+                                    } else {
+                                      showActionError("Could not update like. Please try again.");
+                                    }
+                                  })();
                                 }}
                               >
                                 <ThumbsUp className={`w-4 h-4 ${isLiked ? "fill-[#4a9ff5]" : ""}`} />
@@ -541,16 +562,22 @@ export function CommunityPage() {
                                 type="button"
                                 className={`flex items-center gap-1 transition-colors ${isPinned ? "text-[#4a9ff5]" : "hover:text-[#4a9ff5]"}`}
                                 onClick={() => {
-                                  toggleDiscussionPin(discussion.id);
-                                  addRecentActivity(
-                                    "community",
-                                    `${isPinned ? "Unpinned" : "Pinned"} discussion ${discussion.title}`,
-                                  );
-                                  showActionFeedback(
-                                    isPinned
-                                      ? `Unpinned ${discussion.title}.`
-                                      : `Pinned ${discussion.title}.`,
-                                  );
+                                  void (async () => {
+                                    const success = await toggleDiscussionPin(discussion.id);
+                                    if (success) {
+                                      addRecentActivity(
+                                        "community",
+                                        `${isPinned ? "Unpinned" : "Pinned"} discussion ${discussion.title}`,
+                                      );
+                                      showActionFeedback(
+                                        isPinned
+                                          ? `Unpinned ${discussion.title}.`
+                                          : `Pinned ${discussion.title}.`,
+                                      );
+                                    } else {
+                                      showActionError("Could not update pin. Please try again.");
+                                    }
+                                  })();
                                 }}
                               >
                                 <Bookmark className={`w-4 h-4 ${isPinned ? "fill-[#4a9ff5]" : ""}`} />
@@ -644,8 +671,8 @@ export function CommunityPage() {
             ) : studyGroups.length === 0 ? (
               <EmptyState
                 icon={Users}
-                title="No study groups available"
-                description="Check back shortly or create a new group to collaborate with peers."
+                title={isApiMode ? "Study groups coming soon" : "No study groups available"}
+                description={isApiMode ? "Study group collaboration features will be available in a future update." : "Check back shortly or create a new group to collaborate with peers."}
                 className="px-4 py-8"
               />
             ) : (
@@ -709,6 +736,7 @@ export function CommunityPage() {
             <Button
               variant="outline"
               className="w-full mt-4 font-medium"
+              disabled={isApiMode}
               onClick={() => {
                 openComposer("new");
               }}
@@ -739,34 +767,44 @@ export function CommunityPage() {
               <div className="flex flex-wrap gap-2">
                 {popularTopics.map((topic) => {
                   const isFollowing = userPreferences.favoriteTopics.includes(topic);
+                  const isDisabled = isApiMode;
 
                   return (
                     <button
                       key={topic}
-                      className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all ${
-                        isFollowing
+                      className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all relative group ${
+                        isDisabled
+                          ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                          : isFollowing
                           ? "bg-[#4a9ff5] border-[#4a9ff5] text-white"
                           : "bg-[#f9fafb] border-[rgba(0,0,0,0.06)] text-gray-700 hover:bg-[#4a9ff5] hover:text-white"
                       }`}
+                      disabled={isDisabled}
+                      title={isDisabled ? "Topic following coming soon" : ""}
                       onClick={() => {
-                        toggleTopicFollow(topic);
-                        addRecentActivity(
-                          "community",
-                          `${isFollowing ? "Unfollowed" : "Followed"} topic ${topic}`,
-                        );
-                        pushNotification(
-                          createProductNotification({
-                            title: isFollowing ? "Topic unfollowed" : "Topic followed",
-                            detail: `${isFollowing ? "Stopped following" : "Now following"} ${topic}.`,
-                            category: "community",
-                            source: "community-reply",
-                            actionLabel: "Open community",
-                          }),
-                        );
-                        showActionFeedback(`${isFollowing ? "Stopped following" : "Now following"} ${topic}.`);
+                        if (!isDisabled) {
+                          toggleTopicFollow(topic);
+                          addRecentActivity(
+                            "community",
+                            `${isFollowing ? "Unfollowed" : "Followed"} topic ${topic}`,
+                          );
+                          pushNotification(
+                            createProductNotification({
+                              title: isFollowing ? "Topic unfollowed" : "Topic followed",
+                              detail: `${isFollowing ? "Stopped following" : "Now following"} ${topic}.`,
+                              category: "community",
+                              source: "community-reply",
+                              actionLabel: "Open community",
+                            }),
+                          );
+                          showActionFeedback(`${isFollowing ? "Stopped following" : "Now following"} ${topic}.`);
+                        }
                       }}
                     >
                       {topic}
+                      {isDisabled && (
+                        <Lock className="w-3 h-3 inline-block ml-1" />
+                      )}
                     </button>
                   );
                 })}
