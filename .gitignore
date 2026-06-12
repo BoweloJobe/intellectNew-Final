@@ -7,6 +7,7 @@ node_modules/
 dist/
 build/
 dist-ssr/
+*.tsbuildinfo
 
 # Environment files and secrets
 .env
@@ -17,6 +18,7 @@ dist-ssr/
 
 # Test and coverage output
 coverage/
+.nyc_output/
 *.lcov
 
 # Logs and test output
@@ -61,6 +63,8 @@ $RECYCLE.BIN/
 # Misc cache
 .cache/
 .parcel-cache/
+.turbo/
+.yarn/cache/
 
 # Local database files
 *.db
@@ -69,3 +73,9 @@ $RECYCLE.BIN/
 *.sqlite3
 backend/prisma/*.db
 backend/prisma/**/*.db
+dev.db
+test.db
+
+# Pre-built or cached binaries
+*.so
+*.node
