@@ -19,6 +19,7 @@ import {
   useNotificationsState,
 } from "../state/notifications/NotificationsStateContext";
 import { useAuth } from "../auth/AuthContext";
+import { getAdminRedirectFromStudentExperience } from "../auth/access-control";
 import { getAuthUserGreetingName } from "../auth/auth-normalizers";
 import { getCourseAccessDecision } from "../utils/course-access";
 import { formatRelativeTime, getMinutesSince } from "../utils/personalization";
@@ -42,7 +43,7 @@ function hasCoverImage(value: string | undefined): value is string {
 }
 
 export function CourseDetailsPage() {
-  const { user, subscription } = useAuth();
+  const { user, subscription, role } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
@@ -74,6 +75,13 @@ export function CourseDetailsPage() {
       return details;
     });
   };
+
+  useEffect(() => {
+    const redirectPath = getAdminRedirectFromStudentExperience(location.pathname, role);
+    if (redirectPath) {
+      navigate(redirectPath, { replace: true });
+    }
+  }, [location.pathname, navigate, role]);
 
   useEffect(() => {
     loadCourseDetails();

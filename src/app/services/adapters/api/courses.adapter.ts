@@ -79,6 +79,7 @@ interface BackendCourse {
   status: string;
   publishedAt: string | null;
   createdAt: string;
+  updatedAt?: string;
   instructor: BackendInstructor;
   modules?: BackendModule[];
   rejectionReason?: string | null;
@@ -249,6 +250,8 @@ function mapToCourse(course: BackendCourse): Course {
 function mapToInstructorManagedCourse(course: BackendCourse): InstructorManagedCourse {
   const modules = (course.modules ?? []).map(mapModule);
   const totalLessons = modules.reduce((sum, m) => sum + m.lessons.length, 0);
+  const publicationStatus = mapPublicationStatus(course.status);
+  const updatedAt = course.updatedAt ?? course.createdAt;
   return {
     ...mapToCourse(course),
     totalLessons,
@@ -258,10 +261,10 @@ function mapToInstructorManagedCourse(course: BackendCourse): InstructorManagedC
     learningOutcomes: [],
     topics: [],
     modules,
-    publicationStatus: mapPublicationStatus(course.status),
+    publicationStatus,
     createdAt: course.createdAt,
-    updatedAt: course.createdAt,
-    submittedAt: null,
+    updatedAt,
+    submittedAt: publicationStatus === "pending-approval" ? updatedAt : null,
     approvedAt: course.publishedAt ?? null,
     rejectionReason: course.rejectionReason ?? null,
     isCustom: false,

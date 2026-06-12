@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getAdminRedirectFromStudentExperience } from "../auth/access-control";
 import { DataErrorState } from "../components/DataState";
 import { EmptyState } from "../components/EmptyState";
 import { GlassCard } from "../components/GlassCard";
@@ -23,7 +24,16 @@ import { useProgressStats } from "../hooks/useProgressStats";
 
 
 export function StudentDashboard() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const redirectPath = getAdminRedirectFromStudentExperience(location.pathname, role);
+    if (redirectPath) {
+      navigate(redirectPath, { replace: true });
+    }
+  }, [location.pathname, navigate, role]);
   const {
     state: {
       weeklySnapshot,

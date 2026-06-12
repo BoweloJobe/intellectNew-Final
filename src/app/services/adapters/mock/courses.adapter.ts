@@ -39,10 +39,6 @@ async function mockCourseMutation(): Promise<void> {
   await withMockDelay(null, 180);
 }
 
-function notImplementedCourse(method: string): never {
-  throw new Error(`MockCoursesAdapter.${method} is not implemented in mock mode.`);
-}
-
 function mapDraftModules(input: InstructorCourseDraftInput | InstructorCourseEditInput): CourseModule[] {
   return (input.modules ?? []).map((module) => ({
     id: module.id ?? createMockId("module"),
@@ -59,7 +55,11 @@ function mapDraftModules(input: InstructorCourseDraftInput | InstructorCourseEdi
       notesContent: lesson.notesContent || undefined,
       isFreePreview: lesson.isFreePreview,
       quizAvailable: lesson.quizAvailable,
-      quizId: lesson.quizId,
+      quizId:
+        lesson.quizId
+        ?? (lesson.quizAvailable
+          ? createMockId("quiz")
+          : undefined),
       quizTimeLimitSeconds: lesson.quizTimeLimitMinutes ? Math.round(lesson.quizTimeLimitMinutes * 60) : undefined,
     })),
   }));
@@ -134,7 +134,9 @@ export class MockCoursesAdapter implements CoursesService {
   }
 
   async getCourseModerationQueue(): Promise<InstructorManagedCourse[]> {
-    return withMockDelay([]);
+    return withMockDelay(
+      MOCK_MANAGED_COURSES.filter((course) => course.publicationStatus === "pending-approval"),
+    );
   }
 
   async createInstructorCourse(input: InstructorCourseDraftInput): Promise<InstructorManagedCourse> {
@@ -242,11 +244,31 @@ export class MockCoursesAdapter implements CoursesService {
   }
 
   async reviewCoursePublication(
-    _courseId: string,
-    _decision: "approved" | "rejected",
-    _rejectionReason?: string,
+    courseId: string,
+    decision: "approved" | "rejected",
+    rejectionReason?: string,
   ): Promise<InstructorManagedCourse> {
-    notImplementedCourse("reviewCoursePublication");
+    const index = MOCK_MANAGED_COURSES.findIndex((course) => course.id === courseId);
+    if (index < 0) {
+      throw new Error("Mock course draft not found.");
+    }
+
+    const current = MOCK_MANAGED_COURSES[index];
+    if (current.publicationStatus !== "pending-approval") {
+      throw new Error("Course is not pending review.");
+    }
+
+    const now = new Date().toISOString();
+    const updated: InstructorManagedCourse = {
+      ...current,
+      publicationStatus: decision === "approved" ? "approved" : "rejected",
+      approvedAt: decision === "approved" ? now : null,
+      rejectionReason: decision === "rejected" ? (rejectionReason?.trim() || "No reason provided.") : null,
+      updatedAt: now,
+    };
+
+    MOCK_MANAGED_COURSES[index] = updated;
+    return withMockDelay(updated);
   }
 
   async enrollCourse(): Promise<void> {

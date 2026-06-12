@@ -145,6 +145,30 @@ const coursePublicSelect = {
   },
 } as const
 
+/** Admin moderation queue: full module/lesson/quiz detail for review decisions */
+const courseModerationQueueSelect = {
+  id: true,
+  title: true,
+  description: true,
+  category: true,
+  difficulty: true,
+  thumbnailUrl: true,
+  estimatedHours: true,
+  price: true,
+  status: true,
+  publishedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  rejectionReason: true,
+  instructor: {
+    select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+  },
+  modules: {
+    orderBy: { order: 'asc' as const },
+    select: instructorModuleWithLessonsSelect,
+  },
+} as const
+
 // ─── Instructor: Course management ───────────────────────────────────────────
 
 export async function createCourse(instructorId: string, input: CreateCourseInput) {
@@ -529,10 +553,7 @@ export async function getPendingCourses() {
   return prisma.course.findMany({
     where: { status: 'PENDING_REVIEW' },
     orderBy: { updatedAt: 'asc' },
-    select: {
-      ...coursePublicSelect,
-      _count: { select: { modules: true } },
-    },
+    select: courseModerationQueueSelect,
   })
 }
 

@@ -44,8 +44,8 @@ export function getNavbarLinks(role: string | null, isAuthenticated: boolean) {
 
   if (role === "admin") {
     return [
-      { name: "Admin", path: "/admin" },
-      { name: "Courses", path: "/courses" },
+      { name: "Dashboard", path: "/admin" },
+      { name: "Review Queue", path: "/admin#course-review-queue" },
       { name: "Community", path: "/community" },
     ];
   }

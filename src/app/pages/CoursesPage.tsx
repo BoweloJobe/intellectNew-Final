@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import { getAdminRedirectFromStudentExperience } from "../auth/access-control";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
 import { EmptyState } from "../components/EmptyState";
 import { GlassCard } from "../components/GlassCard";
@@ -34,6 +36,9 @@ function hasCoverImage(value: string | undefined): value is string {
 }
 
 export function CoursesPage() {
+  const { role } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const { applyBookmarkDelta, applyCourseJoin } = useDashboardState();
   const { addRecentActivity, pushNotification } = useNotificationsState();
   const {
@@ -48,6 +53,13 @@ export function CoursesPage() {
     defaultErrorMessage: "Courses failed to load. Retry to fetch your enrollments and progress.",
   });
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const redirectPath = getAdminRedirectFromStudentExperience(location.pathname, role);
+    if (redirectPath) {
+      navigate(redirectPath, { replace: true });
+    }
+  }, [location.pathname, navigate, role]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [progressFilter, setProgressFilter] = useState<CourseProgressFilter>("all");

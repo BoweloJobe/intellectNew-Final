@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canAccessRoleRoute,
   canRoleAccessPath,
+  getAdminRedirectFromStudentExperience,
   getAllowedRolesForPath,
   getAllowedRolesFromMatches,
   getDefaultPathForRole,
@@ -54,6 +55,15 @@ describe("access-control", () => {
     expect(getAllowedRolesForPath("/dashboard")).toBeNull();
     expect(canRoleAccessPath("admin", "/instructor")).toBe(true);
     expect(canRoleAccessPath("student", "/instructor")).toBe(false);
+  });
+
+  it("redirects admins away from student catalog and dashboard routes", () => {
+    expect(getAdminRedirectFromStudentExperience("/courses", "admin")).toBe("/admin");
+    expect(getAdminRedirectFromStudentExperience("/courses/course-1", "admin")).toBe("/admin");
+    expect(getAdminRedirectFromStudentExperience("/dashboard", "admin")).toBe("/admin");
+    expect(getAdminRedirectFromStudentExperience("/pricing", "admin")).toBe("/admin");
+    expect(getAdminRedirectFromStudentExperience("/admin", "admin")).toBeNull();
+    expect(getAdminRedirectFromStudentExperience("/courses", "student")).toBeNull();
   });
 
   it("resolves safe post-login destination", () => {

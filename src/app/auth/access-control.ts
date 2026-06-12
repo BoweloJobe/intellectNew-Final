@@ -128,6 +128,29 @@ export function canRoleAccessPath(role: AuthRole, path: string): boolean {
   return canAccessRoleRoute(role, allowedRoles);
 }
 
+/** Redirect admins away from student-first catalog and dashboard experiences */
+export function getAdminRedirectFromStudentExperience(
+  pathname: string,
+  role: AuthRole | null,
+): string | null {
+  if (role !== "admin") {
+    return null;
+  }
+
+  const normalized = getPathname(pathname);
+
+  if (
+    normalized === "/dashboard" ||
+    normalized === "/courses" ||
+    normalized.startsWith("/courses/") ||
+    normalized === "/pricing"
+  ) {
+    return "/admin";
+  }
+
+  return null;
+}
+
 export function resolvePostLoginDestination(
   requestedPath: string | null | undefined,
   role: AuthRole,

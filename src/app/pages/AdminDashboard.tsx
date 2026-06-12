@@ -216,6 +216,13 @@ export function AdminDashboard() {
         </div>
       ) : null}
 
+      {domainAdapterConfig.courses === "mock" ? (
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Local mock moderation only: pending courses, approve, and reject actions update in-memory drafts on this device. They do not sync to a backend catalog.
+        </div>
+      ) : null}
+
+      <div id="course-review-queue">
       <GlassCard className="mb-8">
         <div className="flex items-center justify-between mb-6 gap-4">
           <div>
@@ -274,6 +281,7 @@ export function AdminDashboard() {
           </div>
         )}
       </GlassCard>
+      </div>
 
       <GlassCard className="mb-8">
         <div className="flex items-center justify-between mb-6 gap-4">

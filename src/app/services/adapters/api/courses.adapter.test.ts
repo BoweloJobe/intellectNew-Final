@@ -575,6 +575,55 @@ describe("ApiCoursesAdapter", () => {
     ]);
   });
 
+  it("maps admin moderation queue courses with nested modules and lessons", async () => {
+    mockHttpClient.get.mockResolvedValueOnce({
+      status: "ok",
+      data: {
+        courses: [
+          {
+            ...backendCourse,
+            status: "PENDING_REVIEW",
+            updatedAt: "2026-06-09T10:00:00.000Z",
+            modules: [
+              {
+                id: "module-1",
+                title: "Basics",
+                order: 0,
+                lessons: [
+                  {
+                    id: "lesson-1",
+                    title: "Cells",
+                    description: "Intro",
+                    notes: "Notes",
+                    videoUrl: "https://example.com/video.mp4",
+                    estimatedMinutes: 10,
+                    order: 0,
+                    isFree: true,
+                    quiz: {
+                      id: "quiz-1",
+                      timeLimitSeconds: 600,
+                      questions: [],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const queue = await new ApiCoursesAdapter().getCourseModerationQueue();
+
+    expect(mockHttpClient.get).toHaveBeenCalledWith("/admin/courses/queue");
+    expect(queue).toHaveLength(1);
+    expect(queue[0].publicationStatus).toBe("pending-approval");
+    expect(queue[0].submittedAt).toBe("2026-06-09T10:00:00.000Z");
+    expect(queue[0].modules[0].lessons[0].title).toBe("Cells");
+    expect(queue[0].modules[0].lessons[0].quizId).toBe("quiz-1");
+    expect(queue[0].modules[0].lessons[0].videoUrl).toBe("https://example.com/video.mp4");
+  });
+
   it("saves and unsaves courses through backend endpoints", async () => {
     mockHttpClient.post.mockResolvedValueOnce(undefined);
     mockHttpClient.delete.mockResolvedValueOnce(undefined);

@@ -12,6 +12,15 @@ describe("getNavbarLinks", () => {
     expect(getNavbarLinks("admin", true).map((link) => link.name)).not.toContain("Pricing");
   });
 
+  it("keeps admin nav focused on dashboard and review instead of student catalog links", () => {
+    const adminLinks = getNavbarLinks("admin", true).map((link) => link.name);
+    expect(adminLinks).toEqual(["Dashboard", "Review Queue", "Community"]);
+    expect(adminLinks).not.toContain("Courses");
+    expect(adminLinks).not.toContain("Learn");
+    expect(adminLinks).not.toContain("My Learning");
+    expect(adminLinks).not.toContain("Pricing");
+  });
+
   it("keeps Pricing available for student authenticated nav", () => {
     expect(getNavbarLinks("student", true).map((link) => link.name)).toContain("Pricing");
   });

@@ -83,6 +83,56 @@ describe("MockCoursesAdapter instructor drafts", () => {
     })).rejects.toThrow("Video upload requires API mode");
   });
 
+  it("submits drafts to the admin queue and supports approve/reject in mock mode", async () => {
+    const adapter = new MockCoursesAdapter();
+    const created = await adapter.createInstructorCourse({
+      title: "Cell Biology",
+      instructor: "Ada Lovelace",
+      category: "Biology",
+      description: "A local mock draft for course authoring.",
+      difficulty: "beginner",
+      totalLessons: 1,
+      initialStatus: "draft",
+      price: 29.99,
+      modules: [
+        {
+          title: "Foundations",
+          lessons: [
+            {
+              title: "Cells",
+              videoUrl: "https://example.com/video.mp4",
+              description: "Intro lesson",
+              duration: "10m",
+              estimatedCompletionTimeMinutes: 10,
+              notesContent: "Notes",
+              isFreePreview: true,
+              quizAvailable: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    await expect(adapter.getCourseModerationQueue()).resolves.toEqual([]);
+    const submitted = await adapter.submitCourseForApproval(created.id);
+    expect(submitted.publicationStatus).toBe("pending-approval");
+
+    const queue = await adapter.getCourseModerationQueue();
+    expect(queue).toHaveLength(1);
+    expect(queue[0].modules[0].lessons[0].title).toBe("Cells");
+    expect(queue[0].modules[0].lessons[0].quizId).toBeTruthy();
+
+    const approved = await adapter.reviewCoursePublication(created.id, "approved");
+    expect(approved.publicationStatus).toBe("approved");
+    await expect(adapter.getCourseModerationQueue()).resolves.toEqual([]);
+
+    const rejectedDraft = await adapter.submitCourseForApproval(created.id);
+    expect(rejectedDraft.publicationStatus).toBe("pending-approval");
+    const rejected = await adapter.reviewCoursePublication(created.id, "rejected", "Needs more detail");
+    expect(rejected.publicationStatus).toBe("rejected");
+    expect(rejected.rejectionReason).toBe("Needs more detail");
+  });
+
   it("adds standalone lessons to existing local drafts", async () => {
     const adapter = new MockCoursesAdapter();
     const created = await adapter.createInstructorCourse({

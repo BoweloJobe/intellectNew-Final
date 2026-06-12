@@ -79,6 +79,17 @@ Use this checklist for a practical manual pass before launch or demo builds.
 - In development, use configured SMTP or approved local reset-link logging.
 - In production-like env, confirm missing SMTP fails closed and does not reveal reset links.
 
+## Admin Moderation
+
+- Log in as an admin and confirm the default landing page is the admin dashboard, not the student course catalog.
+- Confirm the admin navbar shows Dashboard and Review Queue, not student-first links like Learn, Pricing, or Courses.
+- Open `/courses` or `/dashboard` directly as admin and confirm you are redirected back to the admin dashboard.
+- In the Course Review Queue, open a pending course and confirm you can see modules, lesson titles, video presence, quiz presence, and price/free info.
+- Approve a pending course and confirm success feedback plus queue refresh.
+- Reject a pending course with a note and confirm the rejection reason is shown.
+- In mock mode, submit an instructor draft for approval and confirm it appears in the admin queue, then approve it locally.
+- After approval in API mode, log in as a student and confirm the approved course appears in the student catalog.
+
 ## Video Upload
 
 - In mock mode, create a local draft course, add a module, add a lesson, and confirm the video upload UI is reachable.

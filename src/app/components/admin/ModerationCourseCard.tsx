@@ -35,10 +35,10 @@ export function ModerationCourseCard({
   onApprove,
   onReject,
 }: ModerationCourseCardProps) {
-  const [contentExpanded, setContentExpanded] = useState(false);
+  const isPending = course.publicationStatus === "pending-approval";
+  const [contentExpanded, setContentExpanded] = useState(isPending);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
 
-  const isPending = course.publicationStatus === "pending-approval";
   const isRejected = course.publicationStatus === "rejected";
   const isDraft = course.publicationStatus === "draft";
 
@@ -91,6 +91,10 @@ export function ModerationCourseCard({
                 <span>{totalLessons} {totalLessons === 1 ? "lesson" : "lessons"}</span>
                 <span className="text-gray-300">·</span>
                 <span>{course.estimatedHours}h</span>
+                <span className="text-gray-300">·</span>
+                <span>
+                  {course.price == null || course.price === 0 ? "Free" : `$${course.price}`}
+                </span>
                 {totalQuizzes > 0 ? (
                   <>
                     <span className="text-gray-300">·</span>
