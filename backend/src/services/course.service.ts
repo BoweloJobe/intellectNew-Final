@@ -21,6 +21,19 @@ import type {
 
 const STANDALONE_MODULE_TITLE = 'Standalone lessons'
 
+type SubmissionLessonCandidate = {
+  title: string | null
+  description: string | null
+  notes: string | null
+  videoUrl: string | null
+  videoUploadStatus: string | null
+  quiz: { questions: Array<{ id: string }> } | null
+}
+
+type SubmissionModuleCandidate = {
+  lessons: SubmissionLessonCandidate[]
+}
+
 // ─── Selectors ───────────────────────────────────────────────────────────────
 
 // Public/student-facing lesson fields (no internal storage keys)
@@ -201,6 +214,7 @@ export async function submitCourseForReview(courseId: string, instructorId: stri
   if (lessonCount === 0) {
     throw new AppError(422, 'Add at least one lesson before submitting for review')
   }
+  await assertCourseReadyForReview(course, courseId)
   return prisma.course.update({
     where: { id: courseId },
     data: { status: 'PENDING_REVIEW', rejectionReason: null },
@@ -724,6 +738,75 @@ async function assertCourseOwnership(courseId: string, instructorId: string) {
   if (!course) throw new AppError(404, 'Course not found')
   if (course.instructorId !== instructorId) throw new AppError(403, 'Access denied')
   return course
+}
+
+function hasMeaningfulText(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function lessonHasMeaningfulLearningContent(lesson: SubmissionLessonCandidate): boolean {
+  return (
+    hasMeaningfulText(lesson.videoUrl)
+    || lesson.videoUploadStatus === 'READY'
+    || hasMeaningfulText(lesson.notes)
+    || hasMeaningfulText(lesson.description)
+    || ((lesson.quiz?.questions.length ?? 0) > 0)
+  )
+}
+
+async function assertCourseReadyForReview(
+  course: { title?: string | null; description?: string | null },
+  courseId: string,
+) {
+  if (!hasMeaningfulText(course.title)) {
+    throw new AppError(422, 'Add a course title before submitting for review')
+  }
+
+  if (!hasMeaningfulText(course.description)) {
+    throw new AppError(422, 'Add a course description before submitting for review')
+  }
+
+  const modules = await prisma.courseModule.findMany({
+    where: { courseId },
+    select: {
+      id: true,
+      lessons: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          notes: true,
+          videoUrl: true,
+          videoUploadStatus: true,
+          quiz: {
+            select: {
+              questions: {
+                select: { id: true },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+
+  if (modules.length === 0) {
+    throw new AppError(422, 'Add at least one module before submitting for review')
+  }
+
+  const lessons = (modules as SubmissionModuleCandidate[]).flatMap((module) => module.lessons)
+  const hasLessonWithMeaningfulTitle = lessons.some((lesson) => hasMeaningfulText(lesson.title))
+  if (!hasLessonWithMeaningfulTitle) {
+    throw new AppError(422, 'Add a meaningful lesson title before submitting for review')
+  }
+
+  const hasMeaningfulLearningContent = lessons.some(lessonHasMeaningfulLearningContent)
+  if (!hasMeaningfulLearningContent) {
+    throw new AppError(
+      422,
+      'Add lesson learning content before submitting: attach a ready video, add notes or a description, or create a quiz question',
+    )
+  }
 }
 
 async function assertCourseAuthoringAccess(courseId: string, user: CourseAuthoringUser) {

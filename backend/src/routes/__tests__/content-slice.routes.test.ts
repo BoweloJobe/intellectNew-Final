@@ -112,7 +112,14 @@ function makeApp() {
 }
 
 function fakeCourse(overrides = {}) {
-  return { id: 'course-1', instructorId: 'user-1', status: 'DRAFT', title: 'Test', ...overrides }
+  return {
+    id: 'course-1',
+    instructorId: 'user-1',
+    status: 'DRAFT',
+    title: 'Test course',
+    description: 'A useful test course.',
+    ...overrides,
+  }
 }
 
 function fakeModule(overrides = {}) {
@@ -538,6 +545,22 @@ describe('POST /courses/:id/submit', () => {
   it('200 when course has at least one lesson', async () => {
     mockPrisma.course.findUnique.mockResolvedValue(fakeCourse({ status: 'DRAFT' }))
     mockPrisma.lesson.count.mockResolvedValue(1)
+    mockPrisma.courseModule.findMany.mockResolvedValue([
+      {
+        id: 'module-1',
+        lessons: [
+          {
+            id: 'lesson-1',
+            title: 'Useful lesson',
+            description: 'This lesson has useful learning content.',
+            notes: null,
+            videoUrl: null,
+            videoUploadStatus: null,
+            quiz: null,
+          },
+        ],
+      },
+    ])
     mockPrisma.course.update.mockResolvedValue({
       ...fakeCourse({ status: 'PENDING_REVIEW' }),
       instructor: { id: 'user-1', firstName: 'A', lastName: 'B', avatarUrl: null },
