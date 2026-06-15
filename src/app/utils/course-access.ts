@@ -1,56 +1,65 @@
-import type { SubscriptionOverview, SubscriptionStatus } from "../models/subscription";
-
-export const FREE_PREVIEW_LESSON_COUNT = 3;
+import type { AuthRole } from "../../services/auth";
+import type { CourseStatus } from "../models/courses";
 
 export type CourseAccessDecision = {
   isAccessible: boolean;
+  isLocked: boolean;
   isPremiumContent: boolean;
-  reason: "free" | "premium_requires_pro";
+  reason: "admin-preview" | "instructor-owner-preview" | "enrolled" | "free-preview" | "locked";
+  label: "Preview" | "Enrolled" | "Review" | "Locked";
 };
 
-function hasPremiumStatus(status: SubscriptionStatus): boolean {
-  return status === "active" || status === "expiring";
-}
-
-export function hasPremiumAccess(subscription: Pick<SubscriptionOverview, "status" | "hasProAccess">): boolean {
-  return subscription.hasProAccess && hasPremiumStatus(subscription.status);
-}
-
 export function getCourseAccessDecision(input: {
-  lessonOrder: number;
-  subscription: Pick<SubscriptionOverview, "status" | "hasProAccess">;
+  courseStatus?: CourseStatus;
+  role?: AuthRole | null;
   isFreePreview?: boolean;
+  isInstructorOwner?: boolean;
 }): CourseAccessDecision {
-  // Instructor-authored isFreePreview explicitly grants free access.
+  if (input.role === "admin") {
+    return {
+      isAccessible: true,
+      isLocked: false,
+      isPremiumContent: !input.isFreePreview,
+      reason: "admin-preview",
+      label: "Review",
+    };
+  }
+
+  if (input.role === "instructor" && input.isInstructorOwner === true) {
+    return {
+      isAccessible: true,
+      isLocked: false,
+      isPremiumContent: !input.isFreePreview,
+      reason: "instructor-owner-preview",
+      label: "Preview",
+    };
+  }
+
+  if (input.courseStatus && input.courseStatus !== "not-enrolled") {
+    return {
+      isAccessible: true,
+      isLocked: false,
+      isPremiumContent: !input.isFreePreview,
+      reason: "enrolled",
+      label: "Enrolled",
+    };
+  }
+
   if (input.isFreePreview === true) {
     return {
       isAccessible: true,
+      isLocked: false,
       isPremiumContent: false,
-      reason: "free",
-    };
-  }
-
-  const isPremiumContent = input.lessonOrder > FREE_PREVIEW_LESSON_COUNT;
-
-  if (!isPremiumContent) {
-    return {
-      isAccessible: true,
-      isPremiumContent: false,
-      reason: "free",
-    };
-  }
-
-  if (hasPremiumAccess(input.subscription)) {
-    return {
-      isAccessible: true,
-      isPremiumContent: true,
-      reason: "free",
+      reason: "free-preview",
+      label: "Preview",
     };
   }
 
   return {
     isAccessible: false,
+    isLocked: true,
     isPremiumContent: true,
-    reason: "premium_requires_pro",
+    reason: "locked",
+    label: "Locked",
   };
 }

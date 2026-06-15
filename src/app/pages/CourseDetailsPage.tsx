@@ -43,7 +43,7 @@ function hasCoverImage(value: string | undefined): value is string {
 }
 
 export function CourseDetailsPage() {
-  const { user, subscription, role } = useAuth();
+  const { user, role } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const { id } = useParams();
@@ -217,16 +217,16 @@ export function CourseDetailsPage() {
 
     const flattenedLessons = courseDetails.modules.flatMap((module) => module.lessons);
 
-    return flattenedLessons.reduce<Record<string, ReturnType<typeof getCourseAccessDecision>>>((accumulator, lesson, index) => {
+    return flattenedLessons.reduce<Record<string, ReturnType<typeof getCourseAccessDecision>>>((accumulator, lesson) => {
       accumulator[lesson.id] = getCourseAccessDecision({
-        lessonOrder: index + 1,
-        subscription,
+        courseStatus: status,
+        role,
         isFreePreview: lesson.isFreePreview,
       });
 
       return accumulator;
     }, {});
-  }, [courseDetails, subscription]);
+  }, [courseDetails, role, status]);
 
   const recommendedNextCourse = useMemo(() => {
     if (!courseDetails?.recommendedNextCourseId) {
@@ -446,11 +446,9 @@ export function CourseDetailsPage() {
                 <Button
                   size="sm"
                   className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
-                  onClick={() => {
-                    navigate(`/checkout?plan=pro&returnTo=${encodeURIComponent(location.pathname)}`);
-                  }}
+                  onClick={handleEnrollCourse}
                 >
-                  Upgrade to Pro
+                  {courseDetails.price && courseDetails.price > 0 ? "Buy Course" : "Enroll"}
                 </Button>
               </div>
             ) : null}
@@ -530,8 +528,9 @@ export function CourseDetailsPage() {
                     const isCompleted = completedLessonIds.includes(lesson.id);
                     const isCurrent = !isCompleted && nextLessonId === lesson.id;
                     const accessDecision = lessonAccessById[lesson.id] ?? getCourseAccessDecision({
-                      lessonOrder: Number.MAX_SAFE_INTEGER,
-                      subscription,
+                      courseStatus: status,
+                      role,
+                      isFreePreview: lesson.isFreePreview,
                     });
                     const isLocked = !accessDecision.isAccessible;
 
@@ -541,7 +540,11 @@ export function CourseDetailsPage() {
                           type="button"
                           onClick={() => {
                             if (isLocked) {
-                              setUpgradePrompt("Upgrade to Pro to unlock premium topics after the first 3 lessons.");
+                              setUpgradePrompt(
+                                courseDetails.price && courseDetails.price > 0
+                                  ? "Enroll or complete purchase to unlock this lesson."
+                                  : "Enroll in this course to unlock this lesson.",
+                              );
                               return;
                             }
 

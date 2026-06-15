@@ -1,7 +1,8 @@
 import { getRelatedLessons, getLessonsForCourse, lessonsMockById } from "../../../mocks/lessons.mock";
+import { ApiError } from "../../../api";
 import type { CourseLesson, CourseModule, InstructorManagedCourse } from "../../../models/courses";
 import type { VideoLesson } from "../../../models/lessons";
-import { getAllMockManagedCourses, getMockManagedCourseById } from "./courses.adapter";
+import { getAllMockManagedCourses, getMockManagedCourseById, isMockCourseEnrolled } from "./courses.adapter";
 import type { LessonWatchProgressInput, LessonsService, VideoLessonPageData } from "../../contracts/lessons.contract";
 import { LessonCourseMismatchError, LessonNotFoundError } from "../../contracts/lessons.contract";
 import { withMockDelay } from "../../mock-utils";
@@ -222,6 +223,14 @@ export class MockLessonsAdapter implements LessonsService {
 
     if (lesson.courseId !== courseId) {
       throw new LessonCourseMismatchError(lessonId, courseId);
+    }
+
+    if (!lesson.isFreePreview && !isMockCourseEnrolled(courseId)) {
+      throw new ApiError({
+        category: "http",
+        message: "Lesson is locked",
+        status: 403,
+      });
     }
 
     const furtherLessons = getFurtherFromCourseLessons(lesson, courseLessons);

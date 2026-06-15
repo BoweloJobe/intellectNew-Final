@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { getLessonQuizActionState, getLessonQuizRoute } from "./VideoLessonPage";
+import { ApiError } from "../api";
+import { getLessonQuizActionState, getLessonQuizRoute, isLessonAccessDeniedError } from "./VideoLessonPage";
 
 const videoLessonPageSource = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "VideoLessonPage.tsx"),
@@ -36,5 +37,23 @@ describe("VideoLessonPage lesson quiz behavior", () => {
     expect(videoLessonPageSource).not.toContain("LESSON_METADATA_CARD_TEST_ID");
     expect(videoLessonPageSource).not.toContain("No quiz for this lesson yet");
     expect(videoLessonPageSource).not.toContain("{lesson.courseName} / {lesson.moduleName}");
+  });
+
+  it("handles backend access denied responses as locked lesson access", () => {
+    expect(
+      isLessonAccessDeniedError(new ApiError({
+        category: "http",
+        message: "Lesson is locked",
+        status: 403,
+      })),
+    ).toBe(true);
+
+    expect(
+      isLessonAccessDeniedError(new ApiError({
+        category: "http",
+        message: "Lesson not found",
+        status: 404,
+      })),
+    ).toBe(false);
   });
 });

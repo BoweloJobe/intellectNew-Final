@@ -6,7 +6,6 @@ import {
   PlayCircle,
 } from "lucide-react";
 import type { VideoLesson } from "../../models/lessons";
-import type { SubscriptionOverview } from "../../models/subscription";
 import { getCourseAccessDecision } from "../../utils/course-access";
 
 function formatDuration(seconds: number): string {
@@ -32,7 +31,7 @@ interface LessonSidebarProps {
   completedLessonIds: string[];
   isCompleting: boolean;
   isLessonSwitching: boolean;
-  subscription: Pick<SubscriptionOverview, "status" | "hasProAccess">;
+  canReadAllCourseLessons: boolean;
   onSetUpgradePrompt: (msg: string | null) => void;
 }
 
@@ -43,7 +42,7 @@ export function LessonSidebar({
   completedLessonIds,
   isCompleting,
   isLessonSwitching,
-  subscription,
+  canReadAllCourseLessons,
   onSetUpgradePrompt,
 }: LessonSidebarProps) {
   const navigate = useNavigate();
@@ -90,8 +89,7 @@ export function LessonSidebar({
                     completedLessonIds.includes(candidate.id) ||
                     Boolean(candidate.isCompleted);
                   const accessDecision = getCourseAccessDecision({
-                    lessonOrder: candidate.lessonOrder,
-                    subscription,
+                    courseStatus: canReadAllCourseLessons ? "enrolled" : "not-enrolled",
                     isFreePreview: candidate.isFreePreview,
                   });
                   const isLocked = !accessDecision.isAccessible;
@@ -104,7 +102,7 @@ export function LessonSidebar({
                       onClick={() => {
                         if (isLocked) {
                           onSetUpgradePrompt(
-                            "Upgrade to Pro to unlock premium lessons.",
+                            "Enroll in this course to unlock this lesson.",
                           );
                           return;
                         }
@@ -191,7 +189,7 @@ export function LessonSidebar({
       {/* Nav hint — inline, no extra card */}
       <p className="mt-3 pt-3 border-t border-gray-100 text-[11px] text-gray-400 leading-relaxed">
         Select any lesson to jump to it.{" "}
-        <span className="text-amber-600">Premium</span> lessons require a Pro subscription.
+        <span className="text-amber-600">Locked</span> lessons require course enrollment.
       </p>
     </div>
   );

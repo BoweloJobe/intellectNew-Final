@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { BarChart3, Bookmark, CheckCircle2, PlayCircle } from "lucide-react";
 import { ActionSuccessState, DataErrorState } from "../components/DataState";
 import { GlassCard } from "../components/GlassCard";
@@ -21,6 +21,7 @@ import {
 import { useAuth } from "../auth/AuthContext";
 import { getAuthUserGreetingName } from "../auth/auth-normalizers";
 import { getCourseAccessDecision } from "../utils/course-access";
+import { toApiError } from "../api";
 import { LessonVideoPlayer } from "../components/lesson/LessonVideoPlayer";
 import { LessonNotes } from "../components/lesson/LessonNotes";
 import { LessonSidebar } from "../components/lesson/LessonSidebar";
@@ -35,6 +36,11 @@ export function getLessonQuizRoute(lesson: Pick<VideoLesson, "id" | "quizId">, c
   }
 
   return `/quizzes?quizId=${encodeURIComponent(lesson.quizId)}&lessonId=${encodeURIComponent(lesson.id)}&courseId=${encodeURIComponent(courseId)}`;
+}
+
+export function isLessonAccessDeniedError(error: unknown): boolean {
+  const apiError = toApiError(error);
+  return apiError.category === "http" && (apiError.status === 401 || apiError.status === 403);
 }
 
 export type LessonQuizActionState = "attempt" | "unavailable" | "hidden";
@@ -53,14 +59,13 @@ export function getLessonQuizActionState(
 export function VideoLessonPage() {
   const { courseId, lessonId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user, subscription } = useAuth();
+  const { user, role } = useAuth();
   const parsedCourseId = courseId ?? "";
 
   const { applyLessonCompletion } = useDashboardState();
   const { addRecentActivity, pushNotification } = useNotificationsState();
   const {
-    state: { bookmarks, courseLessonProgress },
+    state: { bookmarks, courseLessonProgress, enrolledCourseIds },
     completeCourseLesson,
     markCourseAccessed,
     toggleBookmark,
@@ -130,7 +135,11 @@ export function VideoLessonPage() {
         }
 
         setIsLessonSwitching(false);
-        setLessonLoadError(getAsyncErrorMessage(error, "Unable to load this video lesson right now."));
+        setLessonLoadError(
+          isLessonAccessDeniedError(error)
+            ? "This lesson is locked. Enroll in the course or use an authorized instructor/admin preview account to open it."
+            : getAsyncErrorMessage(error, "Unable to load this video lesson right now."),
+        );
         setViewState("error");
       });
   };
@@ -263,6 +272,8 @@ export function VideoLessonPage() {
   }, [nextLessonId, orderedCourseLessons]);
 
   const learnerName = getAuthUserGreetingName(user);
+  const canReadAllCourseLessons =
+    role === "admin" || enrolledCourseIds.includes(parsedCourseId) || !lesson?.isFreePreview;
 
   const sidebarLessons = useMemo(() => {
     if (orderedCourseLessons.length > 0) {
@@ -345,44 +356,17 @@ export function VideoLessonPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 pb-20">
         <DataErrorState
+          title={lessonLoadError?.includes("locked") ? "Lesson locked" : undefined}
           description={lessonLoadError ?? "Unable to load this video lesson right now."}
-          retryLabel="Try Again"
-          onRetry={reloadLessonPage}
+          retryLabel={lessonLoadError?.includes("locked") ? "Back to Course" : "Try Again"}
+          onRetry={() => {
+            if (lessonLoadError?.includes("locked")) {
+              navigate(`/courses/${parsedCourseId}`);
+              return;
+            }
+            reloadLessonPage();
+          }}
         />
-      </div>
-    );
-  }
-
-  const currentLessonAccess = getCourseAccessDecision({
-    lessonOrder: lesson.lessonOrder,
-    subscription,
-    isFreePreview: lesson.isFreePreview,
-  });
-
-  if (!currentLessonAccess.isAccessible) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 pb-20">
-        <GlassCard className="p-8 text-center">
-          <h1 className="text-2xl font-semibold text-gray-900 mb-3">Premium Lesson</h1>
-          <p className="text-gray-700 mb-5">Upgrade to Pro to continue beyond the first 3 free lessons in this course.</p>
-          <div className="flex items-center justify-center gap-3">
-            <Button
-              className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
-              onClick={() => {
-                navigate(`/checkout?plan=pro&returnTo=${encodeURIComponent(location.pathname)}`);
-              }}
-            >
-              Upgrade to Pro
-            </Button>
-            <Button
-              variant="outline"
-              className="bg-white/70"
-              onClick={() => { navigate(`/courses/${parsedCourseId}`); }}
-            >
-              Back to Course
-            </Button>
-          </div>
-        </GlassCard>
       </div>
     );
   }
@@ -406,21 +390,17 @@ export function VideoLessonPage() {
     }
 
     const access = getCourseAccessDecision({
-      lessonOrder: nextLesson.lessonOrder,
-      subscription,
+      courseStatus: canReadAllCourseLessons ? "enrolled" : "not-enrolled",
+      role,
       isFreePreview: nextLesson.isFreePreview,
     });
 
     if (!access.isAccessible) {
-      setUpgradePrompt("Upgrade to Pro to continue into premium lessons.");
+      setUpgradePrompt("Enroll in this course to unlock the next lesson.");
       return;
     }
 
     navigate(`/courses/${parsedCourseId}/lessons/${nextLessonId}`);
-  };
-
-  const handleUpgrade = () => {
-    navigate(`/checkout?plan=pro&returnTo=${encodeURIComponent(location.pathname)}`);
   };
 
   const handleMarkComplete = () => {
@@ -576,9 +556,11 @@ export function VideoLessonPage() {
                   type="button"
                   size="sm"
                   className="mt-2 bg-[#4a9ff5] text-white hover:bg-[#2e8ef7]"
-                  onClick={handleUpgrade}
+                  onClick={() => {
+                    navigate(`/courses/${parsedCourseId}`);
+                  }}
                 >
-                  Upgrade to Pro
+                  View Course
                 </Button>
               </div>
             ) : null}
@@ -602,7 +584,7 @@ export function VideoLessonPage() {
             completedLessonIds={completedLessonIds}
             isCompleting={isCompleting}
             isLessonSwitching={isLessonSwitching}
-            subscription={subscription}
+            canReadAllCourseLessons={canReadAllCourseLessons}
             onSetUpgradePrompt={setUpgradePrompt}
           />
         </aside>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   BarChart3,
   Bookmark,
@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import type { VideoLesson } from "../../models/lessons";
-import type { SubscriptionOverview } from "../../models/subscription";
 import { getCourseAccessDecision } from "../../utils/course-access";
 
 function formatDuration(seconds: number): string {
@@ -36,7 +35,7 @@ interface LessonHeaderProps {
   nextLesson: VideoLesson | null;
   nextLessonId: string | null;
   upgradePrompt: string | null;
-  subscription: Pick<SubscriptionOverview, "status" | "hasProAccess">;
+  canReadAllCourseLessons: boolean;
   onMarkComplete: () => void;
   onToggleBookmark: () => void;
   onSetUpgradePrompt: (msg: string | null) => void;
@@ -55,13 +54,12 @@ export function LessonHeader({
   nextLesson,
   nextLessonId,
   upgradePrompt,
-  subscription,
+  canReadAllCourseLessons,
   onMarkComplete,
   onToggleBookmark,
   onSetUpgradePrompt,
 }: LessonHeaderProps) {
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Quiz nudge dismiss state — scoped to session per lesson
   const [isQuizNudgeDismissed, setIsQuizNudgeDismissed] = useState(false);
@@ -83,12 +81,11 @@ export function LessonHeader({
   const handleNavigateNext = () => {
     if (!nextLesson || !nextLessonId) return;
     const access = getCourseAccessDecision({
-      lessonOrder: nextLesson.lessonOrder,
-      subscription,
+      courseStatus: canReadAllCourseLessons ? "enrolled" : "not-enrolled",
       isFreePreview: nextLesson.isFreePreview,
     });
     if (!access.isAccessible) {
-      onSetUpgradePrompt("Upgrade to Pro to continue into premium lessons.");
+      onSetUpgradePrompt("Enroll in this course to unlock the next lesson.");
       return;
     }
     navigate(`/courses/${parsedCourseId}/lessons/${nextLessonId}`);
@@ -111,12 +108,6 @@ export function LessonHeader({
         contextPrompt: lesson.aiPromptContext ?? `Help me understand ${lesson.title}.`,
       },
     });
-  };
-
-  const handleUpgrade = () => {
-    navigate(
-      `/checkout?plan=pro&returnTo=${encodeURIComponent(location.pathname)}`,
-    );
   };
 
   return (
@@ -299,9 +290,11 @@ export function LessonHeader({
           <Button
             size="sm"
             className="bg-[#4a9ff5] hover:bg-[#2e8ef7] text-white"
-            onClick={handleUpgrade}
+            onClick={() => {
+              navigate(`/courses/${parsedCourseId}`);
+            }}
           >
-            Upgrade to Pro
+            View Course
           </Button>
         </div>
       )}

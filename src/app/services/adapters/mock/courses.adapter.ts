@@ -18,6 +18,7 @@ import { withMockDelay } from "../../mock-utils";
 
 const MOCK_MANAGED_COURSES: InstructorManagedCourse[] = [];
 const MOCK_SAVED_COURSE_IDS = new Set<string>();
+const MOCK_ENROLLED_COURSE_IDS = new Set<string>();
 let mockCourseSequence = 1;
 const STANDALONE_MODULE_TITLE = "Standalone lessons";
 
@@ -31,6 +32,10 @@ export function getAllMockManagedCourses(): InstructorManagedCourse[] {
 
 export function getMockManagedCourseById(courseId: string): InstructorManagedCourse | undefined {
   return MOCK_MANAGED_COURSES.find((c) => c.id === courseId);
+}
+
+export function isMockCourseEnrolled(courseId: string): boolean {
+  return MOCK_ENROLLED_COURSE_IDS.has(courseId);
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -126,7 +131,17 @@ export class MockCoursesAdapter implements CoursesService {
   }
 
   async getEnrolledCoursesProgress() {
-    return withMockDelay([]);
+    return withMockDelay([...MOCK_ENROLLED_COURSE_IDS].map((courseId) => ({
+      courseId,
+      progress: 0,
+      resumeLessonId: null,
+      completedLessonIds: [],
+      lastAccessedAt: null,
+      totalLessons: 0,
+      completedLessons: 0,
+      currentModule: null,
+      modules: [],
+    })));
   }
 
   async getInstructorManagedCourses(): Promise<InstructorManagedCourse[]> {
@@ -271,7 +286,8 @@ export class MockCoursesAdapter implements CoursesService {
     return withMockDelay(updated);
   }
 
-  async enrollCourse(): Promise<void> {
+  async enrollCourse(courseId: string): Promise<void> {
+    MOCK_ENROLLED_COURSE_IDS.add(courseId);
     await mockCourseMutation();
   }
 
