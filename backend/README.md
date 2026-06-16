@@ -5,9 +5,7 @@ Node.js + Express + TypeScript + Prisma backend for IntellectX.
 ## Prerequisites
 
 - Node.js 20+
-- SQLite for current local development (`DATABASE_URL="file:./dev.db"`)
-
-PostgreSQL is the intended production database target, but that migration has not been implemented yet.
+- PostgreSQL 14+ for local development and production
 
 ## Setup
 
@@ -18,11 +16,16 @@ npm install
 # 2. Copy environment config
 cp .env.example .env
 # Fill in DATABASE_URL, JWT_SECRET, and FRONTEND_URL in .env
+# Example local DATABASE_URL:
+# postgresql://postgres:postgres@localhost:5432/intellectx_dev?schema=public
 
 # 3. Generate Prisma client
 npm run db:generate
 
-# 4. Run dev server
+# 4. Apply committed migrations
+npm run db:migrate:deploy
+
+# 5. Run dev server
 npm run dev
 ```
 
@@ -46,7 +49,7 @@ Frontend course authoring must also be API-backed for upload testing. Set
 Before production startup, configure:
 
 - `NODE_ENV=production`
-- `DATABASE_URL`
+- `DATABASE_URL` for a managed PostgreSQL database
 - `JWT_SECRET` with at least 32 characters
 - `FRONTEND_URL` set to the deployed frontend origin
 - SMTP variables for password reset email delivery
@@ -78,14 +81,14 @@ If SMTP is missing in production, password reset requests fail closed and reset 
 | `npm run db:validate` | Validate the Prisma schema |
 | `npm run db:generate` | Generate Prisma Client |
 | `npm run db:migrate` | Create/apply Prisma development migrations |
-| `npm run db:migrate:deploy` | Apply committed migrations to a fresh or existing SQLite database |
+| `npm run db:migrate:deploy` | Apply committed migrations to a PostgreSQL database |
 | `npm run db:studio` | Open Prisma Studio |
 
 ## Database status
 
-Prisma currently uses SQLite via `backend/prisma/schema.prisma`. The local default is `DATABASE_URL="file:./dev.db"`, and local `.db` files are ignored by git and must not be committed.
+Prisma uses PostgreSQL via `backend/prisma/schema.prisma`. Local development should point `DATABASE_URL` at a local PostgreSQL database; production must use managed PostgreSQL.
 
-The committed SQLite migration chain is replayable for fresh development databases. Local prototype setup can still use Prisma Client generation and the existing local `prisma db push` flow, but `prisma db push` is not production-safe. Production should move to PostgreSQL with committed PostgreSQL migrations and `prisma migrate deploy`.
+The committed migration chain is a clean PostgreSQL baseline because the previous SQLite migrations were pre-production. It is deployable to fresh PostgreSQL databases with `npm run db:migrate:deploy`. Do not use `prisma db push` for production.
 
 ## Health endpoint
 

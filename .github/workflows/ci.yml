@@ -41,6 +41,24 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: intellectx_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d intellectx_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/intellectx_ci?schema=public
+      JWT_SECRET: test-secret-at-least-32-characters-long
+      NODE_ENV: test
 
     steps:
       - name: Checkout
@@ -59,14 +77,20 @@ jobs:
       - name: Install backend dependencies
         run: npm ci --prefix backend
 
+      - name: Validate Prisma schema
+        run: npm run db:validate --prefix backend
+
       - name: Generate Prisma client
         run: npm run db:generate --prefix backend
+
+      - name: Deploy Prisma migrations
+        run: npm run db:migrate:deploy --prefix backend
 
       - name: Typecheck
         run: npm run typecheck --prefix backend
 
       - name: Test
         run: npm test --prefix backend
-        env:
-          JWT_SECRET: test-secret-at-least-32-characters-long
-          DATABASE_URL: file:./dev.db
+
+      - name: Build
+        run: npm run build --prefix backend

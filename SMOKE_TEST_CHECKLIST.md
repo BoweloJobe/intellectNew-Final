@@ -5,6 +5,8 @@ Use this checklist for a practical manual pass before launch or demo builds.
 ## Startup
 
 - Install dependencies at the repo root and backend if needed.
+- Provision or start PostgreSQL and set `backend/.env` `DATABASE_URL`.
+- Apply database migrations with `npm run db:migrate:deploy --prefix backend`.
 - Start the app with `npm run dev`.
 - Confirm the frontend loads at `http://localhost:5173`.
 - Confirm the backend health endpoint returns OK at `http://localhost:4000/api/health`.
@@ -28,7 +30,7 @@ Use this checklist for a practical manual pass before launch or demo builds.
 - Edit the draft and add a module.
 - Add a lesson with title, description, duration, notes, and estimated completion time.
 - Save and confirm the module/lesson appears when editing the draft again.
-- From the course list, use Add Lesson on an existing course, including an approved course if available.
+- From the course list, use Add Lesson on an editable draft or rejected course.
 - Confirm the standalone lesson is added under the course and the edit flow opens so the lesson can be completed.
 
 ## Payment And Enrollment
@@ -96,6 +98,6 @@ Use this checklist for a practical manual pass before launch or demo builds.
 - In mock mode, add a standalone lesson to an existing course and confirm the video upload UI is reachable for that lesson.
 - In mock mode, attempt lesson video upload and confirm the app says API mode and configured storage are required.
 - In API mode without storage configured, attempt lesson video upload and confirm the app shows a clear storage-not-configured failure.
-- In API mode, add a standalone lesson to an existing or approved course and confirm the lesson persists before attempting upload.
+- In API mode, add a standalone lesson to an editable draft or rejected course and confirm the lesson persists before attempting upload.
 - In API mode with storage configured, create or edit a course lesson, upload a supported video file, and confirm the signed upload flow moves the lesson to a ready/uploaded state.
 - Confirm manual video URL entry remains a fallback and is not required for the signed upload flow.

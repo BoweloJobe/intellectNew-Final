@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -7,7 +7,7 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// SQLite note: enums are stored as String, Json fields as String (serialized in app code).
+// Status-like values are stored as strings to preserve the existing application contracts.
 
 model User {
   id           String   @id @default(cuid())
@@ -96,6 +96,8 @@ model Course {
   savedBy     SavedCourse[]
   lessonWatchProgress LessonWatchProgress[]
 
+  @@index([status, publishedAt])
+  @@index([instructorId, status])
   @@map("courses")
 }
 
@@ -124,6 +126,7 @@ model CourseModule {
   course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons Lesson[]
 
+  @@index([courseId, order])
   @@map("course_modules")
 }
 
@@ -151,6 +154,8 @@ model Lesson {
   progress LessonProgress[]
   watchProgress LessonWatchProgress[]
 
+  @@index([courseId, order])
+  @@index([moduleId, order])
   @@map("lessons")
 }
 
@@ -181,6 +186,7 @@ model LessonProgress {
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
   @@unique([userId, lessonId])
+  @@index([userId, courseId])
   @@map("lesson_progress")
 }
 
@@ -282,6 +288,7 @@ model QuizAttempt {
   answers QuizAttemptAnswer[]
 
   @@index([quizId, userId, status])
+  @@index([userId, submittedAt])
   @@map("quiz_attempts")
 }
 
@@ -322,6 +329,8 @@ model Payment {
   course     Course      @relation(fields: [courseId], references: [id])
   enrollment Enrollment?
 
+  @@index([userId, courseId, status])
+  @@index([courseId, status])
   @@map("payments")
 }
 
@@ -337,6 +346,7 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, createdAt])
   @@map("notifications")
 }
 

@@ -11,6 +11,7 @@ Full-stack education platform — React + Vite frontend, Express + Prisma backen
 
 - Node.js `>=20`
 - npm `>=10`
+- PostgreSQL 14+ for backend development and production
 
 ---
 
@@ -27,22 +28,22 @@ cp .env.example .env.local
 # 3. Copy backend env and install backend dependencies
 cp backend/.env.example backend/.env
 # Edit backend/.env – at minimum set a real JWT_SECRET (>=32 chars)
-# Local backend development currently uses SQLite: DATABASE_URL="file:./dev.db"
+# Set DATABASE_URL to PostgreSQL, for example:
+# DATABASE_URL="postgresql://postgres:postgres@localhost:5432/intellectx_dev?schema=public"
 
-# 4. Install backend dependencies + initialise the database
+# 4. Install backend dependencies + apply committed migrations
 npm run setup
 ```
 
-`npm run setup` does: `npm install` (root) → `npm install` (backend) → `prisma generate` → `prisma db push`.
-This is a local prototype/development flow for the current SQLite schema. `prisma db push` is not production-safe.
+`npm run setup` does: `npm install` (root) -> `npm install` (backend) -> `prisma generate` -> `prisma migrate deploy`.
+Ensure the PostgreSQL database named in `backend/.env` exists before running setup.
 
 > Re-run `npm run setup` any time you pull schema changes from git.
 
-Current database reality: Prisma is configured for SQLite in `backend/prisma/schema.prisma`, using `DATABASE_URL="file:./dev.db"` from `backend/.env.example`. Local `.db` files are ignored and must not be committed.
+Current database reality: Prisma is configured for PostgreSQL in `backend/prisma/schema.prisma`. Production deployments must use a managed PostgreSQL database and run committed migrations with `npm run db:migrate:deploy --prefix backend`.
 
-The committed SQLite migration chain is replayable for fresh development databases with `npm run db:migrate:deploy --prefix backend`.
+Migration history note: the repository now uses a clean PostgreSQL baseline because the previous SQLite migration chain was pre-production. This is not an in-place SQLite data migration path.
 
-Production database target: PostgreSQL. PostgreSQL migration work remains separate future work. Production should eventually use Prisma migrations and `prisma migrate deploy`, not `prisma db push`.
 
 ---
 
@@ -145,7 +146,7 @@ Minimum required in `backend/.env`:
 
 | Variable | Required | Default | Notes |
 |----------|----------|---------|-------|
-| `DATABASE_URL` | ✅ | `file:./dev.db` locally | Current local SQLite URL. PostgreSQL is the planned production target, not active yet. |
+| `DATABASE_URL` | ✅ | `postgresql://postgres:postgres@localhost:5432/intellectx_dev?schema=public` locally | PostgreSQL connection string. Production requires managed PostgreSQL. |
 | `JWT_SECRET` | ✅ | — | Must be ≥ 32 characters |
 | `PORT` | | `4000` | Backend HTTP port |
 | `FRONTEND_URL` | | `http://localhost:5173` | Used for CORS |

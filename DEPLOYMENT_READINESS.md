@@ -13,19 +13,30 @@ Use this as a pre-launch checklist. It documents readiness only; it does not dep
 ## Backend
 
 - Set `NODE_ENV=production`.
-- Set `DATABASE_URL` for the production database.
+- Provision a managed PostgreSQL database.
+- Set `DATABASE_URL` to the managed PostgreSQL connection string.
 - Set a random `JWT_SECRET` with at least 32 characters.
 - Set `FRONTEND_URL` to the deployed frontend origin for CORS.
 - Set SMTP variables for password reset email delivery: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM`.
 - Set lesson video storage variables before testing instructor uploads: `STORAGE_PROVIDER=SUPABASE`, `STORAGE_BUCKET`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
 - Configure PayPal variables only when payments are enabled in the deployment: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MODE`, `PAYPAL_PLAN_ID_MONTHLY`, and `PAYPAL_PLAN_ID_ANNUAL`.
+- Run `npm run db:migrate:deploy --prefix backend` before starting the production backend.
+- Create/admin bootstrap is a later task unless a deployment-specific operator account already exists.
+- After startup, run the backend health check at `/api/health`.
 - Run `npm run typecheck --prefix backend`, `npm test --prefix backend`, and `npm run build --prefix backend`.
 
 ## Database
 
-- Current local development uses SQLite.
+- Prisma uses PostgreSQL.
+- Production requires managed PostgreSQL; do not deploy with local files or ephemeral database storage.
 - Do not use `prisma db push` as a production migration process.
-- Production database migration work should use committed Prisma migrations and `prisma migrate deploy`.
+- Use committed Prisma migrations and `npm run db:migrate:deploy --prefix backend`.
+- The current migration chain is a clean PostgreSQL baseline because the previous SQLite migrations were pre-production. It is not an in-place SQLite data migration.
+
+## Remaining Production Risks
+
+- SMTP, storage, and PayPal environment fail-fast behavior still need separate production-hardening coverage.
+- Admin bootstrap is not implemented by this checklist and must be handled before launch.
 
 ## Course And Video Testing
 

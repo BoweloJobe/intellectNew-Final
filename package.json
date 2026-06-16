@@ -26,7 +26,7 @@
     "test:coverage": "vitest run --coverage",
     "verify": "npm run typecheck && npm run test && npm run build",
     "check": "npm run verify",
-    "setup": "npm install && npm install --prefix backend && npm run db:generate --prefix backend && npm run db:push --prefix backend"
+    "setup": "npm install && npm install --prefix backend && npm run db:generate --prefix backend && npm run db:migrate:deploy --prefix backend"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.3",
