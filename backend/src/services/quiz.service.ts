@@ -15,6 +15,8 @@ import type {
 const ATTEMPT_STATUS_IN_PROGRESS = 'IN_PROGRESS'
 const ATTEMPT_STATUS_SUBMITTED = 'SUBMITTED'
 const ATTEMPT_STATUS_EXPIRED = 'EXPIRED'
+const APPROVED_COURSE_READ_ONLY_MESSAGE =
+  'Approved courses are read-only. Create a revision before changing live content.'
 
 // ─── Shared selectors ─────────────────────────────────────────────────────────
 
@@ -79,7 +81,7 @@ const quizStudentSelect = {
 async function assertLessonOwnership(lessonId: string, instructorId: string) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    include: { module: { include: { course: { select: { instructorId: true } } } } },
+    include: { module: { include: { course: { select: { instructorId: true, status: true } } } } },
   })
   if (!lesson) throw new AppError(404, 'Lesson not found')
   if (lesson.module.course.instructorId !== instructorId) throw new AppError(403, 'Access denied')
@@ -91,7 +93,7 @@ async function assertQuizOwnership(quizId: string, instructorId: string) {
     where: { id: quizId },
     include: {
       lesson: {
-        include: { module: { include: { course: { select: { instructorId: true } } } } },
+        include: { module: { include: { course: { select: { instructorId: true, status: true } } } } },
       },
     },
   })
@@ -110,10 +112,17 @@ async function assertQuizOwnership(quizId: string, instructorId: string) {
   return quiz
 }
 
+function assertCourseMutable(status: string) {
+  if (status !== 'DRAFT' && status !== 'REJECTED') {
+    throw new AppError(409, APPROVED_COURSE_READ_ONLY_MESSAGE)
+  }
+}
+
 // ─── Instructor: Quiz authoring ───────────────────────────────────────────────
 
 export async function createQuiz(lessonId: string, instructorId: string, input: CreateQuizInput) {
-  await assertLessonOwnership(lessonId, instructorId)
+  const lesson = await assertLessonOwnership(lessonId, instructorId)
+  assertCourseMutable(lesson.module.course.status)
 
   const existing = await prisma.quiz.findUnique({ where: { lessonId } })
   if (existing) throw new AppError(409, 'This lesson already has a quiz')
@@ -166,7 +175,10 @@ export async function createStandaloneQuiz(
 }
 
 export async function updateQuiz(quizId: string, instructorId: string, input: UpdateQuizInput) {
-  await assertQuizOwnership(quizId, instructorId)
+  const quiz = await assertQuizOwnership(quizId, instructorId)
+  if (quiz.lessonId !== null && quiz.lesson) {
+    assertCourseMutable(quiz.lesson.module.course.status)
+  }
   return prisma.quiz.update({
     where: { id: quizId },
     data: input,
@@ -189,7 +201,10 @@ export async function addQuestion(
   instructorId: string,
   input: CreateQuestionInput,
 ) {
-  await assertQuizOwnership(quizId, instructorId)
+  const quiz = await assertQuizOwnership(quizId, instructorId)
+  if (quiz.lessonId !== null && quiz.lesson) {
+    assertCourseMutable(quiz.lesson.module.course.status)
+  }
 
   const questionType = input.questionType ?? 'MCQ'
   const options = input.options ?? []
@@ -234,7 +249,7 @@ export async function updateQuestion(
       quiz: {
         include: {
           lesson: {
-            include: { module: { include: { course: { select: { instructorId: true } } } } },
+            include: { module: { include: { course: { select: { instructorId: true, status: true } } } } },
           },
         },
       },
@@ -249,6 +264,7 @@ export async function updateQuestion(
     if (!quiz.lesson || quiz.lesson.module.course.instructorId !== instructorId) {
       throw new AppError(403, 'Access denied')
     }
+    assertCourseMutable(quiz.lesson.module.course.status)
   }
 
   return prisma.quizQuestion.update({ where: { id: questionId }, data: input })
@@ -261,7 +277,7 @@ export async function deleteQuestion(questionId: string, instructorId: string) {
       quiz: {
         include: {
           lesson: {
-            include: { module: { include: { course: { select: { instructorId: true } } } } },
+            include: { module: { include: { course: { select: { instructorId: true, status: true } } } } },
           },
         },
       },
@@ -276,6 +292,7 @@ export async function deleteQuestion(questionId: string, instructorId: string) {
     if (!quiz.lesson || quiz.lesson.module.course.instructorId !== instructorId) {
       throw new AppError(403, 'Access denied')
     }
+    assertCourseMutable(quiz.lesson.module.course.status)
   }
 
   await prisma.quizQuestion.delete({ where: { id: questionId } })

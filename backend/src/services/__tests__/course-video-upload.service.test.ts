@@ -27,7 +27,7 @@ function lessonRecord(overrides = {}) {
     courseId: 'course-1',
     moduleId: 'module-1',
     module: {
-      course: { instructorId: 'instructor-1' },
+      course: { instructorId: 'instructor-1', status: 'DRAFT' },
     },
     ...overrides,
   }

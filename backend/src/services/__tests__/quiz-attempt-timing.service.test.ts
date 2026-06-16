@@ -72,7 +72,7 @@ describe('quiz attempt timing service', () => {
   it('saves a lesson quiz time limit for instructor-authored quizzes', async () => {
     mockPrisma.lesson.findUnique.mockResolvedValue({
       id: 'lesson-1',
-      module: { course: { instructorId: 'instructor-1' } },
+      module: { course: { instructorId: 'instructor-1', status: 'DRAFT' } },
     })
     mockPrisma.quiz.findUnique.mockResolvedValue(null)
     mockPrisma.quiz.create.mockResolvedValue({

@@ -231,7 +231,7 @@ export function CourseStatusCard({
           </Button>
         )}
 
-        {onAddLesson && (
+        {canEdit && onAddLesson && (
           <Button
             type="button"
             variant="outline"

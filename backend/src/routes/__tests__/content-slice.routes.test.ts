@@ -126,7 +126,7 @@ function fakeModule(overrides = {}) {
   return {
     id: 'module-1',
     courseId: 'course-1',
-    course: { instructorId: 'user-1' },
+    course: { instructorId: 'user-1', status: 'DRAFT' },
     ...overrides,
   }
 }
@@ -136,7 +136,7 @@ function fakeLesson(overrides = {}) {
     id: 'lesson-1',
     moduleId: 'module-1',
     courseId: 'course-1',
-    module: { course: { instructorId: 'user-1' } },
+    module: { course: { instructorId: 'user-1', status: 'DRAFT' } },
     ...overrides,
   }
 }

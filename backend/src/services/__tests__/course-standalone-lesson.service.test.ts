@@ -35,8 +35,8 @@ const baseCourse = {
   thumbnailUrl: null,
   estimatedHours: null,
   price: 0,
-  status: 'APPROVED',
-  publishedAt: new Date('2026-06-01T10:00:00.000Z'),
+  status: 'DRAFT',
+  publishedAt: null,
   createdAt: new Date('2026-06-01T09:00:00.000Z'),
   instructorId: 'instructor-1',
   instructor: {
@@ -61,7 +61,7 @@ describe('course standalone lesson service', () => {
     mockPrisma.lesson.create.mockResolvedValue({ id: 'lesson-1' })
   })
 
-  it('adds a standalone lesson to an approved course by creating the default module', async () => {
+  it('adds a standalone lesson to a draft course by creating the default module', async () => {
     await createStandaloneLesson(
       'course-1',
       { id: 'instructor-1', role: 'INSTRUCTOR' },

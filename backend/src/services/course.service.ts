@@ -20,6 +20,8 @@ import type {
 } from '../validation/course.validation.js'
 
 const STANDALONE_MODULE_TITLE = 'Standalone lessons'
+const APPROVED_COURSE_READ_ONLY_MESSAGE =
+  'Approved courses are read-only. Create a revision before changing live content.'
 
 type SubmissionLessonCandidate = {
   title: string | null
@@ -196,7 +198,8 @@ export async function updateCourse(
   instructorId: string,
   input: UpdateCourseInput,
 ) {
-  await assertCourseOwnership(courseId, instructorId)
+  const course = await assertCourseOwnership(courseId, instructorId)
+  assertCourseMutable(course.status)
   return prisma.course.update({
     where: { id: courseId },
     data: input,
@@ -264,7 +267,8 @@ export async function requestLessonVideoUpload(
   user: CourseAuthoringUser,
   input: RequestLessonVideoUploadInput,
 ) {
-  await assertLessonAuthoringAccess(courseId, moduleId, lessonId, user)
+  const lesson = await assertLessonAuthoringAccess(courseId, moduleId, lessonId, user)
+  assertCourseMutable(lesson.module.course.status)
   const intent = await generateUploadIntent({
     courseId,
     moduleId,
@@ -292,7 +296,8 @@ export async function attachLessonVideo(
   user: CourseAuthoringUser,
   input: AttachLessonVideoInput,
 ) {
-  await assertLessonAuthoringAccess(courseId, moduleId, lessonId, user)
+  const lesson = await assertLessonAuthoringAccess(courseId, moduleId, lessonId, user)
+  assertCourseMutable(lesson.module.course.status)
   assertLessonVideoStorageKey(input.videoStorageKey, { courseId, moduleId, lessonId })
   await verifyStoredVideoExists(input.videoStorageKey)
   const videoUrl = buildPublicVideoUrl(input.videoStorageKey)
@@ -453,7 +458,8 @@ export async function createModule(
   instructorId: string,
   input: CreateModuleInput,
 ) {
-  await assertCourseOwnership(courseId, instructorId)
+  const course = await assertCourseOwnership(courseId, instructorId)
+  assertCourseMutable(course.status)
   return prisma.courseModule.create({
     data: { courseId, title: input.title, order: input.order },
   })
@@ -464,7 +470,8 @@ export async function updateModule(
   instructorId: string,
   input: UpdateModuleInput,
 ) {
-  await assertModuleOwnership(moduleId, instructorId)
+  const module = await assertModuleOwnership(moduleId, instructorId)
+  assertCourseMutable(module.course.status)
   return prisma.courseModule.update({
     where: { id: moduleId },
     data: input,
@@ -473,6 +480,7 @@ export async function updateModule(
 
 export async function deleteModule(moduleId: string, instructorId: string) {
   const module = await assertModuleOwnership(moduleId, instructorId)
+  assertCourseMutable(module.course.status)
   // Guard: if any student has completed a lesson inside this module, refuse
   const progressCount = await prisma.lessonProgress.count({
     where: { lesson: { moduleId } },
@@ -491,7 +499,8 @@ export async function createLesson(
   instructorId: string,
   input: CreateLessonInput,
 ) {
-  await assertCourseOwnership(courseId, instructorId)
+  const course = await assertCourseOwnership(courseId, instructorId)
+  assertCourseMutable(course.status)
   await assertModuleBelongsToCourse(moduleId, courseId)
   return prisma.lesson.create({
     data: { ...input, moduleId, courseId },
@@ -503,7 +512,8 @@ export async function createStandaloneLesson(
   user: CourseAuthoringUser,
   input: CreateStandaloneLessonInput,
 ) {
-  await assertCourseAuthoringAccess(courseId, user)
+  const course = await assertCourseAuthoringAccess(courseId, user)
+  assertCourseMutable(course.status)
 
   let module = await prisma.courseModule.findFirst({
     where: { courseId, title: STANDALONE_MODULE_TITLE },
@@ -545,7 +555,8 @@ export async function updateLesson(
   instructorId: string,
   input: UpdateLessonInput,
 ) {
-  await assertLessonOwnership(lessonId, instructorId)
+  const lesson = await assertLessonOwnership(lessonId, instructorId)
+  assertCourseMutable(lesson.module.course.status)
   return prisma.lesson.update({
     where: { id: lessonId },
     data: input,
@@ -553,7 +564,8 @@ export async function updateLesson(
 }
 
 export async function deleteLesson(lessonId: string, instructorId: string) {
-  await assertLessonOwnership(lessonId, instructorId)
+  const lesson = await assertLessonOwnership(lessonId, instructorId)
+  assertCourseMutable(lesson.module.course.status)
   const progressCount = await prisma.lessonProgress.count({ where: { lessonId } })
   if (progressCount > 0) {
     throw new AppError(409, 'Cannot delete a lesson that has student progress')
@@ -740,6 +752,12 @@ async function assertCourseOwnership(courseId: string, instructorId: string) {
   return course
 }
 
+function assertCourseMutable(status: string) {
+  if (status !== 'DRAFT' && status !== 'REJECTED') {
+    throw new AppError(409, APPROVED_COURSE_READ_ONLY_MESSAGE)
+  }
+}
+
 function hasMeaningfulText(value: string | null | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0
 }
@@ -821,7 +839,7 @@ async function assertCourseAuthoringAccess(courseId: string, user: CourseAuthori
 async function assertModuleOwnership(moduleId: string, instructorId: string) {
   const module = await prisma.courseModule.findUnique({
     where: { id: moduleId },
-    include: { course: { select: { instructorId: true } } },
+    include: { course: { select: { instructorId: true, status: true } } },
   })
   if (!module) throw new AppError(404, 'Module not found')
   if (module.course.instructorId !== instructorId) throw new AppError(403, 'Access denied')
@@ -831,7 +849,7 @@ async function assertModuleOwnership(moduleId: string, instructorId: string) {
 async function assertLessonOwnership(lessonId: string, instructorId: string) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    include: { module: { include: { course: { select: { instructorId: true } } } } },
+    include: { module: { include: { course: { select: { instructorId: true, status: true } } } } },
   })
   if (!lesson) throw new AppError(404, 'Lesson not found')
   if (lesson.module.course.instructorId !== instructorId) throw new AppError(403, 'Access denied')
@@ -846,7 +864,7 @@ async function assertLessonAuthoringAccess(
 ) {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    include: { module: { include: { course: { select: { instructorId: true } } } } },
+    include: { module: { include: { course: { select: { instructorId: true, status: true } } } } },
   })
   if (!lesson) throw new AppError(404, 'Lesson not found')
   if (lesson.courseId !== courseId || lesson.moduleId !== moduleId) {
