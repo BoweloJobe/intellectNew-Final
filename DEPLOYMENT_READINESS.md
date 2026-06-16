@@ -22,8 +22,12 @@ Use this as a pre-launch checklist. It documents readiness only; it does not dep
 - Set `ENABLE_PAYMENTS=true` and PayPal variables when payments are enabled in the deployment: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_MODE`.
 - To intentionally disable a feature in production, set `ENABLE_PAYMENTS=false`, `ENABLE_VIDEO_UPLOADS=false`, or `ENABLE_EMAIL_DELIVERY=false`; the matching checkout, signed-upload, or email/password-reset capability is unavailable.
 - Run `npm run db:migrate:deploy --prefix backend` before starting the production backend.
-- Create/admin bootstrap is a later task unless a deployment-specific operator account already exists.
+- Create the first admin after migrations with `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optional `ADMIN_NAME`:
+  `npm run admin:bootstrap --prefix backend`.
+- Use `ADMIN_PROMOTE_EXISTING=true` or `--promote-existing` only when intentionally promoting an existing non-admin user with the same email.
+- Use unique staging and production admin credentials. The bootstrap command never prints the password.
 - After startup, run the backend health check at `/api/health`. A healthy response means backend startup config validation passed.
+- Verify admin login through the normal auth flow and confirm the admin dashboard is reachable.
 - Run `npm run typecheck --prefix backend`, `npm test --prefix backend`, and `npm run build --prefix backend`.
 
 ## Database
@@ -36,7 +40,6 @@ Use this as a pre-launch checklist. It documents readiness only; it does not dep
 
 ## Remaining Production Risks
 
-- Admin bootstrap is not implemented by this checklist and must be handled before launch.
 - PayPal subscription plan IDs remain optional because current subscription checkout does not call PayPal subscriptions yet; configure them before enabling live subscription checkout URLs.
 
 ## Course And Video Testing

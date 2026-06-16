@@ -44,6 +44,13 @@ Current database reality: Prisma is configured for PostgreSQL in `backend/prisma
 
 Migration history note: the repository now uses a clean PostgreSQL baseline because the previous SQLite migration chain was pre-production. This is not an in-place SQLite data migration path.
 
+Fresh databases require an explicit first-admin bootstrap after migrations:
+
+```sh
+ADMIN_EMAIL=ops@example.com ADMIN_PASSWORD='use-a-strong-unique-password' ADMIN_NAME='Ops Admin' npm run admin:bootstrap --prefix backend
+```
+
+Use unique staging and production credentials. The password is never printed.
 
 ---
 
@@ -176,6 +183,8 @@ npm run verify      # all three in sequence
 ```
 
 Backend tests: `cd backend && npm test`
+
+Admin bootstrap: `ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run admin:bootstrap --prefix backend`
 
 ---
 

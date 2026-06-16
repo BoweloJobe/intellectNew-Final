@@ -7,6 +7,7 @@ Use this checklist for a practical manual pass before launch or demo builds.
 - Install dependencies at the repo root and backend if needed.
 - Provision or start PostgreSQL and set `backend/.env` `DATABASE_URL`.
 - Apply database migrations with `npm run db:migrate:deploy --prefix backend`.
+- For a fresh database, create the first admin with `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and optional `ADMIN_NAME` using `npm run admin:bootstrap --prefix backend`.
 - Start the app with `npm run dev`.
 - Confirm the frontend loads at `http://localhost:5173`.
 - Confirm the backend health endpoint returns OK at `http://localhost:4000/api/health`.
@@ -83,6 +84,7 @@ Use this checklist for a practical manual pass before launch or demo builds.
 
 ## Admin Moderation
 
+- Log in with the bootstrapped admin account and confirm the password was not printed by the bootstrap command.
 - Log in as an admin and confirm the default landing page is the admin dashboard, not the student course catalog.
 - Confirm the admin navbar shows Dashboard and Review Queue, not student-first links like Learn, Pricing, or Courses.
 - Open `/courses` or `/dashboard` directly as admin and confirm you are redirected back to the admin dashboard.

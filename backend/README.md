@@ -25,7 +25,10 @@ npm run db:generate
 # 4. Apply committed migrations
 npm run db:migrate:deploy
 
-# 5. Run dev server
+# 5. Optional: create the first admin in a fresh database
+ADMIN_EMAIL=ops@example.com ADMIN_PASSWORD='use-a-strong-unique-password' ADMIN_NAME='Ops Admin' npm run admin:bootstrap
+
+# 6. Run dev server
 npm run dev
 ```
 
@@ -67,6 +70,34 @@ Production feature flags default to enabled when omitted. To intentionally ship 
 
 The backend only reports healthy after production env validation passes.
 
+## First Admin Bootstrap
+
+Fresh databases do not create an admin automatically. After migrations and before launch, create the first admin from the backend package:
+
+```bash
+ADMIN_EMAIL=ops@example.com ADMIN_PASSWORD='use-a-strong-unique-password' ADMIN_NAME='Ops Admin' npm run admin:bootstrap
+```
+
+From the repository root:
+
+```bash
+ADMIN_EMAIL=ops@example.com ADMIN_PASSWORD='use-a-strong-unique-password' ADMIN_NAME='Ops Admin' npm run admin:bootstrap --prefix backend
+```
+
+Required values:
+
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+
+Optional values:
+
+- `ADMIN_NAME`
+- `ADMIN_PROMOTE_EXISTING=true` or `--promote-existing` to promote an existing non-admin user with the same email
+
+Password requirements: at least 12 characters, with uppercase, lowercase, number, and symbol characters. The password must not contain common weak words, the app name, or the email local part. The bootstrap script never prints the password and never creates default credentials.
+
+Run this separately for staging and production with unique credentials. Verify by logging in through the normal auth flow as the bootstrapped admin and opening the admin dashboard. If an admin already exists for a different email, the script refuses to create another admin; use the admin UI or documented role-management process for additional admins.
+
 ## Password Reset Email
 
 Password reset links are delivered through SMTP. Configure these variables before production launch:
@@ -87,6 +118,7 @@ If SMTP is missing while email delivery is enabled, production startup fails. Lo
 | `npm run dev` | Start dev server with hot-reload |
 | `npm run build` | Compile TypeScript to dist/ |
 | `npm start` | Run compiled production build |
+| `npm run admin:bootstrap` | Create or explicitly promote the first admin account |
 | `npm run typecheck` | Type-check without emitting |
 | `npm run db:validate` | Validate the Prisma schema |
 | `npm run db:generate` | Generate Prisma Client |
