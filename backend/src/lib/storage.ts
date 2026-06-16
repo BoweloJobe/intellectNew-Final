@@ -102,6 +102,10 @@ export function assertLessonVideoStorageKey(
 }
 
 function getSupabaseStorageConfig() {
+  if (!env.ENABLE_VIDEO_UPLOADS) {
+    throw new AppError(503, 'Video uploads are disabled. Set ENABLE_VIDEO_UPLOADS=true and configure Supabase storage to enable them.')
+  }
+
   const provider = env.STORAGE_PROVIDER
   const baseUrl = env.SUPABASE_URL ?? env.STORAGE_BASE_URL
   const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY

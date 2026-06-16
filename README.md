@@ -151,6 +151,9 @@ Minimum required in `backend/.env`:
 | `PORT` | | `4000` | Backend HTTP port |
 | `FRONTEND_URL` | | `http://localhost:5173` | Used for CORS |
 | `NODE_ENV` | | `development` | |
+| `ENABLE_PAYMENTS` | production | `true` in production, `false` otherwise | Set `false` only when paid checkout is intentionally unavailable. |
+| `ENABLE_VIDEO_UPLOADS` | production | `true` in production, `false` otherwise | Set `false` only when signed lesson video uploads are intentionally unavailable. |
+| `ENABLE_EMAIL_DELIVERY` | production | `true` in production, `false` otherwise | Set `false` only when password reset/email delivery is intentionally unavailable. |
 
 See `backend/.env.example` for the full list (SMTP, PayPal, storage, etc.).
 

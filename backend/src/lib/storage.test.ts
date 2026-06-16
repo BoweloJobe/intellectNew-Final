@@ -40,8 +40,9 @@ describe('storage', () => {
     vi.unstubAllGlobals()
   })
 
-  it('fails clearly when video storage is not configured', async () => {
+  it('fails clearly when video uploads are disabled', async () => {
     const storage = await importStorage({
+      ENABLE_VIDEO_UPLOADS: 'false',
       STORAGE_PROVIDER: undefined,
       STORAGE_BUCKET: undefined,
       SUPABASE_URL: undefined,
@@ -50,7 +51,7 @@ describe('storage', () => {
 
     await expect(storage.generateUploadIntent(metadata)).rejects.toMatchObject({
       statusCode: 503,
-      message: expect.stringContaining('Video upload is not configured yet'),
+      message: expect.stringContaining('Video uploads are disabled'),
     })
   })
 
@@ -58,6 +59,7 @@ describe('storage', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     const storage = await importStorage({
+      ENABLE_VIDEO_UPLOADS: 'true',
       STORAGE_PROVIDER: 'SUPABASE',
       STORAGE_BUCKET: 'lesson-videos',
       SUPABASE_URL: 'https://project.supabase.co',
@@ -78,6 +80,7 @@ describe('storage', () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     const storage = await importStorage({
+      ENABLE_VIDEO_UPLOADS: 'true',
       STORAGE_PROVIDER: 'SUPABASE',
       STORAGE_BUCKET: 'lesson-videos',
       SUPABASE_URL: 'https://project.supabase.co',
@@ -101,6 +104,7 @@ describe('storage', () => {
     ))
     vi.stubGlobal('fetch', fetchMock)
     const storage = await importStorage({
+      ENABLE_VIDEO_UPLOADS: 'true',
       STORAGE_PROVIDER: 'SUPABASE',
       STORAGE_BUCKET: 'lesson-videos',
       SUPABASE_URL: 'https://project.supabase.co',
@@ -123,6 +127,7 @@ describe('storage', () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const storage = await importStorage({
+      ENABLE_VIDEO_UPLOADS: 'true',
       STORAGE_PROVIDER: 'SUPABASE',
       STORAGE_BUCKET: 'lesson-videos',
       SUPABASE_URL: 'https://project.supabase.co',

@@ -86,10 +86,13 @@ describe('mailer reset-link logging safety', () => {
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
     const { sendMail } = await importMailer({
       NODE_ENV: 'production',
+      ENABLE_PAYMENTS: 'false',
+      ENABLE_VIDEO_UPLOADS: 'false',
+      ENABLE_EMAIL_DELIVERY: 'false',
       SMTP_HOST: undefined,
       SMTP_USER: undefined,
       SMTP_PASS: undefined,
-      ALLOW_DEV_RESET_LINK_LOGGING: 'true',
+      ALLOW_DEV_RESET_LINK_LOGGING: 'false',
     })
 
     await expect(sendMail({
@@ -99,7 +102,7 @@ describe('mailer reset-link logging safety', () => {
       text: 'https://app.example.test/reset-password?token=secret',
     })).rejects.toMatchObject({
       statusCode: 503,
-      message: 'Email delivery is not configured',
+      message: 'Email delivery is disabled',
     })
 
     expect(warnSpy).not.toHaveBeenCalled()
@@ -110,7 +113,11 @@ describe('mailer reset-link logging safety', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const { sendMail } = await importMailer({
       NODE_ENV: 'production',
+      ENABLE_PAYMENTS: 'false',
+      ENABLE_VIDEO_UPLOADS: 'false',
+      ENABLE_EMAIL_DELIVERY: 'true',
       SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
       SMTP_USER: 'user',
       SMTP_PASS: 'pass',
       SMTP_FROM: 'support@example.com',

@@ -17,12 +17,13 @@ Use this as a pre-launch checklist. It documents readiness only; it does not dep
 - Set `DATABASE_URL` to the managed PostgreSQL connection string.
 - Set a random `JWT_SECRET` with at least 32 characters.
 - Set `FRONTEND_URL` to the deployed frontend origin for CORS.
-- Set SMTP variables for password reset email delivery: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM`.
-- Set lesson video storage variables before testing instructor uploads: `STORAGE_PROVIDER=SUPABASE`, `STORAGE_BUCKET`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
-- Configure PayPal variables only when payments are enabled in the deployment: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MODE`, `PAYPAL_PLAN_ID_MONTHLY`, and `PAYPAL_PLAN_ID_ANNUAL`.
+- Set `ENABLE_EMAIL_DELIVERY=true` and SMTP variables for password reset email delivery: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, and `SMTP_FROM`.
+- Set `ENABLE_VIDEO_UPLOADS=true` and lesson video storage variables before testing instructor uploads: `STORAGE_PROVIDER=SUPABASE`, `STORAGE_BUCKET`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`.
+- Set `ENABLE_PAYMENTS=true` and PayPal variables when payments are enabled in the deployment: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, and `PAYPAL_MODE`.
+- To intentionally disable a feature in production, set `ENABLE_PAYMENTS=false`, `ENABLE_VIDEO_UPLOADS=false`, or `ENABLE_EMAIL_DELIVERY=false`; the matching checkout, signed-upload, or email/password-reset capability is unavailable.
 - Run `npm run db:migrate:deploy --prefix backend` before starting the production backend.
 - Create/admin bootstrap is a later task unless a deployment-specific operator account already exists.
-- After startup, run the backend health check at `/api/health`.
+- After startup, run the backend health check at `/api/health`. A healthy response means backend startup config validation passed.
 - Run `npm run typecheck --prefix backend`, `npm test --prefix backend`, and `npm run build --prefix backend`.
 
 ## Database
@@ -35,8 +36,8 @@ Use this as a pre-launch checklist. It documents readiness only; it does not dep
 
 ## Remaining Production Risks
 
-- SMTP, storage, and PayPal environment fail-fast behavior still need separate production-hardening coverage.
 - Admin bootstrap is not implemented by this checklist and must be handled before launch.
+- PayPal subscription plan IDs remain optional because current subscription checkout does not call PayPal subscriptions yet; configure them before enabling live subscription checkout URLs.
 
 ## Course And Video Testing
 

@@ -3,6 +3,7 @@
  * No SDK dependency — keeps things lean and auditable.
  */
 import { env } from '../config/env.js'
+import { AppError } from '../errors/AppError.js'
 
 const PAYPAL_BASE =
   env.PAYPAL_MODE === 'live'
@@ -33,6 +34,10 @@ interface PayPalCaptureResponse {
 }
 
 async function getAccessToken(): Promise<string> {
+  if (!env.ENABLE_PAYMENTS) {
+    throw new AppError(503, 'Payments are disabled')
+  }
+
   if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
     throw new Error('PayPal credentials not configured')
   }

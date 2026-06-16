@@ -33,12 +33,13 @@ npm run dev
 
 Instructor lesson video upload uses Supabase Storage signed upload URLs. Configure these backend environment variables to enable uploads:
 
+- `ENABLE_VIDEO_UPLOADS=true`
 - `STORAGE_PROVIDER=SUPABASE`
 - `STORAGE_BUCKET=lesson-videos`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-When storage is not configured, upload endpoints return a clear "Video upload is not configured yet" error instead of returning fake upload URLs.
+In production, video uploads default to enabled and the backend fails startup if these values are missing. Set `ENABLE_VIDEO_UPLOADS=false` only for deployments where instructor lesson video uploads are intentionally unavailable.
 
 Frontend course authoring must also be API-backed for upload testing. Set
 `VITE_COURSES_ADAPTER_MODE=api` or `VITE_SERVICE_ADAPTER_MODE=api` with
@@ -52,23 +53,32 @@ Before production startup, configure:
 - `DATABASE_URL` for a managed PostgreSQL database
 - `JWT_SECRET` with at least 32 characters
 - `FRONTEND_URL` set to the deployed frontend origin
-- SMTP variables for password reset email delivery
-- Supabase/storage variables before instructor video uploads are enabled
-- PayPal variables only when payments are enabled
+- `ENABLE_EMAIL_DELIVERY=true` plus SMTP variables for password reset email delivery
+- `ENABLE_VIDEO_UPLOADS=true` plus Supabase/storage variables for instructor video uploads
+- `ENABLE_PAYMENTS=true` plus PayPal variables for paid courses and checkout
 
 The repository root `DEPLOYMENT_READINESS.md` has the full readiness checklist.
+
+Production feature flags default to enabled when omitted. To intentionally ship a limited deployment, set a flag to `false`:
+
+- `ENABLE_PAYMENTS=false` disables paid course checkout and payment capture.
+- `ENABLE_VIDEO_UPLOADS=false` disables signed lesson video uploads.
+- `ENABLE_EMAIL_DELIVERY=false` disables password reset/email delivery.
+
+The backend only reports healthy after production env validation passes.
 
 ## Password Reset Email
 
 Password reset links are delivered through SMTP. Configure these variables before production launch:
 
+- `ENABLE_EMAIL_DELIVERY=true`
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_USER`
 - `SMTP_PASS`
 - `SMTP_FROM`
 
-If SMTP is missing in production, password reset requests fail closed and reset links are not logged or returned in API responses. Local development can opt into console reset-link logging only with `ALLOW_DEV_RESET_LINK_LOGGING=true`; never enable that flag in production.
+If SMTP is missing while email delivery is enabled, production startup fails. Local development can opt into console reset-link logging only with `ALLOW_DEV_RESET_LINK_LOGGING=true`; that flag is rejected in production.
 
 ## Scripts
 

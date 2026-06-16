@@ -3,7 +3,7 @@ import { env } from '../config/env.js'
 import { AppError } from '../errors/AppError.js'
 
 export function isEmailDeliveryConfigured(): boolean {
-  return Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS)
+  return env.ENABLE_EMAIL_DELIVERY && Boolean(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS)
 }
 
 export function canLogDevResetLinks(): boolean {
@@ -44,6 +44,9 @@ export async function sendMail(options: SendMailOptions): Promise<void> {
   }
 
   if (!isEmailDeliveryConfigured()) {
+    if (!env.ENABLE_EMAIL_DELIVERY && env.NODE_ENV === 'production') {
+      throw new AppError(503, 'Email delivery is disabled')
+    }
     if (env.NODE_ENV === 'production') {
       throw new AppError(503, 'Email delivery is not configured')
     }
